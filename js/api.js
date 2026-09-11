@@ -6,11 +6,9 @@
   // "localhost" fixo, pra funcionar também de outro dispositivo na rede,
   // ex.: celular abrindo http://<ip-do-pc>:5500/...). Fora disso (site
   // publicado na Vercel) usa o backend, que é um SEGUNDO projeto na Vercel
-  // (Root Directory = backend/) com domínio HTTPS próprio.
-  //
-  // TODO: depois de criar o projeto "backend" na Vercel, troque o domínio
-  // abaixo pelo que a Vercel gerar (ex.: https://growai-backend.vercel.app/api).
-  var PRODUCTION_API_BASE = "https://SEU-BACKEND.vercel.app/api";
+  // (projeto "growai-backend", Root Directory = backend/, repo growai-tcc)
+  // com domínio HTTPS próprio.
+  var PRODUCTION_API_BASE = "https://growai-backend.vercel.app/api";
 
   function isLocalHost(hostname) {
     return (

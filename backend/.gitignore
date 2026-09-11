@@ -3,3 +3,11 @@ node_modules/
 npm-debug.log
 dev.log
 uploads/
+
+.vercel
+.env*.local
+
+# Vercel CLI / Neon marketplace "agent skills" (não fazem parte do backend)
+.agents/
+.claude/
+skills-lock.json
