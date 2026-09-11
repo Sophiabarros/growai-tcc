@@ -45,4 +45,12 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`GrowAI API rodando em http://localhost:${PORT}`));
+
+// Em ambiente serverless (Vercel) este arquivo é apenas importado como
+// handler HTTP - quem "escuta" a porta é a plataforma. Rodando direto
+// (node server.js / nodemon) sobe o servidor normalmente.
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`GrowAI API rodando em http://localhost:${PORT}`));
+}
+
+module.exports = app;

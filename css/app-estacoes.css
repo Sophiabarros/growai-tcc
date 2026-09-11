@@ -5,6 +5,7 @@
 
 .app-estacoes-wrapper {
   width: 100%;
+  min-height: 100vh; /* sem vazio do bg do body abaixo do canvas em telas altas/zoom baixo */
   overflow-x: clip;   /* era hidden — permite o full-bleed do .app-header */
   display: flex;
   justify-content: center;

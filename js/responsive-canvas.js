@@ -6,9 +6,12 @@
   // switched via a CSS media query at 900px. Neither canvas reflows on its
   // own (everything is absolutely positioned in rem), so outside each
   // canvas's own design width the content either overflows or clips.
-  // This scales whichever canvas is visible down to fit the real viewport:
-  // the desktop canvas between 900-1440px, and the mobile canvas below
-  // 412px (i.e. on real phones, which are almost all narrower than 412px).
+  // This scales whichever canvas is visible to fit the real viewport: the
+  // desktop canvas grows/shrinks to match anything >= 900px (so it also
+  // fills wide monitors or a < 100% browser zoom instead of sitting tiny
+  // at a fixed 1440px with empty space around it — same fix as
+  // js/game.js), and the mobile canvas scales below 412px (real phones,
+  // almost all narrower than that).
   var DESIGN_WIDTH = 1440;
   var MOBILE_DESIGN_WIDTH = 412;
   var BREAKPOINT = 900;
@@ -35,11 +38,7 @@
 
       if (width >= BREAKPOINT) {
         resetCanvas(mobilePage, mobileWrapper);
-        if (width >= DESIGN_WIDTH) {
-          resetCanvas(desktopPage, desktopWrapper);
-        } else {
-          scaleCanvas(desktopPage, desktopWrapper, DESIGN_WIDTH, width);
-        }
+        scaleCanvas(desktopPage, desktopWrapper, DESIGN_WIDTH, width);
       } else {
         resetCanvas(desktopPage, desktopWrapper);
         if (width >= MOBILE_DESIGN_WIDTH) {

@@ -1,22 +1,20 @@
-const fs = require("fs");
-const path = require("path");
 const multer = require("multer");
 
-const AVATARS_DIR = path.join(__dirname, "..", "uploads", "avatars");
-fs.mkdirSync(AVATARS_DIR, { recursive: true });
-
+// O upload de avatar em disco foi DESATIVADO ao migrar o backend para a
+// Vercel: o filesystem é somente-leitura em ambiente serverless, então
+// multer.diskStorage (e o fs.mkdirSync que rodava aqui na importação)
+// quebrava a função inteira no cold start.
+//
+// O multer continua neste arquivo só para PARSEAR o multipart/form-data
+// do formulário de perfil (o campo "name"). Um arquivo enviado no campo
+// "avatar" fica em memória e é descartado pelo authController.
+//
+// Para reativar a foto de perfil: trocar por um storage externo
+// (Vercel Blob, S3, Cloudinary) e voltar a gravar avatar_url no banco.
 const ALLOWED_TYPES = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, AVATARS_DIR),
-  filename: (req, file, cb) => {
-    var ext = ALLOWED_TYPES[file.mimetype];
-    cb(null, `user-${req.user.id}-${Date.now()}${ext}`);
-  },
-});
-
 const uploadAvatar = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 3 * 1024 * 1024 }, // 3MB
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES[file.mimetype]) {
@@ -26,4 +24,4 @@ const uploadAvatar = multer({
   },
 });
 
-module.exports = { uploadAvatar, AVATARS_DIR };
+module.exports = { uploadAvatar };

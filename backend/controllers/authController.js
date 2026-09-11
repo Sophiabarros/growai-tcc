@@ -1,6 +1,4 @@
-const fs = require("fs");
-const path = require("path");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 
@@ -68,30 +66,18 @@ async function me(req, res, next) {
   }
 }
 
-// Atualiza nome e/ou avatar. O avatar chega via multipart (ver
-// config/upload.js); se um novo arquivo for enviado, o antigo é apagado
-// do disco.
+// Atualiza o nome do perfil. O upload de foto está desativado nesta
+// versão hospedada na Vercel (ver config/upload.js): um arquivo enviado
+// no campo "avatar" é apenas parseado e ignorado.
 async function updateMe(req, res, next) {
   try {
     const { name } = req.body;
-    const newAvatarPath = req.file ? `/uploads/avatars/${req.file.filename}` : null;
-
-    if (newAvatarPath) {
-      const { rows: current } = await db.query("SELECT avatar_url FROM users WHERE id = $1", [req.user.id]);
-      const oldAvatar = current[0] && current[0].avatar_url;
-      if (oldAvatar) {
-        const oldPath = path.join(__dirname, "..", oldAvatar.replace(/^\//, ""));
-        fs.unlink(oldPath, () => {});
-      }
-    }
 
     const { rows } = await db.query(
-      `UPDATE users SET
-         name = COALESCE($1, name),
-         avatar_url = COALESCE($2, avatar_url)
-       WHERE id = $3
+      `UPDATE users SET name = COALESCE($1, name)
+       WHERE id = $2
        RETURNING id, name, email, avatar_url`,
-      [name || null, newAvatarPath, req.user.id]
+      [name || null, req.user.id]
     );
     res.json(rows[0]);
   } catch (err) {

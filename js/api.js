@@ -5,9 +5,12 @@
   // local usa o backend/ Express na porta 3000 (mesmo host da página, não
   // "localhost" fixo, pra funcionar também de outro dispositivo na rede,
   // ex.: celular abrindo http://<ip-do-pc>:5500/...). Fora disso (site
-  // publicado na Vercel) usa o backend hospedado no Railway, que roda num
-  // domínio HTTPS separado do front-end.
-  var PRODUCTION_API_BASE = "https://growai-claude-production.up.railway.app/api";
+  // publicado na Vercel) usa o backend, que é um SEGUNDO projeto na Vercel
+  // (Root Directory = backend/) com domínio HTTPS próprio.
+  //
+  // TODO: depois de criar o projeto "backend" na Vercel, troque o domínio
+  // abaixo pelo que a Vercel gerar (ex.: https://growai-backend.vercel.app/api).
+  var PRODUCTION_API_BASE = "https://SEU-BACKEND.vercel.app/api";
 
   function isLocalHost(hostname) {
     return (

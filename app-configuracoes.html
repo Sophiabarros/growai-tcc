@@ -10,13 +10,13 @@
       href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/reset.css" />
-    <link rel="stylesheet" href="css/variables.css" />
-    <link rel="stylesheet" href="css/global.css" />
-    <link rel="stylesheet" href="css/header.css" />
-    <link rel="stylesheet" href="css/app-shell.css" />
-    <link rel="stylesheet" href="css/app-configuracoes.css" />
-    <link rel="stylesheet" href="css/animations.css" />
+    <link rel="stylesheet" href="css/reset.css?v=1" />
+    <link rel="stylesheet" href="css/variables.css?v=1" />
+    <link rel="stylesheet" href="css/global.css?v=1" />
+    <link rel="stylesheet" href="css/header.css?v=1" />
+    <link rel="stylesheet" href="css/app-shell.css?v=1" />
+    <link rel="stylesheet" href="css/app-configuracoes.css?v=1" />
+    <link rel="stylesheet" href="css/animations.css?v=1" />
   </head>
   <body>
     <div class="app-configuracoes-wrapper">
@@ -265,8 +265,9 @@
 
         <div class="profile-modal__avatar">
           <img id="profileAvatarPreview" alt="" src="assets/images/app/img-app-avatar.svg" />
-          <label class="profile-modal__avatar-btn" for="profileAvatarInput">Trocar foto</label>
-          <input type="file" id="profileAvatarInput" name="avatar" accept="image/png,image/jpeg,image/webp" hidden />
+          <!-- Upload de foto desativado nesta versão hospedada na Vercel (ver js/api.js e backend/config/upload.js). -->
+          <label class="profile-modal__avatar-btn" for="profileAvatarInput" hidden>Trocar foto</label>
+          <input type="file" id="profileAvatarInput" name="avatar" accept="image/png,image/jpeg,image/webp" hidden disabled />
         </div>
 
         <div class="profile-modal__field">
@@ -287,9 +288,9 @@
       </form>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/toast.js"></script>
-    <script src="js/responsive-canvas.js"></script>
-    <script src="js/app-configuracoes.js"></script>
+    <script src="js/api.js?v=1"></script>
+    <script src="js/toast.js?v=1"></script>
+    <script src="js/responsive-canvas.js?v=1"></script>
+    <script src="js/app-configuracoes.js?v=1"></script>
   </body>
 </html>

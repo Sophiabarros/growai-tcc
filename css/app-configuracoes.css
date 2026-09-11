@@ -6,6 +6,7 @@
 
 .app-configuracoes-wrapper {
   width: 100%;
+  min-height: 100vh; /* sem vazio do bg do body abaixo do canvas em telas altas/zoom baixo */
   overflow-x: clip;   /* era hidden — permite o full-bleed do .app-header */
   display: flex;
   justify-content: center;
@@ -50,8 +51,13 @@
 
 .cfg-box__label {
   color: var(--app-muted-alt);
-  font: 500 2rem/normal var(--font-body);
+  font: 500 1.4rem/normal var(--font-body);
   margin: 0 0 1.6rem;
+}
+/* "Conta" é a única com o rótulo maior no Figma (519:461) — as demais
+   ("Dispositivos", "Notificações", "Sobre") usam 1.4rem. */
+.cfg-col > .cfg-box:first-child .cfg-box__label {
+  font-size: 2rem;
 }
 
 .cfg-row {
