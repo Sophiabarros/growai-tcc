@@ -20,7 +20,31 @@ process.on("unhandledRejection", (err) => {
 
 const app = express();
 
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
+// CORS_ORIGIN pode ser "*", uma origem única ou uma lista separada por
+// vírgula (ex.: "https://growai-claude.vercel.app,https://outro.com").
+// Origens de desenvolvimento local (localhost/127.0.0.1, qualquer porta)
+// são sempre liberadas além do que estiver configurado - CORS só decide
+// quem pode LER a resposta no navegador, a autenticação de verdade
+// continua sendo o JWT (requireAuth), então isso não abre nenhuma
+// brecha de segurança. Sem isso, testar o front-end estático local
+// (Live Server, file://, etc.) contra o backend hospedado falhava com
+// "Failed to fetch" mesmo com token válido.
+const configuredOrigins = (process.env.CORS_ORIGIN || "*")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const isLocalDevOrigin = (origin) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || "");
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) return callback(null, true); // requests sem Origin (curl, apps nativos)
+      if (configuredOrigins.includes("*")) return callback(null, true);
+      if (configuredOrigins.includes(origin) || isLocalDevOrigin(origin)) return callback(null, true);
+      callback(new Error("Não permitido pelo CORS: " + origin));
+    },
+  })
+);
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

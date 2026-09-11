@@ -1,27 +1,19 @@
 (function () {
   "use strict";
 
-  // Aponta para a API do GrowAI (ver pasta backend/). Em localhost/rede
-  // local usa o backend/ Express na porta 3000 (mesmo host da página, não
-  // "localhost" fixo, pra funcionar também de outro dispositivo na rede,
-  // ex.: celular abrindo http://<ip-do-pc>:5500/...). Fora disso (site
-  // publicado na Vercel) usa o backend, que é um SEGUNDO projeto na Vercel
-  // (projeto "growai-backend", Root Directory = backend/, repo growai-tcc)
-  // com domínio HTTPS próprio.
-  var PRODUCTION_API_BASE = "https://growai-backend.vercel.app/api";
-
-  function isLocalHost(hostname) {
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
-    );
-  }
-  var API_BASE = isLocalHost(window.location.hostname)
-    ? "http://" + window.location.hostname + ":3000/api"
-    : PRODUCTION_API_BASE;
+  // Aponta para a API do GrowAI (ver pasta backend/), hospedada como um
+  // SEGUNDO projeto na Vercel (projeto "growai-backend", Root Directory =
+  // backend/, repo growai-tcc), com domínio HTTPS próprio.
+  //
+  // Era: em localhost/rede local, tentava um backend Express rodando na
+  // porta 3000 DA MÁQUINA (http://<host>:3000/api) — só funcionava se você
+  // tivesse esse servidor local rodando à parte, o que não é o fluxo real
+  // de trabalho (edita o arquivo, dá refresh no Live Server). Sem esse
+  // servidor local, toda a página parecia quebrada: nenhum dado carregava
+  // e cada card/seção caía no estado de erro/vazio ("Não foi possível
+  // conectar ao servidor"). Agora sempre usa o backend de produção, local
+  // ou publicado — os mesmos dados reais em qualquer lugar.
+  var API_BASE = "https://growai-backend.vercel.app/api";
 
   var TOKEN_KEY = "growai_token";
   var USER_KEY = "growai_user";

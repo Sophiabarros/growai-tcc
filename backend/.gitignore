@@ -2,6 +2,7 @@ node_modules/
 .env
 npm-debug.log
 dev.log
+dev-local.log
 uploads/
 
 .vercel

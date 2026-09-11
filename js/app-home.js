@@ -30,69 +30,158 @@
     el.classList.toggle("m-app-home__status--error", !!isError);
   }
 
-  // Desktop card: full stats row when healthy, health-only + warning text
-  // when it needs attention (same pattern the Figma design used, now
-  // driven by the actual health status instead of a fixed card slot).
-  function cardBodyHtml(station, reading, photo, isDesktop) {
-    var photoImg = isDesktop && photo
-      ? '<img class="app-station-card__photo" alt="' + escapeHtml(station.plant) + '" src="' + escapeHtml(photo.image_url) + '" />'
-      : "";
-    var statClass = isDesktop ? "app-station-card__stat" : "m-app-station-card__stat";
-    var nameClass = isDesktop ? "app-station-card__name" : "m-app-station-card__name";
-    var statsClass = isDesktop ? "app-station-card__stats" : "m-app-station-card__stats";
-    var warnClass = isDesktop ? "app-station-card__warning" : "m-app-station-card__warning";
-    var btnClass = isDesktop ? "app-station-card__btn" : "m-app-station-card__btn";
-    var bodyOpen = isDesktop ? '<div class="app-station-card__body">' : "";
-    var bodyClose = isDesktop ? "</div>" : "";
+  function firstName(name) {
+    if (!name) return "";
+    return String(name).trim().split(/\s+/)[0];
+  }
 
+  function stationLocation(station) {
+    if (!station) return "";
+    return station.tag ? station.name + " · " + station.tag : station.name;
+  }
+
+  // ---- desktop: greeting ----
+  function renderGreeting() {
+    var el = document.getElementById("appGreetingTitle");
+    if (!el) return;
+    var user = GrowAI.getUser();
+    var name = firstName(user && user.name);
+    el.textContent = name ? "Olá, " + name : "Olá!";
+  }
+
+  // ---- desktop: "Suas plantas" list ----
+  function renderPlantsList(stations) {
+    var list = document.getElementById("appPlantsList");
+    if (!list) return;
+    if (!stations.length) {
+      list.innerHTML = '<p class="app-plants__empty">Nenhuma estação cadastrada ainda.</p>';
+      return;
+    }
+    list.innerHTML = stations
+      .map(function (s, i) {
+        var photo = s.__photo && s.__photo.image_url;
+        var img = photo
+          ? '<img class="app-plant-row__photo" alt="' + escapeHtml(s.plant) + '" src="' + escapeHtml(photo) + '" />'
+          : '<img class="app-plant-row__photo" alt="" src="assets/icons/app/icon-app-planta-station.svg" style="padding: 1rem; box-sizing: border-box; object-fit: contain;" />';
+        return (
+          '<a href="app-estacoes.html" class="app-plant-row' + (i === 0 ? " app-plant-row--active" : "") + '">' +
+          img +
+          '<span class="app-plant-row__info">' +
+          '<p class="app-plant-row__name">' + escapeHtml(s.plant) + "</p>" +
+          '<p class="app-plant-row__loc">' + escapeHtml(stationLocation(s)) + "</p>" +
+          "</span>" +
+          '<span class="app-plant-row__dot"></span>' +
+          "</a>"
+        );
+      })
+      .join("");
+  }
+
+  // ---- desktop: featured card (first station) ----
+  function renderFeatured(station, reading, photo) {
+    var card = document.getElementById("appFeatured");
+    if (!card || !station) {
+      if (card) card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    document.getElementById("appFeaturedName").textContent = station.plant;
+    document.getElementById("appFeaturedLoc").textContent = stationLocation(station);
+    document.getElementById("appFeaturedStatus").textContent = photo && photo.health_status === "atencao" ? "Atenção" : "Online";
+
+    var photoImg = document.getElementById("appFeaturedPhoto");
+    if (photo && photo.image_url) {
+      photoImg.src = photo.image_url;
+      photoImg.hidden = false;
+    } else {
+      photoImg.hidden = true;
+    }
+
+    var btn = card.querySelector(".app-featured__btn");
+    if (btn) btn.onclick = function () { window.location.href = "app-camera.html"; };
+  }
+
+  // ---- desktop: camera thumbnail (reuses the featured station's latest photo) ----
+  function renderCameraThumb(station, photo) {
+    var img = document.getElementById("appCameraThumb");
+    var caption = document.getElementById("appCameraCaption");
+    if (!img) return;
+    if (photo && photo.image_url) img.src = photo.image_url;
+    if (caption && station) caption.textContent = "Câmera · " + stationLocation(station);
+  }
+
+  // ---- desktop: sensor tiles (value + progress bar) ----
+  var SENSOR_MAX = { light: 12, humidity: 100, ph: 14, temperature: 40 };
+  function setSensorBar(id, ratio) {
+    var bar = document.getElementById(id);
+    if (!bar) return;
+    var pct = Math.max(4, Math.min(100, Math.round((ratio || 0) * 100)));
+    bar.style.width = pct + "%";
+  }
+  function renderSensors(reading) {
+    var light = reading ? Math.round(reading.light_h) + "h" : "—";
+    var ph = reading ? "pH " + reading.ph : "—";
+    var humidity = reading ? Math.round(reading.humidity) + "%" : "—";
+    var temp = reading ? Math.round(reading.temperature) + "°C" : "—";
+
+    document.getElementById("appSensorLight").textContent = light;
+    document.getElementById("appSensorPh").textContent = ph;
+    document.getElementById("appSensorHumidity").textContent = humidity;
+    document.getElementById("appSensorTemp").textContent = temp;
+
+    document.getElementById("mSensorLight").textContent = light;
+    document.getElementById("mSensorPh").textContent = ph;
+    document.getElementById("mSensorHumidity").textContent = humidity;
+    document.getElementById("mSensorTemp").textContent = temp;
+
+    setSensorBar("appSensorLightBar", reading ? reading.light_h / SENSOR_MAX.light : 0);
+    setSensorBar("appSensorHumidityBar", reading ? reading.humidity / SENSOR_MAX.humidity : 0);
+    setSensorBar("appSensorPhBar", reading ? reading.ph / SENSOR_MAX.ph : 0);
+    setSensorBar("appSensorTempBar", reading ? reading.temperature / SENSOR_MAX.temperature : 0);
+  }
+
+  // ---- mobile: station cards (unchanged 2-slot layout/markup) ----
+  function mobileCardBodyHtml(station, reading, photo) {
     var healthStat = photo
-      ? '<span class="' + statClass + " " + statClass + "--health-" + (photo.health_status === "atencao" ? "warn" : "ok") + '">' +
+      ? '<span class="m-app-station-card__stat m-app-station-card__stat--health-' + (photo.health_status === "atencao" ? "warn" : "ok") + '">' +
         '<img alt="" src="' + HEALTH_ICON[photo.health_status] + '" /> Saúde: ' + (HEALTH_LABEL[photo.health_status] || photo.health_status) +
         "</span>"
       : "";
 
-    var body;
     if (photo && photo.health_status === "atencao") {
-      body =
-        '<p class="' + nameClass + '">' + escapeHtml(station.plant) + "</p>" +
-        '<div class="' + statsClass + '">' + healthStat + "</div>" +
-        '<p class="' + warnClass + '">' + escapeHtml(photo.analysis_text) + "</p>";
-    } else {
-      var extraStats = reading
-        ? '<span class="' + statClass + '"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /> ' + Math.round(reading.humidity) + "%</span>" +
-          '<span class="' + statClass + '"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /> ' + Math.round(reading.temperature) + "°C</span>"
-        : "";
-      body =
-        '<p class="' + nameClass + '">' + escapeHtml(station.plant) + "</p>" +
-        '<div class="' + statsClass + '">' + healthStat + extraStats + "</div>";
+      return (
+        '<p class="m-app-station-card__name">' + escapeHtml(station.plant) + "</p>" +
+        '<div class="m-app-station-card__stats">' + healthStat + "</div>" +
+        '<p class="m-app-station-card__warning">' + escapeHtml(photo.analysis_text) + "</p>" +
+        '<button type="button" class="m-app-station-card__btn" data-action="ver-camera">Ver câmera</button>'
+      );
     }
-
+    var extraStats = reading
+      ? '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /> ' + Math.round(reading.humidity) + "%</span>" +
+        '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /> ' + Math.round(reading.temperature) + "°C</span>"
+      : "";
     return (
-      photoImg +
-      bodyOpen +
-      body +
-      '<button type="button" class="' + btnClass + '" data-action="ver-camera">Ver câmera</button>' +
-      bodyClose
+      '<p class="m-app-station-card__name">' + escapeHtml(station.plant) + "</p>" +
+      '<div class="m-app-station-card__stats">' + healthStat + extraStats + "</div>" +
+      '<button type="button" class="m-app-station-card__btn" data-action="ver-camera">Ver câmera</button>'
     );
   }
-
-  function renderCard(el, mEl, station, reading, photo) {
+  function renderMobileCard(mEl, station, reading, photo) {
+    if (!mEl) return;
     if (!station) {
-      el.hidden = true;
       mEl.hidden = true;
       return;
     }
-    el.hidden = false;
     mEl.hidden = false;
-    el.innerHTML = cardBodyHtml(station, reading, photo, true);
-    mEl.innerHTML = cardBodyHtml(station, reading, photo, false);
+    mEl.innerHTML = mobileCardBodyHtml(station, reading, photo);
   }
 
   // The mobile sensors/alerts/tab bar `top` values assume exactly 2 station
   // cards; with 0 or 1 station (status message instead, or a single card)
-  // that leaves a big gap and the tab bar sits in the wrong place. This
-  // measures the actual bottom of whichever is visible and reflows
-  // everything below it, preserving the gaps from the Figma spec.
+  // that leaves a big empty gap before the tab bar; when more content grows
+  // past it, it would overlap instead. This measures the actual bottom edge
+  // of whichever is visible and repositions the tab bar (and the page's
+  // min-height) right after it.
   function positionMobileTrailing() {
     var mSensors = document.querySelector(".m-app-sensors");
     var mAlertsTitle = document.querySelector(".m-app-alerts__title");
@@ -123,23 +212,6 @@
     mPage.style.minHeight = tabbarTopRem + 9.4 + "rem";
   }
 
-  function renderSensors(reading) {
-    var light = reading ? Math.round(reading.light_h) + "h" : "—";
-    var ph = reading ? "pH " + reading.ph : "—";
-    var humidity = reading ? Math.round(reading.humidity) + "%" : "—";
-    var temp = reading ? Math.round(reading.temperature) + "°C" : "—";
-
-    document.getElementById("appSensorLight").textContent = light;
-    document.getElementById("appSensorPh").textContent = ph;
-    document.getElementById("appSensorHumidity").textContent = humidity;
-    document.getElementById("appSensorTemp").textContent = temp;
-
-    document.getElementById("mSensorLight").textContent = light;
-    document.getElementById("mSensorPh").textContent = ph;
-    document.getElementById("mSensorHumidity").textContent = humidity;
-    document.getElementById("mSensorTemp").textContent = temp;
-  }
-
   document.addEventListener("click", function (event) {
     var target = event.target.closest('[data-action="ver-camera"]');
     if (target) window.location.href = "app-camera.html";
@@ -150,22 +222,28 @@
     var mStatus = document.getElementById("mAppHomeStatus");
     setStatus(appStatus, "Carregando...", false);
     setStatus(mStatus, "Carregando...", false);
+    renderGreeting();
 
     var stations;
     try {
-      stations = (await GrowAI.getStations()).slice(0, 2);
+      stations = await GrowAI.getStations();
     } catch (err) {
       setStatus(appStatus, err.message, true);
       setStatus(mStatus, err.message, true);
+      renderPlantsList([]);
+      renderFeatured(null);
       positionMobileTrailing();
       applyScale();
       return;
     }
 
     if (stations.length === 0) {
-      setStatus(appStatus, "Você ainda não tem estações. Crie uma na tela Estações.", false);
-      setStatus(mStatus, "Você ainda não tem estações. Crie uma na tela Estações.", false);
+      var emptyMsg = "Você ainda não tem estações. Crie uma na tela Estações.";
+      setStatus(appStatus, emptyMsg, false);
+      setStatus(mStatus, emptyMsg, false);
       renderSensors(null);
+      renderPlantsList([]);
+      renderFeatured(null);
       positionMobileTrailing();
       applyScale();
       return;
@@ -173,24 +251,24 @@
     setStatus(appStatus, "", false);
     setStatus(mStatus, "", false);
 
+    var limited = stations.slice(0, 4);
     var details = await Promise.all(
-      stations.map(function (s) {
+      limited.map(function (s) {
         return Promise.all([
           GrowAI.getLatestReading(s.id).catch(function () { return null; }),
           GrowAI.getLatestPhoto(s.id).catch(function () { return null; }),
         ]);
       })
     );
+    limited.forEach(function (s, i) { s.__photo = details[i][1]; });
 
     renderSensors(details[0][0]);
+    renderPlantsList(limited);
+    renderFeatured(limited[0], details[0][0], details[0][1]);
+    renderCameraThumb(limited[0], details[0][1]);
 
-    var card1 = document.getElementById("appStationCard1");
-    var mCard1 = document.getElementById("mAppStationCard1");
-    var card2 = document.getElementById("appStationCard2");
-    var mCard2 = document.getElementById("mAppStationCard2");
-
-    renderCard(card1, mCard1, stations[0], details[0][0], details[0][1]);
-    renderCard(card2, mCard2, stations[1], details[1] ? details[1][0] : null, details[1] ? details[1][1] : null);
+    renderMobileCard(document.getElementById("mAppStationCard1"), limited[0], details[0][0], details[0][1]);
+    renderMobileCard(document.getElementById("mAppStationCard2"), limited[1], details[1] ? details[1][0] : null, details[1] ? details[1][1] : null);
 
     positionMobileTrailing();
     applyScale();

@@ -1,5 +1,7 @@
-/* APP HOME page (desktop) - "HOME - DESKTOP" (455:354) frame. Dark-only, no
-   light variant exists in Figma for the App screens. */
+/* APP HOME page (desktop) - redesenhado em cima do frame "HOME - DESKTOP
+   (proposta v2)" do Figma: saudação + lista "Suas plantas" à esquerda,
+   card em destaque + Sensores + Alertas ao centro, Câmeras + dica à
+   direita. Dark-only, no light variant exists in Figma for the App screens. */
 
 .app-home-wrapper {
   width: 100%;
@@ -12,7 +14,7 @@
 .app-home {
   position: relative;
   width: 144rem;
-  height: 102.4rem;
+  min-height: 95rem; /* min, não fixo: a lista "Suas plantas" cresce com o nº de estações */
   flex-shrink: 0;
   background: var(--app-bg);
   overflow: visible;   /* era hidden — o corte lateral passa a ser do wrapper */
@@ -22,220 +24,539 @@
 /* Header/nav/tabbar chrome shared with the other app-*.html pages lives
    in css/app-shell.css (included alongside this file). */
 
-/* ============ MAIN: LEFT COLUMN ============ */
-.app-home__title {
+/* ============ LEFT COLUMN: saudação + "Suas plantas" ============ */
+.app-greeting__icon {
   position: absolute;
-  left: 11rem;
-  top: 19.7rem;
-  width: 50.3rem;
-  color: var(--app-text);
-  font: 700 4.8rem/normal var(--font-body);
+  left: 9.4rem;
+  top: 15.8rem;
+  width: 2.8rem;
+  height: 2.22rem;
 }
-.app-home__subtitle {
+.app-greeting__title {
   position: absolute;
-  left: 11rem;
-  top: 29.4rem;
-  width: 45.3rem;
+  left: 9.4rem;
+  top: 19.6rem;
+  width: 28rem;
   color: var(--app-text);
-  font: 400 1.6rem/normal var(--font-body);
+  font: 700 2.6rem/normal var(--font-body);
+}
+.app-greeting__subtitle {
+  position: absolute;
+  left: 9.4rem;
+  top: 23.6rem;
+  width: 28rem;
+  color: var(--app-text);
+  font: 400 1.4rem/1.4 var(--font-body);
 }
 
-.app-sensors__title {
+.app-plants {
   position: absolute;
-  left: 10.3rem;
-  top: 35.1rem;
-  color: var(--app-text);
-  /* era 4.8rem, do tamanho do H1 — 3 títulos gigantes empilhados (título,
-     Sensores, Alertas) lia mal e destoava do resto do app (Configurações
-     usa rótulos pequenos abaixo do título). Reduzido pra 2.4rem, igual
-     ajuste feito no Figma (HOME - DESKTOP, 455:422/489:1102). */
-  font: 600 2.4rem/normal var(--font-body);
-}
-.app-sensors {
-  position: absolute;
-  left: 9.9rem;
-  top: 40.1rem;
-  width: 60.4rem;
-  height: 17rem;
-  background: var(--app-card-bg);
-  border-radius: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding-left: 1.1rem;
-}
-.app-sensor-card {
-  width: 13.8rem;
-  height: 14.2rem;
-  flex-shrink: 0;
-  background: var(--app-card-bg);
-  border: 1px solid rgba(0, 0, 0, 0.23);
-  border-radius: 1.5rem;
-  padding: 2.6rem 0 0 3rem;
-}
-.app-sensor-card__icon {
-  display: block;
-  width: 3.2rem;
-  height: 3.2rem;
-}
-.app-sensor-card__icon img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;   /* NOVO — os ícones (pH, umidade, termômetro) não são
-                             quadrados; sem isso ficam espichados pra caber
-                             no slot quadrado */
-}
-.app-sensor-card__label {
-  margin-top: 1.6rem;
-  color: var(--app-text);
-  font: 400 1.6rem/normal var(--font-body);
-}
-.app-sensor-card__value {
-  margin-top: 0.4rem;
-  color: var(--app-text);
-  font: 400 2rem/normal var(--font-body);
-}
-
-.app-alerts__title {
-  position: absolute;
-  left: 10.1rem;
-  top: 61.9rem;
-  color: var(--app-text);
-  font: 600 2.4rem/normal var(--font-body); /* era 4.8rem — ver comentário em .app-sensors__title */
-}
-.app-alerts {
-  position: absolute;
-  left: 10.3rem;
-  top: 66.9rem;
-  width: 60rem;
-  height: 13.5rem;
-  background: var(--app-card-bg);
-  border-radius: 1.5rem;
-  padding: 1.2rem 1.3rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.6rem;
-}
-.app-alert {
-  height: 4rem;
-  border-radius: 0.6rem;
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-  padding: 0 1.5rem;
-  font: 400 1.5rem/normal var(--font-body);
-}
-.app-alert--warn {
-  background: rgba(192, 231, 157, 0.1);
-  color: var(--app-accent);
-}
-.app-alert--info {
-  background: rgba(136, 211, 207, 0.1);
-  color: var(--app-info);
-}
-.app-alert img {
-  width: 1.7rem;
-  height: 1.7rem;
-  flex-shrink: 0;
-}
-
-/* ============ MAIN: RIGHT COLUMN (station cards) ============ */
-.app-station-card {
-  position: absolute;
-  left: 85.4rem;
-  width: 46.9rem;
-  background: var(--app-card-bg);
-  border-radius: 1.5rem;
-  overflow: hidden;
-}
-.app-station-card--camomila {
-  top: 19.7rem;
-  height: 32.2rem;
-}
-.app-station-card--hortela {
-  top: 60.2rem;
-  height: 32.3rem;
-}
-.app-station-card__photo {
-  display: block;
-  width: 100%;
-  height: 13.9rem;
-  object-fit: cover;
-}
-.app-station-card--hortela .app-station-card__photo {
-  height: 14.8rem;
-}
-.app-station-card__body {
-  display: flex;
-  flex-direction: column;
-  height: calc(100% - 13.9rem);
-  padding: 1.6rem 2.2rem 2.2rem;
+  left: 9.4rem;
+  top: 31rem;
+  width: 28rem;
   box-sizing: border-box;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  padding: 2rem;
 }
-.app-station-card--hortela .app-station-card__body {
-  height: calc(100% - 14.8rem);
+.app-plants__header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }
-.app-station-card__name {
+.app-plants__header img {
+  width: 1.8rem;
+  height: 1.43rem;
+  flex-shrink: 0;
+}
+.app-plants__header p {
+  flex: 1;
+  margin: 0;
   color: var(--app-text);
-  font: 700 2rem/normal var(--font-body);
+  font: 600 1.5rem/normal var(--font-body);
 }
-.app-station-card__stats {
-  margin-top: 1.8rem;
+.app-plants__header .app-plants__header-arrow {
+  width: 0.7rem;
+  height: 1.3rem;
+  flex-shrink: 0;
+}
+.app-plants__list {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.app-plant-row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 2.4rem;
-  font: 400 1.2rem/normal var(--font-body);
+  gap: 1.6rem;
+  padding: 0.6rem;
+  border-radius: 1rem;
+  text-decoration: none;
 }
-.app-station-card__stat {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: var(--app-info);
+.app-plant-row--active {
+  background: rgba(192, 231, 157, 0.08);
 }
-.app-station-card__stat img {
-  width: 1.6rem;
-  height: 1.6rem;
+.app-plant-row__photo {
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(93, 165, 120, 0.35);
 }
-.app-station-card__stat--health-ok {
-  color: var(--app-info);
+.app-plant-row__info {
+  flex: 1;
+  min-width: 0;
 }
-.app-station-card__stat--health-warn {
-  color: var(--app-accent);
-}
-.app-station-card__warning {
-  margin-top: 1.8rem;
-  color: var(--app-accent);
-  font: 400 1.2rem/normal var(--font-body);
+.app-plant-row__name {
+  margin: 0;
+  color: var(--app-text);
+  font: 500 1.4rem/normal var(--font-body);
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+}
+.app-plant-row__loc {
+  margin: 0.2rem 0 0;
+  color: var(--app-info);
+  font: 400 1.1rem/normal var(--font-body);
+}
+.app-plant-row__dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--color-green-normal);
+  flex-shrink: 0;
+}
+.app-plants__empty {
+  margin: 2rem 0 0;
+  color: var(--app-info);
+  font: 400 1.3rem/normal var(--font-body);
+}
+.app-plants__sep {
+  margin: 1.6rem 0 0;
+  border: 0;
+  border-top: 1px solid rgba(61, 104, 98, 0.4);
+}
+.app-plants__footer {
+  margin-top: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+.app-plants__footer img {
+  width: 1.6rem;
+  height: 1.27rem;
+  flex-shrink: 0;
+}
+.app-plants__footer-text {
+  flex: 1;
+}
+.app-plants__footer-text p {
+  margin: 0;
+  color: var(--app-text);
+  font: 500 1.2rem/normal var(--font-body);
+}
+.app-plants__footer-text p:last-child {
+  margin-top: 0.2rem;
+  color: var(--app-muted-alt);
+  font: 400 1rem/normal var(--font-body);
+}
+.app-plants__footer .app-plant-row__dot {
+  flex-shrink: 0;
+}
+
+/* ============ CENTER COLUMN: card em destaque + Sensores + Alertas ============ */
+.app-featured {
+  position: absolute;
+  left: 40.6rem;
+  top: 15.8rem;
+  width: 62.8rem;
+  height: 28rem;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+.app-featured__photo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 66%;
+  object-fit: cover;
+  display: block;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 62%);
+  mask-image: linear-gradient(to right, transparent 0%, black 62%);
+}
+.app-featured__badge {
+  position: absolute;
+  left: 2.8rem;
+  top: 2.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 1.2rem 0.6rem 1rem;
+  border-radius: 2rem;
+  background: rgba(10, 15, 13, 0.55);
+}
+.app-featured__badge-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--color-green-normal);
+}
+.app-featured__badge span {
+  color: var(--app-text);
+  font: 500 1.2rem/normal var(--font-body);
+}
+.app-featured__name {
+  position: absolute;
+  left: 2.8rem;
+  top: 9.2rem;
+  right: 30%;
+  color: var(--app-text);
+  font: 700 3.2rem/normal var(--font-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-featured__loc {
+  position: absolute;
+  left: 2.8rem;
+  top: 14rem;
+  color: var(--app-info);
+  font: 400 1.4rem/normal var(--font-body);
+}
+.app-featured__btn {
+  position: absolute;
+  left: 2.8rem;
+  top: 18rem;
+  width: 57.2rem;
+  height: 4rem;
+  border: 0;
+  border-radius: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  background: linear-gradient(135deg, var(--color-green-normal), var(--color-teal));
+  color: var(--app-card-bg);
+  font: 500 1.5rem/normal var(--font-body);
+  cursor: pointer;
+}
+.app-featured__btn img {
+  width: 0.6rem;
+  height: 1.1rem;
 }
 .app-home__status {
   position: absolute;
-  left: 85.4rem;
-  top: 19.7rem;
-  width: 46.9rem;
+  z-index: 1; /* fica em cima do .app-featured — mesmo bug de baixo */
+  left: 43.4rem;
+  top: 18.6rem;
+  width: 55rem;
   color: var(--app-info);
   font: 400 1.6rem/normal var(--font-body);
 }
 .app-home__status--error {
   color: var(--color-danger);
 }
-.app-station-card__btn {
+
+/* .app-sensors__title/__updated e .app-alerts__title/__see-all vêm ANTES do
+   card deles no HTML mas ficam geometricamente por cima (o card começa mais
+   acima que o título). Sem z-index, elementos absolutos empatam por ordem
+   no DOM — o card (depois) pintava por cima e escondia o texto por completo.
+   Precisam ficar acima do card explicitamente. */
+.app-sensors__title {
+  position: absolute;
+  z-index: 1;
+  left: 43rem;
+  top: 48.6rem;
+  color: var(--app-text);
+  font: 600 1.6rem/normal var(--font-body);
+}
+.app-sensors__updated {
+  position: absolute;
+  z-index: 1;
+  left: 76.6rem;
+  top: 48.6rem;
+  width: 15rem;
+  text-align: right;
+  color: var(--app-muted-alt);
+  font: 400 1.1rem/normal var(--font-body);
+}
+.app-sensors__updated-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-left: 0.6rem;
+  border-radius: 50%;
+  background: var(--color-green-normal);
+  vertical-align: middle;
+}
+.app-sensors {
+  position: absolute;
+  left: 40.6rem;
+  top: 46.2rem;
+  width: 62.8rem;
+  height: 22rem;
+  box-sizing: border-box;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.6rem;
+  padding: 8rem 2.4rem 2.4rem;
+}
+.app-sensor-card {
+  flex: 1;
+  min-width: 0;
+  height: 11.8rem;
+  box-sizing: border-box;
+  background: var(--app-bg);
+  border-radius: 1.2rem;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+}
+.app-sensor-card__icon {
   display: block;
-  margin-top: auto;
+  width: 2.2rem;
+  height: 2.2rem;
+}
+.app-sensor-card__icon img {
+  display: block;
   width: 100%;
-  height: 3.5rem;
-  border: 0;
-  border-radius: 0.7rem;
-  background: linear-gradient(135deg, var(--color-green-normal), var(--color-teal));
-  color: var(--app-card-bg);
-  font: 500 2rem/normal var(--font-body);
-  cursor: pointer;
+  height: 100%;
+  object-fit: contain;
+}
+.app-sensor-card__label {
+  margin-top: 1.6rem;
+  color: var(--app-text);
+  font: 400 1.1rem/normal var(--font-body);
+}
+.app-sensor-card__value {
+  margin-top: 0.2rem;
+  color: var(--app-text);
+  font: 600 1.8rem/normal var(--font-body);
+}
+.app-sensor-card__bar {
+  margin-top: auto;
+  padding-top: 0.8rem;
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: rgba(61, 104, 98, 0.4);
+  background-clip: content-box;
+}
+.app-sensor-card__bar span {
+  display: block;
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: var(--app-info);
+}
+
+.app-alerts__title {
+  position: absolute;
+  z-index: 1;
+  left: 43rem;
+  top: 73rem;
+  color: var(--app-text);
+  font: 600 1.6rem/normal var(--font-body);
+}
+.app-alerts__see-all {
+  position: absolute;
+  z-index: 1;
+  left: 92rem;
+  top: 73.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--app-muted-alt);
+  font: 500 1.2rem/normal var(--font-body);
+  text-decoration: none;
+}
+.app-alerts__see-all img {
+  width: 0.7rem;
+  height: 1.3rem;
+}
+.app-alerts {
+  position: absolute;
+  left: 40.6rem;
+  top: 70.6rem;
+  width: 62.8rem;
+  min-height: 20rem;
+  box-sizing: border-box;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  /* padding-top maior — igual .app-sensors — pra abrir espaço pro título
+     "Alertas" (elemento irmão, posicionado por cima). Com 2.4rem uniforme a
+     1ª linha nascia na mesma altura do título e ficava tudo em cima. */
+  padding: 6.8rem 2.4rem 2.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.app-alert {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  height: 5.6rem;
+  box-sizing: border-box;
+  padding: 0 2rem;
+  border-radius: 1rem;
+  background: var(--app-bg);
+  text-decoration: none;
+}
+.app-alert img.app-alert__icon {
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.app-alert__body {
+  flex: 1;
+  min-width: 0;
+}
+.app-alert__title {
+  margin: 0;
+  color: var(--app-text);
+  font: 500 1.3rem/normal var(--font-body);
+}
+.app-alert__meta {
+  margin: 0.2rem 0 0;
+  color: var(--app-muted-alt);
+  font: 400 1.1rem/normal var(--font-body);
+}
+.app-alert--warn .app-alert__icon { filter: none; }
+.app-alert img.app-alert__arrow {
+  width: 0.7rem;
+  height: 1.3rem;
+  flex-shrink: 0;
+}
+
+/* ============ RIGHT COLUMN: Câmeras + dica ============ */
+.app-cameras {
+  position: absolute;
+  left: 106.6rem;
+  top: 15.8rem;
+  width: 28rem;
+  box-sizing: border-box;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  padding: 2rem;
+}
+.app-cameras__header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.app-cameras__header img {
+  width: 1.8rem;
+  height: 1.5rem;
+}
+.app-cameras__header p {
+  flex: 1;
+  margin: 0;
+  color: var(--app-text);
+  font: 600 1.5rem/normal var(--font-body);
+}
+.app-cameras__header .app-cameras__header-arrow {
+  width: 0.7rem;
+  height: 1.3rem;
+}
+.app-cameras__thumb {
+  position: relative;
+  margin-top: 1.2rem;
+  height: 23rem;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+.app-cameras__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.app-cameras__live {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  background: rgba(10, 15, 13, 0.6);
+}
+.app-cameras__live-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--color-green-normal);
+}
+.app-cameras__live span {
+  color: var(--app-text);
+  font: 500 1rem/normal var(--font-body);
+}
+.app-cameras__caption {
+  margin: 1.2rem 0 0;
+  color: var(--app-muted-alt);
+  font: 400 1.2rem/normal var(--font-body);
+}
+.app-cameras__dots {
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.app-cameras__dots span {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: rgba(61, 104, 98, 0.6);
+}
+.app-cameras__dots span:first-child {
+  background: var(--color-green-normal);
+}
+
+.app-tip {
+  position: absolute;
+  left: 106.6rem;
+  top: 52.2rem;
+  width: 28rem;
+  box-sizing: border-box;
+  background: var(--app-card-bg);
+  border-radius: 1.5rem;
+  padding: 2.4rem;
+  overflow: hidden;
+}
+.app-tip__icon {
+  display: block;
+  width: 2.2rem;
+  height: 1.75rem;
+}
+.app-tip__text {
+  position: relative;
+  margin: 1.6rem 0 0;
+  color: var(--app-text);
+  font: 600 1.8rem/1.3 var(--font-body);
+}
+.app-tip__underline {
+  position: relative;
+  margin-top: 1.4rem;
+  width: 2.8rem;
+  height: 0.3rem;
+  border-radius: 0.2rem;
+  background: var(--app-accent);
+}
+.app-tip__leaf-bg {
+  position: absolute;
+  right: -2rem;
+  bottom: -2rem;
+  width: 12rem;
+  opacity: 0.1;
+  pointer-events: none;
 }
 
 /*

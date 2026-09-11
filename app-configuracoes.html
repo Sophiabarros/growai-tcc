@@ -10,13 +10,13 @@
       href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/reset.css?v=35" />
-    <link rel="stylesheet" href="css/variables.css?v=35" />
-    <link rel="stylesheet" href="css/global.css?v=35" />
-    <link rel="stylesheet" href="css/header.css?v=35" />
-    <link rel="stylesheet" href="css/app-shell.css?v=35" />
-    <link rel="stylesheet" href="css/app-configuracoes.css?v=35" />
-    <link rel="stylesheet" href="css/animations.css?v=35" />
+    <link rel="stylesheet" href="css/reset.css?v=39" />
+    <link rel="stylesheet" href="css/variables.css?v=39" />
+    <link rel="stylesheet" href="css/global.css?v=39" />
+    <link rel="stylesheet" href="css/header.css?v=39" />
+    <link rel="stylesheet" href="css/app-shell.css?v=39" />
+    <link rel="stylesheet" href="css/app-configuracoes.css?v=39" />
+    <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
     <div class="app-configuracoes-wrapper">
@@ -45,11 +45,16 @@
           <div class="app-header__bell"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
         </header>
 
+        <img class="cfg-title__icon" alt="" src="assets/icons/app/icon-nav-config-2.svg" />
         <h1 class="cfg-title">Configurações</h1>
+        <p class="cfg-subtitle">Personalize sua experiência e mantenha seu sistema sempre funcionando da melhor forma.</p>
 
         <div class="cfg-col cfg-col--left">
           <div class="cfg-box">
-            <p class="cfg-box__label">Conta</p>
+            <div class="cfg-box__header">
+              <img alt="" src="assets/icons/app/icon-cfg-perfil.svg" />
+              <p class="cfg-box__label">Conta</p>
+            </div>
             <div class="cfg-row cfg-row--perfil" data-action="edit-profile">
               <img class="cfg-row__icon" alt="" id="cfgProfileIcon" src="assets/images/app/img-app-avatar.svg" />
               <div>
@@ -61,7 +66,10 @@
           </div>
 
           <div class="cfg-box">
-            <p class="cfg-box__label">Dispositivos</p>
+            <div class="cfg-box__header">
+              <img alt="" src="assets/icons/app/icon-cfg-dados-d.svg" />
+              <p class="cfg-box__label">Dispositivos</p>
+            </div>
             <div class="cfg-row cfg-row--wifi">
               <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-wifi-d.svg" />
               <div>
@@ -83,7 +91,10 @@
 
         <div class="cfg-col cfg-col--right">
           <div class="cfg-box">
-            <p class="cfg-box__label">Notificações</p>
+            <div class="cfg-box__header">
+              <img alt="" src="assets/icons/app/icon-cfg-bell-d.svg" />
+              <p class="cfg-box__label">Notificações</p>
+            </div>
             <div class="cfg-row cfg-row--notif" data-action="toggle" data-key="health_alerts">
               <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-bell-d.svg" />
               <p class="cfg-row__title">Alertas de Saúde</p>
@@ -102,7 +113,10 @@
           </div>
 
           <div class="cfg-box">
-            <p class="cfg-box__label">Sobre</p>
+            <div class="cfg-box__header">
+              <img alt="" src="assets/icons/app/icon-cfg-sobre-d.svg" />
+              <p class="cfg-box__label">Sobre</p>
+            </div>
             <div class="cfg-row cfg-row--sobre">
               <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-sobre-d.svg" />
               <div>
@@ -110,6 +124,14 @@
                 <p class="cfg-row__subtitle">Versão 1.0.0</p>
               </div>
             </div>
+          </div>
+
+          <div class="cfg-tip">
+            <img class="cfg-tip__icon" alt="" src="assets/icons/app/icon-app-planta-station.svg" />
+            <p class="cfg-tip__text">Tecnologia que cuida do amanhã.</p>
+            <p class="cfg-tip__subtitle">Mais controle, mais vida para suas plantas.</p>
+            <span class="cfg-tip__underline"></span>
+            <img class="cfg-tip__leaf-bg" alt="" src="assets/icons/app/icon-app-planta-station.svg" />
           </div>
         </div>
       </div>
@@ -284,9 +306,9 @@
       </form>
     </div>
 
-    <script src="js/api.js?v=35"></script>
-    <script src="js/toast.js?v=35"></script>
-    <script src="js/responsive-canvas.js?v=35"></script>
-    <script src="js/app-configuracoes.js?v=35"></script>
+    <script src="js/api.js?v=39"></script>
+    <script src="js/toast.js?v=39"></script>
+    <script src="js/responsive-canvas.js?v=39"></script>
+    <script src="js/app-configuracoes.js?v=39"></script>
   </body>
 </html>

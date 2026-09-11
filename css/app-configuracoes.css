@@ -15,19 +15,34 @@
 .app-configuracoes {
   position: relative;
   width: 144rem;
-  height: 83rem; /* era 124.5rem — sobrava por causa das fotos decorativas removidas */
+  height: 95rem; /* era 124.5rem — sobrava por causa das fotos decorativas removidas */
   flex-shrink: 0;
   background: var(--app-bg);
   overflow: visible;   /* era hidden — o corte lateral passa a ser do wrapper */
   transform-origin: top center;
 }
 
+.cfg-title__icon {
+  position: absolute;
+  left: 9.4rem;
+  top: 14.8rem;
+  width: 3rem;
+  height: 3rem;
+}
 .cfg-title {
   position: absolute;
-  left: 9.7rem;
-  top: 17.6rem;
+  left: 13.6rem;
+  top: 14.8rem;
   color: var(--app-text);
-  font: 600 4.8rem/normal var(--font-body);
+  font: 700 4rem/normal var(--font-body);
+}
+.cfg-subtitle {
+  position: absolute;
+  left: 9.4rem;
+  top: 19.6rem;
+  width: 52rem;
+  color: var(--app-text);
+  font: 400 1.4rem/1.4 var(--font-body);
 }
 
 /* Duas colunas espelhadas (9.4rem / 76.4rem, ambas com 58.2rem de largura,
@@ -55,10 +70,22 @@
 }
 .cfg-col > .cfg-box:first-child { margin-top: 0; }
 
+.cfg-box__header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 0 1.6rem;
+}
+.cfg-box__header img {
+  width: 1.7rem;
+  height: 1.7rem;
+  flex-shrink: 0;
+  object-fit: contain;
+}
 .cfg-box__label {
   color: var(--app-muted-alt);
   font: 500 1.4rem/normal var(--font-body);
-  margin: 0 0 1.6rem;
+  margin: 0;
 }
 /* "Conta" é a única com o rótulo maior no Figma (519:461) — as demais
    ("Dispositivos", "Notificações", "Sobre") usam 1.4rem. */
@@ -78,11 +105,12 @@
   padding: 0 1.8rem 0 6.8rem;
 }
 .cfg-row + .cfg-row { margin-top: 1.6rem; }
-.cfg-row--perfil { height: 5.9rem; padding-left: 8rem; }
-.cfg-row--notif { padding-left: 5rem; }
-.cfg-row--sobre { padding-left: 7rem; }
+.cfg-row--perfil { height: 5.9rem; }
 .cfg-row[data-action="toggle"] { cursor: pointer; }
 
+/* Ícone e texto de TODAS as linhas alinhados na mesma coluna (2.1rem / 6.8rem
+   a partir da borda) — antes cada tipo de linha (perfil/notif/sobre) tinha
+   um recuo diferente e ficava "torto" quando comparado lado a lado. */
 .cfg-row__icon {
   position: absolute;
   left: 2.1rem;
@@ -91,8 +119,7 @@
   width: 2rem;
   height: 2rem;
 }
-.cfg-row--perfil .cfg-row__icon { left: 2.2rem; width: 3.4rem; height: 3.4rem; border-radius: 50%; }
-.cfg-row--notif .cfg-row__icon { left: 1.7rem; width: 1.9rem; height: 1.9rem; }
+.cfg-row--perfil .cfg-row__icon { width: 3.4rem; height: 3.4rem; border-radius: 50%; }
 .cfg-row--dados .cfg-row__icon { width: 1.9rem; height: 1.7rem; }
 
 .cfg-row__title {
@@ -117,6 +144,54 @@
 .cfg-row__trailing--arrow img { width: 1rem; height: 1.7rem; }
 .cfg-row__trailing--toggle img { width: 2.2rem; height: 1.4rem; }
 
+/* Cartão de marca no fim da coluna direita — mesma peça usada na Home
+   (ícone + frase + risquinho de destaque + folha decorativa), pra dar uma
+   assinatura visual comum às duas páginas novas do app. Altura natural do
+   conteúdo (não esticado pra preencher a coluna à força). */
+.cfg-tip {
+  position: relative;
+  width: 58.2rem;
+  box-sizing: border-box;
+  background: rgba(21, 38, 35, 0.3);
+  border: 0.5px solid var(--app-bg);
+  border-radius: 0.6rem;
+  padding: 2.4rem;
+  margin-top: 4.4rem;
+  overflow: hidden;
+}
+.cfg-tip__icon {
+  display: block;
+  width: 2.2rem;
+  height: 1.75rem;
+}
+.cfg-tip__text {
+  position: relative;
+  margin: 1.6rem 0 0;
+  color: var(--app-text);
+  font: 600 1.8rem/1.3 var(--font-body);
+}
+.cfg-tip__subtitle {
+  position: relative;
+  margin: 0.8rem 0 0;
+  color: var(--app-info);
+  font: 400 1.2rem/1.4 var(--font-body);
+}
+.cfg-tip__underline {
+  position: relative;
+  margin-top: 1.4rem;
+  width: 2.8rem;
+  height: 0.3rem;
+  border-radius: 0.2rem;
+  background: var(--app-accent);
+}
+.cfg-tip__leaf-bg {
+  position: absolute;
+  right: -2rem;
+  bottom: -2rem;
+  width: 12rem;
+  opacity: 0.1;
+  pointer-events: none;
+}
 
 /*
   MOBILE LAYOUT — "Configurações" (456:832), 412px design width, same
