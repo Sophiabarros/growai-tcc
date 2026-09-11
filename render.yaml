@@ -1,0 +1,72 @@
+# Render Blueprint - alternativa à Vercel para hospedar o backend (pasta backend/).
+#
+# Diferente da Vercel, o Render roda o Express como serviço web comum
+# (processo Node de longa duração), então server.js sobe normalmente via
+# `npm start` (node server.js). O backend/vercel.json e backend/api/index.js
+# são ignorados pelo Render - servem só pro deploy na Vercel.
+#
+# Como usar:
+#   1. Dashboard do Render -> New -> Blueprint -> conectar o repo growai-tcc
+#   2. O Render lê este arquivo e cria o serviço "growai-backend"
+#   3. Preencher as env vars marcadas com sync:false (ver abaixo)
+#   4. A URL fica tipo https://growai-backend.onrender.com
+#      -> colocar https://growai-backend.onrender.com/api em js/api.js (PRODUCTION_API_BASE)
+#
+# Observações do plano free:
+#   - o serviço "dorme" após ~15 min sem tráfego; a 1a requisição depois
+#     disso demora ~50s pra responder (cold start)
+#   - continua precisando de um Postgres externo. Recomendado: Neon
+#     (neon.tech, não expira). O Postgres free do próprio Render é apagado
+#     depois de 30 dias - mesma cilada do Railway.
+
+services:
+  - type: web
+    name: growai-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # Connection string do Postgres (Neon). Usar a variante COM POOLER
+      # (host com "-pooler"). Definir no dashboard.
+      - key: DATABASE_URL
+        sync: false
+
+      # Segredo dos tokens JWT. generateValue cria um valor forte no 1o
+      # deploy. Se quiser o MESMO segredo entre Render e Vercel (pra um
+      # token servir nos dois), troque por `sync: false` e cole o mesmo valor.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # URL do front-end publicado, ex.: https://growai-tcc.vercel.app
+      - key: CORS_ORIGIN
+        sync: false
+
+      # Só necessário se for usar POST /api/contact pelo backend
+      # (o site já tem a própria função em api/contact.js).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CONTACT_TO_EMAIL
+        value: tracklink.system@gmail.com
+
+# --- Opcional: Postgres gerenciado pelo próprio Render ---------------------
+# Descomente pra o Blueprint provisionar o banco junto (lembrando: plano
+# free é apagado em 30 dias). Se usar, troque o DATABASE_URL acima por:
+#   - key: DATABASE_URL
+#     fromDatabase:
+#       name: growai-db
+#       property: connectionString
+#
+# databases:
+#   - name: growai-db
+#     plan: free
+#     region: oregon
+#     databaseName: growai
+#     ipAllowList: []

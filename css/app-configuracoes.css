@@ -15,7 +15,7 @@
 .app-configuracoes {
   position: relative;
   width: 144rem;
-  height: 124.5rem;
+  height: 83rem; /* era 124.5rem — sobrava por causa das fotos decorativas removidas */
   flex-shrink: 0;
   background: var(--app-bg);
   overflow: visible;   /* era hidden — o corte lateral passa a ser do wrapper */
@@ -30,12 +30,18 @@
   font: 600 4.8rem/normal var(--font-body);
 }
 
+/* Duas colunas espelhadas (9.4rem / 76.4rem, ambas com 58.2rem de largura,
+   mesmo topo) — antes era uma coluna só + uma colagem de fotos decorativas
+   do lado direito sem função nenhuma (não existe nem no mobile, nem em
+   nenhuma outra página do app). Removida; o espaço virou uma 2ª coluna de
+   configurações de verdade, no mesmo espírito 2-colunas do Relatórios. */
 .cfg-col {
   position: absolute;
-  left: 9.4rem;
   top: 29.3rem;
   width: 58.2rem;
 }
+.cfg-col--left { left: 9.4rem; }
+.cfg-col--right { left: 76.4rem; }
 
 .cfg-box {
   position: relative;
@@ -56,7 +62,7 @@
 }
 /* "Conta" é a única com o rótulo maior no Figma (519:461) — as demais
    ("Dispositivos", "Notificações", "Sobre") usam 1.4rem. */
-.cfg-col > .cfg-box:first-child .cfg-box__label {
+.cfg-col--left > .cfg-box:first-child .cfg-box__label {
   font-size: 2rem;
 }
 
@@ -111,31 +117,6 @@
 .cfg-row__trailing--arrow img { width: 1rem; height: 1.7rem; }
 .cfg-row__trailing--toggle img { width: 2.2rem; height: 1.4rem; }
 
-.cfg-photos {
-  position: absolute;
-  left: 73.9rem;
-  top: 29.3rem;
-}
-.cfg-photo {
-  position: relative;
-  border-radius: 2rem;
-  overflow: hidden;
-}
-.cfg-photo img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.cfg-photo::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 15, 13, 0.3);
-}
-.cfg-photo--hero { width: 60.8rem; height: 37.2rem; }
-.cfg-photo--side1 { position: absolute; left: 0; top: 39.3rem; width: 29.3rem; height: 44.6rem; }
-.cfg-photo--side2 { position: absolute; left: 31.4rem; top: 38.9rem; width: 29.4rem; height: 44.6rem; }
 
 /*
   MOBILE LAYOUT — "Configurações" (456:832), 412px design width, same

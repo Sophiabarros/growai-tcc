@@ -45,12 +45,16 @@
   left: 10.3rem;
   top: 35.1rem;
   color: var(--app-text);
-  font: 600 4.8rem/normal var(--font-body);
+  /* era 4.8rem, do tamanho do H1 — 3 títulos gigantes empilhados (título,
+     Sensores, Alertas) lia mal e destoava do resto do app (Configurações
+     usa rótulos pequenos abaixo do título). Reduzido pra 2.4rem, igual
+     ajuste feito no Figma (HOME - DESKTOP, 455:422/489:1102). */
+  font: 600 2.4rem/normal var(--font-body);
 }
 .app-sensors {
   position: absolute;
   left: 9.9rem;
-  top: 44.6rem;
+  top: 40.1rem;
   width: 60.4rem;
   height: 17rem;
   background: var(--app-card-bg);
@@ -96,14 +100,14 @@
 .app-alerts__title {
   position: absolute;
   left: 10.1rem;
-  top: 68.4rem;
+  top: 61.9rem;
   color: var(--app-text);
-  font: 600 4.8rem/normal var(--font-body);
+  font: 600 2.4rem/normal var(--font-body); /* era 4.8rem — ver comentário em .app-sensors__title */
 }
 .app-alerts {
   position: absolute;
   left: 10.3rem;
-  top: 77.9rem;
+  top: 66.9rem;
   width: 60rem;
   height: 13.5rem;
   background: var(--app-card-bg);
