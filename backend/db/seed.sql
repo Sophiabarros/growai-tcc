@@ -6,23 +6,13 @@ INSERT INTO users (name, email, password_hash)
 VALUES ('Usuária Demo', 'demo@growai.com', crypt('senha123', gen_salt('bf')))
 ON CONFLICT (email) DO NOTHING;
 
-WITH demo_user AS (
-  SELECT id FROM users WHERE email = 'demo@growai.com'
-),
-station_1 AS (
-  INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target)
-  SELECT id, 'Estação 1', 'Camomila', 'Anti-inflamatória', 8, 12, 75, 6.5 FROM demo_user
-  RETURNING id
-),
-station_2 AS (
-  INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target)
-  SELECT id, 'Estação 2', 'Hortelã', 'Calmante', 6, 10, 65, 6.0 FROM demo_user
-  RETURNING id
-)
-INSERT INTO suggestions (station_id, message, growth_pct, health_pct)
-SELECT id, 'Manter rotina atual. Planta respondendo bem aos parâmetros.', 12, 92 FROM station_1
+-- Sem sugestões de exemplo: a tabela suggestions começa vazia (a tela
+-- Relatórios mostra "Nenhuma sugestão por enquanto.") e só é preenchida por
+-- sugestões reais.
+INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target)
+SELECT id, 'Estação 1', 'Camomila', 'Anti-inflamatória', 8, 12, 75, 6.5 FROM users WHERE email = 'demo@growai.com'
 UNION ALL
-SELECT id, 'Aumentar iluminação em 2h/dia. Detectada redução na taxa de fotossíntese.', 5, 78 FROM station_2;
+SELECT id, 'Estação 2', 'Hortelã', 'Calmante', 6, 10, 65, 6.0 FROM users WHERE email = 'demo@growai.com';
 
 INSERT INTO notification_settings (user_id, health_alerts, watering_updates, weekly_reports)
 SELECT id, true, true, false FROM users WHERE email = 'demo@growai.com'

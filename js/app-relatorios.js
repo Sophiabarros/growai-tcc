@@ -160,6 +160,11 @@
       { d: document.getElementById("relSuggestion1"), m: document.getElementById("mRelSuggestion1") },
       { d: document.getElementById("relSuggestion2"), m: document.getElementById("mRelSuggestion2") },
     ];
+    // sem nenhuma sugestão: em vez de um vazio sob o título, mostra o aviso
+    ["relSuggestionsEmpty", "mRelSuggestionsEmpty"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.hidden = list.length > 0;
+    });
     slots.forEach(function (slot, i) {
       var s = list[i];
       if (!s) {
@@ -182,7 +187,7 @@
   function updateMobileTabbar() {
     positionMobileTabbar({
       mobilePageId: "mAppRelatoriosPage",
-      contentSelectors: [".m-rel-chart-card--2", "#mRelSuggestion1", "#mRelSuggestion2"],
+      contentSelectors: [".m-rel-chart-card--2", "#mRelSuggestion1", "#mRelSuggestion2", "#mRelSuggestionsEmpty"],
     });
     applyScale();
   }

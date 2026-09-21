@@ -155,6 +155,15 @@
   background: var(--app-card-bg);
   border-radius: 2rem;
 }
+.rel-suggestions-empty {
+  position: absolute;
+  left: 13.3rem;
+  top: 88.3rem;
+  margin: 0;
+  color: var(--app-info);
+  font: 400 2rem/normal var(--font-body);
+}
+.rel-suggestions-empty[hidden] { display: none; }
 .rel-suggestion--1 { left: 13.3rem; }
 .rel-suggestion--2 { left: 75.3rem; }
 
@@ -380,6 +389,15 @@
     padding: 1.4rem;
     box-sizing: border-box;
   }
+  .m-rel-suggestions-empty {
+    position: absolute;
+    left: 3rem;
+    top: 70.9rem;
+    margin: 0;
+    color: var(--app-info);
+    font: 400 1.4rem/normal var(--font-body);
+  }
+  .m-rel-suggestions-empty[hidden] { display: none; }
   .m-rel-suggestion--1 { top: 70.9rem; height: 12.2rem; }
   .m-rel-suggestion--2 { top: 85.7rem; height: 16.3rem; }
 
