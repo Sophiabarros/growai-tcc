@@ -20,18 +20,4 @@ function generateReading(station) {
   };
 }
 
-// Série semanal para os gráficos de Relatórios quando ainda não há 7 dias
-// de leituras reais acumuladas no banco.
-function generateWeeklySeries(station) {
-  const health = WEEKDAYS.map((day) => ({
-    day,
-    value: Math.round(jitter(88, 12)),
-  }));
-  const environment = WEEKDAYS.map((day) => ({
-    day,
-    value: Math.round(jitter(station.humidity_target, 10)),
-  }));
-  return { health, environment };
-}
-
-module.exports = { generateReading, generateWeeklySeries, WEEKDAYS };
+module.exports = { generateReading, WEEKDAYS };

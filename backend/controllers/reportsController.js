@@ -1,9 +1,14 @@
 const db = require("../config/db");
-const { generateWeeklySeries, WEEKDAYS } = require("../services/mockSensor");
+const { WEEKDAYS } = require("../services/mockSensor");
 
-// Agrega leituras reais dos últimos 7 dias, agrupadas por dia da semana.
-// Se ainda não houver leituras suficientes (comum em modo mock/demo), cai
-// para uma série simulada coerente com o alvo cadastrado na estação.
+const TIMEZONE = "America/Sao_Paulo";
+
+// Relatório semanal por estação: uma média por dia da semana atual
+// (Seg..Dom, fuso de São Paulo) calculada só com leituras REAIS gravadas em
+// sensor_readings. Dia sem leitura vale 0 - o relatório começa zerado e vai
+// se preenchendo conforme o ESP32 enviar dados. Nada é simulado aqui (as
+// leituras de demonstração de GET /stations/:id/readings/latest não são mais
+// gravadas no banco).
 async function getWeekly(req, res, next) {
   try {
     const { rows: stations } = await db.query(
@@ -14,29 +19,24 @@ async function getWeekly(req, res, next) {
     const reports = await Promise.all(
       stations.map(async (station) => {
         const { rows } = await db.query(
-          `SELECT to_char(recorded_at, 'Dy') AS day,
-                  avg(humidity)::int AS health,
-                  avg(humidity)::int AS environment
+          `SELECT extract(isodow FROM recorded_at AT TIME ZONE $2)::int AS dow,
+                  round(avg(humidity))::int AS value
            FROM sensor_readings
-           WHERE station_id = $1 AND recorded_at > now() - interval '7 days'
-           GROUP BY day
-           ORDER BY min(recorded_at)`,
-          [station.id]
+           WHERE station_id = $1
+             AND (recorded_at AT TIME ZONE $2) >= date_trunc('week', now() AT TIME ZONE $2)
+           GROUP BY dow`,
+          [station.id, TIMEZONE]
         );
 
-        const hasEnoughData = rows.length >= WEEKDAYS.length;
-        const series = hasEnoughData
-          ? {
-              health: rows.map((r) => ({ day: r.day, value: r.health })),
-              environment: rows.map((r) => ({ day: r.day, value: r.environment })),
-            }
-          : generateWeeklySeries(station);
+        const byDay = new Map(rows.map((r) => [r.dow, r.value]));
+        const series = WEEKDAYS.map((day, i) => ({ day, value: byDay.get(i + 1) || 0 }));
 
         return {
           station_id: station.id,
           station_name: station.name,
           plant: station.plant,
-          ...series,
+          health: series,
+          environment: series,
         };
       })
     );

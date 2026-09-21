@@ -36,14 +36,23 @@
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   }
 
+  // A foto de perfil é guardada no banco como data URL (data:image/jpeg;base64,...)
+  // porque o filesystem da Vercel é somente-leitura; caminhos antigos ("/uploads/...")
+  // ainda são resolvidos contra o host da API.
+  function resolveAvatarUrl(user) {
+    if (!user || !user.avatar_url) return null;
+    var value = user.avatar_url;
+    if (/^(data:|https?:)/i.test(value)) return value;
+    return API_BASE.replace(/\/api$/, "") + value;
+  }
+
   // Applies the logged-in user's avatar (if any) to the shared header
   // avatar already present on every app-*.html page, so a photo changed
   // on the Configurações page shows up elsewhere too without each page
   // needing its own wiring for this.
   function applyCachedAvatar() {
-    var user = getUser();
-    if (!user || !user.avatar_url) return;
-    var url = API_BASE.replace(/\/api$/, "") + user.avatar_url;
+    var url = resolveAvatarUrl(getUser());
+    if (!url) return;
     document.querySelectorAll(".app-header__avatar img").forEach(function (img) {
       img.src = url;
     });
@@ -140,10 +149,7 @@
       updateCachedUser(user);
       return user;
     },
-    avatarUrl(user) {
-      if (!user || !user.avatar_url) return null;
-      return API_BASE.replace(/\/api$/, "") + user.avatar_url;
-    },
+    avatarUrl: resolveAvatarUrl,
 
     // ---- stations ----
     getStations: () => request("/stations"),

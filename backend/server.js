@@ -64,6 +64,9 @@ app.use((req, res) => {
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error(err);
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ error: "Imagem muito grande (máx. 1 MB)." });
+  }
   const status = err instanceof multer.MulterError || err.status === 400 ? 400 : err.status || 500;
   res.status(status).json({ error: err.message || "Erro interno do servidor" });
 });

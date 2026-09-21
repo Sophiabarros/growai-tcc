@@ -79,8 +79,10 @@ async function remove(req, res, next) {
   }
 }
 
-// Gera (e persiste) uma leitura simulada - ver services/mockSensor.js para
-// trocar por integração real com o ESP32 no futuro.
+// Gera uma leitura simulada (NÃO grava no banco) - ver services/mockSensor.js
+// para trocar por integração real com o ESP32 no futuro. Não persistir evita
+// que valores inventados entrem no relatório semanal, que só conta leituras
+// reais de sensor_readings.
 async function getLatestReading(req, res, next) {
   try {
     const { rows } = await db.query(
@@ -90,14 +92,7 @@ async function getLatestReading(req, res, next) {
     const station = rows[0];
     if (!station) return res.status(404).json({ error: "Estação não encontrada" });
 
-    const reading = generateReading(station);
-    const { rows: inserted } = await db.query(
-      `INSERT INTO sensor_readings (station_id, humidity, ph, light_h, temperature)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING humidity, ph, light_h, temperature, recorded_at`,
-      [station.id, reading.humidity, reading.ph, reading.light_h, reading.temperature]
-    );
-    res.json(inserted[0]);
+    res.json({ ...generateReading(station), recorded_at: new Date().toISOString() });
   } catch (err) {
     next(err);
   }

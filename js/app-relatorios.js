@@ -81,6 +81,24 @@
     document.getElementById("mRelChart2Data").innerHTML = buildBarSvg(env, CHART_BOXES.mobile.bars);
   }
 
+  // Intervalo da semana atual (segunda a domingo, como no eixo dos gráficos),
+  // ex.: "15 - 21 de setembro" ou "28 de set. - 4 de out." quando cruza o mês.
+  function renderWeekRange() {
+    var now = new Date();
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+    var sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+    var month = function (d, style) { return d.toLocaleDateString("pt-BR", { month: style }); };
+    var label =
+      monday.getMonth() === sunday.getMonth()
+        ? monday.getDate() + " - " + sunday.getDate() + " de " + month(sunday, "long")
+        : monday.getDate() + " de " + month(monday, "short").replace(".", "") + ". - " +
+          sunday.getDate() + " de " + month(sunday, "short").replace(".", "") + ".";
+    ["relSubtitle", "mRelSubtitle"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = label;
+    });
+  }
+
   // ---- suggestions ----
   var HEALTHY_THRESHOLD = 85;
 
@@ -189,6 +207,7 @@
   });
 
   async function load() {
+    renderWeekRange();
     try {
       var reports = await GrowAI.getWeeklyReports();
       renderCharts(reports[0] || null);

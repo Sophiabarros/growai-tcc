@@ -94,6 +94,44 @@
     }, 180);
   }
 
+  // A foto vai pro banco como texto (sem storage de arquivos na Vercel), então
+  // é recortada em quadrado e reduzida aqui no navegador antes do envio: uma
+  // foto de celular de vários MB vira ~20-40 KB, e o limite do servidor (1 MB)
+  // nunca é problema.
+  var AVATAR_SIZE = 256;
+  var AVATAR_MAX_BYTES = 1024 * 1024;
+
+  function resizeAvatar(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var side = Math.min(img.naturalWidth, img.naturalHeight);
+        var canvas = document.createElement("canvas");
+        canvas.width = canvas.height = Math.min(AVATAR_SIZE, side);
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff"; // PNG com transparência vira JPEG: fundo branco em vez de preto
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(
+          img,
+          (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side,
+          0, 0, canvas.width, canvas.height
+        );
+        canvas.toBlob(
+          function (blob) { blob ? resolve(blob) : reject(new Error("Não foi possível processar a imagem.")); },
+          "image/jpeg",
+          0.85
+        );
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("Não foi possível ler essa imagem. Use PNG, JPG ou WEBP."));
+      };
+      img.src = url;
+    });
+  }
+
   profileAvatarInput.addEventListener("change", function () {
     var file = profileAvatarInput.files[0];
     if (!file) return;
@@ -106,11 +144,16 @@
     profileSubmit.disabled = true;
     profileSubmit.textContent = "Salvando...";
 
-    var formData = new FormData();
-    formData.append("name", profileForm.name.value);
-    if (profileAvatarInput.files[0]) formData.append("avatar", profileAvatarInput.files[0]);
-
     try {
+      var formData = new FormData();
+      formData.append("name", profileForm.name.value);
+      var file = profileAvatarInput.files[0];
+      if (file) {
+        var avatar = await resizeAvatar(file);
+        if (avatar.size > AVATAR_MAX_BYTES) throw new Error("Imagem muito grande (máx. 1 MB).");
+        formData.append("avatar", avatar, "avatar.jpg");
+      }
+
       var updated = await GrowAI.updateProfile(formData);
       renderProfile(updated);
       closeProfileModal();

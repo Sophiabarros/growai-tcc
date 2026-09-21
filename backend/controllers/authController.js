@@ -66,18 +66,24 @@ async function me(req, res, next) {
   }
 }
 
-// Atualiza o nome do perfil. O upload de foto está desativado nesta
-// versão hospedada na Vercel (ver config/upload.js): um arquivo enviado
-// no campo "avatar" é apenas parseado e ignorado.
+// Atualiza o perfil: nome e, opcionalmente, a foto (campo multipart "avatar").
+// Sem storage de arquivos na Vercel (filesystem somente-leitura), a foto
+// - já reduzida pelo front para ~256px - é guardada no próprio banco como
+// data URL em users.avatar_url, e o front usa esse valor direto no <img>.
 async function updateMe(req, res, next) {
   try {
     const { name } = req.body;
+    const avatarUrl = req.file
+      ? `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`
+      : null;
 
     const { rows } = await db.query(
-      `UPDATE users SET name = COALESCE($1, name)
-       WHERE id = $2
+      `UPDATE users
+       SET name = COALESCE($1, name),
+           avatar_url = COALESCE($2, avatar_url)
+       WHERE id = $3
        RETURNING id, name, email, avatar_url`,
-      [name || null, req.user.id]
+      [name || null, avatarUrl, req.user.id]
     );
     res.json(rows[0]);
   } catch (err) {

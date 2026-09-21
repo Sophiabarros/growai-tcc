@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
     <link rel="stylesheet" href="css/app-shell.css?v=42" />
-    <link rel="stylesheet" href="css/app-configuracoes.css?v=41" />
+    <link rel="stylesheet" href="css/app-configuracoes.css?v=42" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -285,9 +285,9 @@
 
         <div class="profile-modal__avatar">
           <img id="profileAvatarPreview" alt="" src="assets/images/app/img-app-avatar.svg" />
-          <!-- Upload de foto desativado nesta versão hospedada na Vercel (ver js/api.js e backend/config/upload.js). -->
-          <label class="profile-modal__avatar-btn" for="profileAvatarInput" hidden>Trocar foto</label>
-          <input type="file" id="profileAvatarInput" name="avatar" accept="image/png,image/jpeg,image/webp" hidden disabled />
+          <!-- A foto é reduzida no navegador (js/app-configuracoes.js) e guardada no banco (backend/controllers/authController.js). -->
+          <label class="profile-modal__avatar-btn" for="profileAvatarInput">Trocar foto</label>
+          <input type="file" id="profileAvatarInput" name="avatar" accept="image/png,image/jpeg,image/webp" hidden />
         </div>
 
         <div class="profile-modal__field">
@@ -308,9 +308,9 @@
       </form>
     </div>
 
-    <script src="js/api.js?v=41"></script>
+    <script src="js/api.js?v=42"></script>
     <script src="js/toast.js?v=39"></script>
     <script src="js/responsive-canvas.js?v=40"></script>
-    <script src="js/app-configuracoes.js?v=41"></script>
+    <script src="js/app-configuracoes.js?v=42"></script>
   </body>
 </html>
