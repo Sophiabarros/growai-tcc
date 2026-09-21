@@ -104,6 +104,23 @@
 
 /* ============ MOBILE TOP BAR + BOTTOM TAB BAR ============ */
 @media (max-width: 899px) {
+  /* A página mobile só tem a altura do conteúdo (js/responsive-canvas.js
+     encolhe o min-height dela até o último card); sem isso o resto da tela
+     mostrava o fundo do <body> (verde) em vez do fundo do app (escuro). O
+     wrapper (mesma cor de fundo da página) passa a preencher a viewport
+     inteira. align-items:flex-start mantém a página com a altura do próprio
+     conteúdo — se ela esticasse junto, o responsive-canvas mediria a altura
+     esticada e inflaria o scroll em telas < 412px. */
+  .m-app-home-wrapper,
+  .m-app-estacoes-wrapper,
+  .m-app-camera-wrapper,
+  .m-app-relatorios-wrapper,
+  .m-app-configuracoes-wrapper {
+    min-height: 100vh;
+    min-height: 100dvh;
+    align-items: flex-start;
+  }
+
   .m-app-header {
     position: absolute;
     left: 0;
