@@ -39,7 +39,9 @@
 .cfg-subtitle {
   position: absolute;
   left: 9.4rem;
-  top: 19.6rem;
+  /* Era 19.6rem — o título (4rem/normal) já ocupa até ~19.6rem de altura
+     real, então ficava encostado nele sem respiro nenhum. +1.6rem (16px). */
+  top: 21.2rem;
   width: 52rem;
   color: var(--app-text);
   font: 400 1.4rem/1.4 var(--font-body);
@@ -106,7 +108,11 @@
 }
 .cfg-row + .cfg-row { margin-top: 1.6rem; }
 .cfg-row--perfil { height: 5.9rem; }
-.cfg-row[data-action="toggle"] { cursor: pointer; }
+.cfg-row[data-action="toggle"] { cursor: pointer; transition: opacity 0.15s ease; }
+.cfg-row[data-action="toggle"].is-saving {
+  opacity: 0.55;
+  pointer-events: none;
+}
 
 /* Ícone e texto de TODAS as linhas alinhados na mesma coluna (2.1rem / 6.8rem
    a partir da borda) — antes cada tipo de linha (perfil/notif/sobre) tinha
@@ -227,6 +233,9 @@
     background: var(--app-bg);
     overflow: hidden;
     transform-origin: top center;
+    /* Room for the fixed tab bar (see .m-app-tabbar, css/app-shell.css) so
+       content never sits underneath it. */
+    padding-bottom: 10.4rem;
   }
 
   .m-cfg-content {
@@ -261,7 +270,11 @@
   }
   .m-cfg-row--tall { height: 5.3rem; }
   .m-cfg-row--solo { border-radius: 0.6rem; }
-  .m-cfg-row[data-action="toggle"] { cursor: pointer; }
+  .m-cfg-row[data-action="toggle"] { cursor: pointer; transition: opacity 0.15s ease; }
+  .m-cfg-row[data-action="toggle"].is-saving {
+    opacity: 0.55;
+    pointer-events: none;
+  }
   .m-cfg-group > .m-cfg-row:first-child { border-radius: 0.6rem 0.6rem 0 0; }
   .m-cfg-group > .m-cfg-row:last-child { border-radius: 0 0 0.6rem 0.6rem; }
 
@@ -296,9 +309,6 @@
   .m-cfg-row__trailing--arrow img { width: 0.9rem; height: 1.6rem; }
   .m-cfg-row__trailing--toggle img { width: 2.2rem; height: 1.4rem; }
 
-  .m-app-tabbar {
-    top: 82.3rem;
-  }
 }
 
 /* ============ EDIT PROFILE MODAL ============ */

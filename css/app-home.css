@@ -63,6 +63,15 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
+  border-radius: 0.6rem;
+  transition: opacity 0.15s ease;
+}
+.app-plants__header:hover {
+  opacity: 0.8;
+}
+.app-plants__header:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-plants__header img {
   width: 1.8rem;
@@ -79,6 +88,10 @@
   width: 0.7rem;
   height: 1.3rem;
   flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.app-plants__header:hover .app-plants__header-arrow {
+  transform: translateX(0.2rem);
 }
 .app-plants__list {
   margin-top: 2rem;
@@ -94,6 +107,14 @@
   padding: 0.6rem;
   border-radius: 1rem;
   text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+.app-plant-row:hover {
+  background: rgba(192, 231, 157, 0.12);
+}
+.app-plant-row:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-plant-row--active {
   background: rgba(192, 231, 157, 0.08);
@@ -135,6 +156,49 @@
   color: var(--app-info);
   font: 400 1.3rem/normal var(--font-body);
 }
+
+/* Loading skeleton — shown as the initial static markup of #appPlantsList,
+   before the first GrowAI.getStations() response comes back. Every render*
+   call overwrites this via innerHTML, so it needs no JS to be dismissed. */
+.app-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  padding: 0.6rem;
+}
+.app-skeleton-row + .app-skeleton-row {
+  margin-top: 1.2rem;
+}
+.app-skeleton-row__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.app-skeleton {
+  display: block;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  animation: app-skeleton-pulse 1.4s ease-in-out infinite;
+}
+.app-skeleton--avatar {
+  width: 4.4rem;
+  height: 4.4rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.app-skeleton--line-sm {
+  width: 70%;
+  height: 1.3rem;
+}
+.app-skeleton--line-xs {
+  width: 45%;
+  height: 1rem;
+}
+@keyframes app-skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
 .app-plants__sep {
   margin: 1.6rem 0 0;
   border: 0;
@@ -164,8 +228,14 @@
   color: var(--app-muted-alt);
   font: 400 1rem/normal var(--font-body);
 }
+.app-plants__footer-text p:last-child.app-plants__footer-text--offline {
+  color: var(--color-danger);
+}
 .app-plants__footer .app-plant-row__dot {
   flex-shrink: 0;
+}
+.app-plants__footer .app-plant-row__dot.app-plant-row__dot--offline {
+  background: var(--color-danger);
 }
 
 /* ============ CENTER COLUMN: card em destaque + Sensores + Alertas ============ */
@@ -189,6 +259,9 @@
   display: block;
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 62%);
   mask-image: linear-gradient(to right, transparent 0%, black 62%);
+}
+.app-featured__photo[hidden] {
+  display: none;
 }
 .app-featured__badge {
   position: absolute;
@@ -245,6 +318,18 @@
   color: var(--app-card-bg);
   font: 500 1.5rem/normal var(--font-body);
   cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.app-featured__btn:hover {
+  opacity: 0.92;
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.3);
+}
+.app-featured__btn:active {
+  transform: scale(0.98);
+}
+.app-featured__btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-featured__btn img {
   width: 0.6rem;
@@ -261,6 +346,29 @@
 }
 .app-home__status--error {
   color: var(--color-danger);
+}
+.app-home__status-btn {
+  display: inline-block;
+  margin-left: 1rem;
+  padding: 0.5rem 1.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: inherit;
+  font: 500 1.3rem/normal var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.app-home__status-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.app-home__status-btn:active {
+  transform: scale(0.97);
+}
+.app-home__status-btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 
 /* .app-sensors__title/__updated e .app-alerts__title/__see-all vêm ANTES do
@@ -279,7 +387,7 @@
 .app-sensors__updated {
   position: absolute;
   z-index: 1;
-  left: 76.6rem;
+  left: 84.6rem;
   top: 48.6rem;
   width: 15rem;
   text-align: right;
@@ -375,6 +483,15 @@
   color: var(--app-muted-alt);
   font: 500 1.2rem/normal var(--font-body);
   text-decoration: none;
+  border-radius: 0.4rem;
+  transition: color 0.15s ease;
+}
+.app-alerts__see-all:hover {
+  color: var(--app-text);
+}
+.app-alerts__see-all:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-alerts__see-all img {
   width: 0.7rem;
@@ -407,6 +524,17 @@
   border-radius: 1rem;
   background: var(--app-bg);
   text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.app-alert:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.app-alert:active {
+  transform: scale(0.995);
+}
+.app-alert:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-alert img.app-alert__icon {
   width: 1.8rem;
@@ -434,6 +562,11 @@
   height: 1.3rem;
   flex-shrink: 0;
 }
+.app-alerts__empty {
+  margin: 0;
+  color: var(--app-info);
+  font: 400 1.3rem/normal var(--font-body);
+}
 
 /* ============ RIGHT COLUMN: Câmeras + dica ============ */
 .app-cameras {
@@ -450,6 +583,15 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
+  border-radius: 0.6rem;
+  transition: opacity 0.15s ease;
+}
+.app-cameras__header:hover {
+  opacity: 0.8;
+}
+.app-cameras__header:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-cameras__header img {
   width: 1.8rem;
@@ -464,19 +606,50 @@
 .app-cameras__header .app-cameras__header-arrow {
   width: 0.7rem;
   height: 1.3rem;
+  transition: transform 0.15s ease;
+}
+.app-cameras__header:hover .app-cameras__header-arrow {
+  transform: translateX(0.2rem);
 }
 .app-cameras__thumb {
   position: relative;
   margin-top: 1.2rem;
   height: 23rem;
   border-radius: 1rem;
+  background: var(--app-bg);
   overflow: hidden;
+  display: block;
+}
+.app-cameras__thumb:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
 }
 .app-cameras__thumb img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.25s ease;
+}
+.app-cameras__thumb img[hidden] {
+  display: none;
+}
+.app-cameras__thumb:hover img {
+  transform: scale(1.04);
+}
+.app-cameras__offline {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--app-muted-alt);
+  font: 500 1.3rem/normal var(--font-body);
+}
+.app-cameras__offline[hidden] {
+  display: none;
 }
 .app-cameras__live {
   position: absolute;
@@ -488,6 +661,9 @@
   padding: 0.5rem 1rem;
   border-radius: 2rem;
   background: rgba(10, 15, 13, 0.6);
+}
+.app-cameras__live[hidden] {
+  display: none;
 }
 .app-cameras__live-dot {
   width: 0.6rem;
@@ -559,6 +735,25 @@
   pointer-events: none;
 }
 
+/* Sem estações cadastradas: Sensores/Alertas/Câmeras não têm nenhum dado pra
+   mostrar, então somem por completo em vez de deixar o vão fixo que sobrava
+   nos `top` absolutos deles (calculados pro estado "cheio"). A Dica sobe pro
+   topo da coluna direita pra não ficar flutuando sozinha lá embaixo. A altura
+   mínima da página (.app-home) é recalculada em JS pra não sobrar espaço
+   vazio abaixo do card "Suas plantas"/Dica. */
+.app-home--empty #appSensorsTitle,
+.app-home--empty #appSensorsUpdated,
+.app-home--empty #appSensors,
+.app-home--empty #appAlertsTitle,
+.app-home--empty #appAlertsSeeAll,
+.app-home--empty #appAlerts,
+.app-home--empty #appCameras {
+  display: none;
+}
+.app-home--empty .app-tip {
+  top: 15.8rem;
+}
+
 /*
   MOBILE LAYOUT — "Home" (456:465), 412px design width (this app screen
   uses a 412px artboard in Figma, not the 375px used by the marketing
@@ -595,6 +790,12 @@
     background: var(--app-bg);
     overflow: hidden;
     transform-origin: top center;
+    /* Reserves the fixed tab bar's own footprint (9.4rem height + 1rem
+       padding-bottom, see .m-app-tabbar in app-shell.css) so the last bit
+       of content never renders underneath it. Content-box (default) so
+       this adds on top of `min-height` instead of eating into it — the JS
+       below only needs to account for content, not the bar. */
+    padding-bottom: 10.4rem;
   }
 
   .m-app-home__title {
@@ -748,8 +949,10 @@
     height: 1.6rem;
     flex-shrink: 0;
   }
-
-  .m-app-tabbar {
-    top: 82.3rem;
+  .m-app-alerts__empty {
+    margin: 0;
+    color: var(--app-info);
+    font: 400 1.3rem/normal var(--font-body);
   }
+
 }

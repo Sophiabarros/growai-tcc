@@ -34,6 +34,21 @@
     });
   }
 
+  function renderDeviceCount(count) {
+    var els = [document.getElementById("cfgWifiSubtitle"), document.getElementById("mCfgWifiSubtitle")];
+    var label =
+      count == null
+        ? "Não foi possível verificar"
+        : count === 0
+        ? "Nenhum dispositivo conectado"
+        : count === 1
+        ? "1 dispositivo conectado"
+        : count + " dispositivos conectados";
+    els.forEach(function (el) {
+      if (el) el.textContent = label;
+    });
+  }
+
   function renderProfile(user) {
     var nameEls = [document.getElementById("cfgProfileName"), document.getElementById("mCfgProfileName")];
     var emailEls = [document.getElementById("cfgProfileEmail"), document.getElementById("mCfgProfileEmail")];
@@ -99,6 +114,7 @@
       var updated = await GrowAI.updateProfile(formData);
       renderProfile(updated);
       closeProfileModal();
+      showToast("Perfil atualizado com sucesso.");
     } catch (err) {
       profileError.textContent = err.message;
       profileError.hidden = false;
@@ -119,13 +135,16 @@
     }
 
     var row = event.target.closest('[data-action="toggle"]');
-    if (!row) return;
+    if (!row || row.classList.contains("is-saving")) return;
+    if (!settingsCache) return; // still waiting on the initial GET — nothing to flip yet
     var key = row.dataset.key;
     var newValue = !settingsCache[key];
 
-    // Optimistic update, rolled back if the request fails.
+    // Optimistic update, rolled back if the request fails. is-saving blocks
+    // a second click on the same row while the PATCH is still in flight.
     settingsCache[key] = newValue;
     applyToggleVisual(key, newValue);
+    row.classList.add("is-saving");
 
     try {
       var payload = {};
@@ -138,12 +157,22 @@
       settingsCache[key] = !newValue;
       applyToggleVisual(key, !newValue);
       showToast(err.message, "error");
+    } finally {
+      row.classList.remove("is-saving");
     }
   });
 
   async function load() {
-    var user = GrowAI.getUser();
-    if (user) renderProfile(user);
+    // Paints instantly from the cached session (avoids a blank flash), then
+    // replaces it with a fresh GET /auth/me so the fields reflect whatever
+    // actually changed server-side since login (e.g. edited on another tab).
+    var cachedUser = GrowAI.getUser();
+    if (cachedUser) renderProfile(cachedUser);
+    try {
+      renderProfile(await GrowAI.getMe());
+    } catch (err) {
+      // keeps the cached profile on screen if the fresh fetch fails
+    }
 
     try {
       settingsCache = await GrowAI.getNotificationSettings();
@@ -152,6 +181,13 @@
       });
     } catch (err) {
       // toggles keep their default markup state on failure
+    }
+
+    try {
+      var stations = await GrowAI.getStations();
+      renderDeviceCount(stations.length);
+    } catch (err) {
+      renderDeviceCount(null);
     }
   }
 

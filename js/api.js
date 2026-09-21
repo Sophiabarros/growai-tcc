@@ -77,7 +77,12 @@
     try {
       res = await fetch(API_BASE + path, Object.assign({}, options, { headers: headers }));
     } catch (networkErr) {
-      throw new Error("Não foi possível conectar ao servidor. Tente novamente.");
+      // status 0 == request never reached the server (offline, DNS, CORS) —
+      // callers can use this to tell "no connection" apart from "server
+      // responded with an error" without parsing the message text.
+      var offlineErr = new Error("Não foi possível conectar ao servidor. Tente novamente.");
+      offlineErr.status = 0;
+      throw offlineErr;
     }
 
     if (res.status === 401 && path !== "/auth/login") {
@@ -94,7 +99,9 @@
     }
 
     if (!res.ok) {
-      throw new Error((body && body.error) || "Erro na requisição (" + res.status + ")");
+      var httpErr = new Error((body && body.error) || "Erro na requisição (" + res.status + ")");
+      httpErr.status = res.status;
+      throw httpErr;
     }
     return body;
   }
@@ -123,6 +130,11 @@
     },
     getUser: getUser,
     isAuthenticated: isAuthenticated,
+    async getMe() {
+      var user = await request("/auth/me");
+      updateCachedUser(user);
+      return user;
+    },
     async updateProfile(formData) {
       var user = await request("/auth/me", { method: "PUT", body: formData });
       updateCachedUser(user);

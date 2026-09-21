@@ -202,7 +202,6 @@
   left: 13.3rem;
   top: 76.3rem;
   width: 117.3rem;
-  height: 15rem;
   background: var(--app-card-bg);
   border-radius: 2rem;
   padding: 1.3rem 2.2rem;
@@ -212,15 +211,20 @@
   color: var(--app-text);
   font: 700 2rem/normal var(--font-body);
 }
-.app-insights__card {
+.app-insights__list {
   margin-top: 1.3rem;
-  height: 7.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.app-insights__card {
+  min-height: 7.9rem;
   border: 1px solid var(--color-green-normal);
   border-radius: 1.7rem;
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0 2.4rem;
+  padding: 1.4rem 2.4rem;
   box-sizing: border-box;
 }
 .app-insights__card img {
@@ -272,6 +276,9 @@
     background: var(--app-bg);
     overflow: hidden;
     transform-origin: top center;
+    /* Room for the fixed tab bar (see .m-app-tabbar, css/app-shell.css) so
+       content never sits underneath it. */
+    padding-bottom: 10.4rem;
   }
 
   .m-app-estacoes__title {
@@ -451,9 +458,6 @@
     height: 9rem;
   }
 
-  .m-app-tabbar {
-    top: 98rem;
-  }
 }
 
 /* ============ CREATE/EDIT STATION MODAL ============ */

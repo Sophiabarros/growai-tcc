@@ -30,6 +30,24 @@
     el.classList.toggle("m-app-home__status--error", !!isError);
   }
 
+  // "empty" (no stations yet) and "error" (fetch failed) both need more than
+  // plain text — a next action, so the user isn't just told what's wrong.
+  // Kept separate from setStatus() because these two build their own markup
+  // (a CTA/retry button) instead of a plain textContent message.
+  function renderHomeStatus(kind, message) {
+    [document.getElementById("appHomeStatus"), document.getElementById("mAppHomeStatus")].forEach(function (el) {
+      if (!el) return;
+      el.hidden = false;
+      el.classList.toggle("app-home__status--error", kind === "error");
+      el.classList.toggle("m-app-home__status--error", kind === "error");
+      el.innerHTML =
+        escapeHtml(message) +
+        (kind === "error"
+          ? ' <button type="button" class="app-home__status-btn" data-action="retry-home">Tentar novamente</button>'
+          : ' <a href="app-estacoes.html" class="app-home__status-btn">Criar estação</a>');
+    });
+  }
+
   function firstName(name) {
     if (!name) return "";
     return String(name).trim().split(/\s+/)[0];
@@ -38,6 +56,14 @@
   function stationLocation(station) {
     if (!station) return "";
     return station.tag ? station.name + " · " + station.tag : station.name;
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return "";
+    var minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (minutes < 1) return "agora mesmo";
+    if (minutes < 60) return minutes + " min atrás";
+    return Math.round(minutes / 60) + "h atrás";
   }
 
   // ---- desktop: greeting ----
@@ -95,6 +121,7 @@
       photoImg.hidden = false;
     } else {
       photoImg.hidden = true;
+      photoImg.removeAttribute("src");
     }
 
     var btn = card.querySelector(".app-featured__btn");
@@ -102,12 +129,117 @@
   }
 
   // ---- desktop: camera thumbnail (reuses the featured station's latest photo) ----
+  // No photo yet == camera never sent an image, so it shows no picture at
+  // all (not even a placeholder) — just the "Câmera desconectada" text.
   function renderCameraThumb(station, photo) {
     var img = document.getElementById("appCameraThumb");
+    var live = document.getElementById("appCameraLive");
+    var offline = document.getElementById("appCameraOffline");
     var caption = document.getElementById("appCameraCaption");
     if (!img) return;
-    if (photo && photo.image_url) img.src = photo.image_url;
+    if (photo && photo.image_url) {
+      img.src = photo.image_url;
+      img.hidden = false;
+      if (live) live.hidden = false;
+      if (offline) offline.hidden = true;
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      if (live) live.hidden = true;
+      if (offline) offline.hidden = false;
+    }
     if (caption && station) caption.textContent = "Câmera · " + stationLocation(station);
+  }
+
+  // ---- desktop + mobile: alerts (derived from real station data — a photo
+  // flagged "atencao" by the backend — never hardcoded/fake) ----
+  var ALERT_ICON = "assets/icons/app/icon-app-warning.svg";
+  function buildAlerts(stations) {
+    var alerts = [];
+    stations.forEach(function (s) {
+      var photo = s.__photo;
+      if (photo && photo.health_status === "atencao") {
+        alerts.push({
+          title: photo.analysis_text || "Planta precisa de atenção",
+          meta: s.plant + " · " + timeAgo(photo.captured_at),
+        });
+      }
+    });
+    return alerts.slice(0, 4);
+  }
+  function renderAlerts(alerts) {
+    var container = document.getElementById("appAlerts");
+    if (!container) return;
+    if (!alerts.length) {
+      container.innerHTML = '<p class="app-alerts__empty">Nenhum alerta no momento.</p>';
+      return;
+    }
+    container.innerHTML = alerts
+      .map(function (a) {
+        return (
+          '<a href="app-estacoes.html" class="app-alert">' +
+          '<img class="app-alert__icon" alt="" src="' + ALERT_ICON + '" />' +
+          '<span class="app-alert__body">' +
+          '<p class="app-alert__title">' + escapeHtml(a.title) + "</p>" +
+          '<span class="app-alert__meta">' + escapeHtml(a.meta) + "</span>" +
+          "</span>" +
+          '<img class="app-alert__arrow" alt="" src="assets/icons/app/icon-cfg-seta-d.svg" />' +
+          "</a>"
+        );
+      })
+      .join("");
+  }
+  function renderMobileAlerts(alerts) {
+    var container = document.getElementById("mAppAlerts");
+    if (!container) return;
+    if (!alerts.length) {
+      container.innerHTML = '<p class="m-app-alerts__empty">Nenhum alerta no momento.</p>';
+      return;
+    }
+    container.innerHTML = alerts
+      .map(function (a) {
+        return (
+          '<div class="m-app-alert m-app-alert--warn">' +
+          '<img alt="" src="' + ALERT_ICON + '" />' +
+          "<span>" + escapeHtml(a.title) + "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  // ---- desktop: "Sistema online" footer (reflects real fetch failures —
+  // if a station's latest reading couldn't be fetched, the ESP isn't
+  // reachable) ----
+  function renderSystemStatus(mode) {
+    var text = document.getElementById("appSystemStatusText");
+    var dot = document.getElementById("appSystemStatusDot");
+    if (!text) return;
+    var label =
+      mode === "ok" ? "Todos os dispositivos funcionando" : mode === "offline" ? "Não conectado" : "Nenhum dispositivo cadastrado";
+    text.textContent = label;
+    text.classList.toggle("app-plants__footer-text--offline", mode !== "ok");
+    if (dot) dot.classList.toggle("app-plant-row__dot--offline", mode !== "ok");
+  }
+
+  // ---- desktop: sem estações, Sensores/Alertas/Câmeras somem e a página
+  // encolhe até a borda inferior real do que ainda está visível (Suas
+  // plantas / Dica), em vez de deixar o vão fixo calculado pro estado cheio.
+  function positionDesktopLayout(isEmpty) {
+    var page = document.getElementById("appHomePage");
+    if (!page) return;
+    page.classList.toggle("app-home--empty", isEmpty);
+    if (!isEmpty) {
+      page.style.minHeight = "";
+      return;
+    }
+    var plants = document.getElementById("appPlants");
+    var tip = document.getElementById("appTip");
+    var bottomPx = 0;
+    [plants, tip].forEach(function (el) {
+      if (el) bottomPx = Math.max(bottomPx, el.offsetTop + el.offsetHeight);
+    });
+    if (bottomPx > 0) page.style.minHeight = bottomPx / 10 + 4 + "rem";
   }
 
   // ---- desktop: sensor tiles (value + progress bar) ----
@@ -176,19 +308,20 @@
     mEl.innerHTML = mobileCardBodyHtml(station, reading, photo);
   }
 
-  // The mobile sensors/alerts/tab bar `top` values assume exactly 2 station
-  // cards; with 0 or 1 station (status message instead, or a single card)
-  // that leaves a big empty gap before the tab bar; when more content grows
-  // past it, it would overlap instead. This measures the actual bottom edge
-  // of whichever is visible and repositions the tab bar (and the page's
-  // min-height) right after it.
+  // The mobile sensors/alerts `top` values assume exactly 2 station cards;
+  // with 0 or 1 station (status message instead, or a single card) that
+  // leaves a big empty gap; when more content grows past it, it would
+  // overlap instead. This measures the actual bottom edge of whichever is
+  // visible and repositions everything below it (and the page's
+  // min-height) right after it. The tab bar itself is `position:fixed`
+  // (css/app-shell.css) — it no longer lives in this flow, so it isn't
+  // touched here; .m-app-home's own `padding-bottom` reserves its footprint.
   function positionMobileTrailing() {
     var mSensors = document.querySelector(".m-app-sensors");
     var mAlertsTitle = document.querySelector(".m-app-alerts__title");
-    var mAlerts = document.querySelector(".m-app-alerts");
-    var tabbar = document.querySelector(".m-app-tabbar");
+    var mAlerts = document.getElementById("mAppAlerts");
     var mPage = document.getElementById("mAppHomePage");
-    if (!mSensors || !mAlertsTitle || !mAlerts || !tabbar || !mPage) return;
+    if (!mSensors || !mAlertsTitle || !mAlerts || !mPage) return;
 
     var bottomPx = 0;
     [
@@ -203,18 +336,24 @@
     var sensorsTopRem = bottomPx / 10 + 2.3;
     var alertsTitleTopRem = sensorsTopRem + 11.6 + 3.1;
     var alertsTopRem = alertsTitleTopRem + 4.1;
-    var tabbarTopRem = alertsTopRem + 9.6 + 4.6;
 
     mSensors.style.top = sensorsTopRem + "rem";
     mAlertsTitle.style.top = alertsTitleTopRem + "rem";
     mAlerts.style.top = alertsTopRem + "rem";
-    tabbar.style.top = tabbarTopRem + "rem";
-    mPage.style.minHeight = tabbarTopRem + 9.4 + "rem";
+
+    // Alerts now render 0-4 real rows instead of a fixed 2, so min-height is
+    // set from the actual measured height instead of an assumed 2-row
+    // constant.
+    var alertsHeightRem = mAlerts.offsetHeight / 10;
+    mPage.style.minHeight = alertsTopRem + alertsHeightRem + 4.6 + "rem";
   }
 
   document.addEventListener("click", function (event) {
     var target = event.target.closest('[data-action="ver-camera"]');
     if (target) window.location.href = "app-camera.html";
+
+    var retry = event.target.closest('[data-action="retry-home"]');
+    if (retry) load();
   });
 
   async function load() {
@@ -228,28 +367,39 @@
     try {
       stations = await GrowAI.getStations();
     } catch (err) {
-      setStatus(appStatus, err.message, true);
-      setStatus(mStatus, err.message, true);
+      // err.status: 0 == never reached the server, a number == the server
+      // responded but with an error — worth telling apart even though both
+      // land on the same friendly copy + retry button here.
+      var offline = err.status === 0;
+      renderHomeStatus("error", offline ? "Sem conexão com o servidor." : "Não foi possível carregar sua horta agora.");
+      if (window.showToast) showToast(err.message, "error");
       renderPlantsList([]);
       renderFeatured(null);
+      renderAlerts([]);
+      renderMobileAlerts([]);
+      renderSystemStatus("none");
+      positionDesktopLayout(true);
       positionMobileTrailing();
       applyScale();
       return;
     }
 
     if (stations.length === 0) {
-      var emptyMsg = "Você ainda não tem estações. Crie uma na tela Estações.";
-      setStatus(appStatus, emptyMsg, false);
-      setStatus(mStatus, emptyMsg, false);
+      renderHomeStatus("empty", "Você ainda não tem estações.");
       renderSensors(null);
       renderPlantsList([]);
       renderFeatured(null);
+      renderAlerts([]);
+      renderMobileAlerts([]);
+      renderSystemStatus("none");
+      positionDesktopLayout(true);
       positionMobileTrailing();
       applyScale();
       return;
     }
     setStatus(appStatus, "", false);
     setStatus(mStatus, "", false);
+    positionDesktopLayout(false);
 
     var limited = stations.slice(0, 4);
     var details = await Promise.all(
@@ -266,6 +416,13 @@
     renderPlantsList(limited);
     renderFeatured(limited[0], details[0][0], details[0][1]);
     renderCameraThumb(limited[0], details[0][1]);
+
+    var alerts = buildAlerts(limited);
+    renderAlerts(alerts);
+    renderMobileAlerts(alerts);
+
+    var allConnected = details.every(function (d) { return d[0] !== null; });
+    renderSystemStatus(allConnected ? "ok" : "offline");
 
     renderMobileCard(document.getElementById("mAppStationCard1"), limited[0], details[0][0], details[0][1]);
     renderMobileCard(document.getElementById("mAppStationCard2"), limited[1], details[1] ? details[1][0] : null, details[1] ? details[1][1] : null);

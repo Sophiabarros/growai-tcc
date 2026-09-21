@@ -15,8 +15,8 @@
   var appStatus = document.getElementById("appEstacoesStatus");
   var mList = document.getElementById("mAppEstacoesList");
   var mStatus = document.getElementById("mAppEstacoesStatus");
-  var insights = document.querySelector(".app-insights");
-  var tabbar = document.querySelector(".m-app-tabbar");
+  var insights = document.getElementById("appInsights");
+  var insightsList = document.getElementById("appInsightsList");
   var mPage = document.getElementById("mAppEstacoesPage");
 
   var newStationBtn = document.getElementById("newStationBtn");
@@ -134,6 +134,48 @@
     '" />' +
     "</button>";
 
+  // "Insights de Saúde" — real data only: a photo the backend flagged
+  // "atencao" (with its analysis_text explaining what's wrong). No fake
+  // fallback card, and the whole block stays out of the DOM flow (hidden,
+  // not an empty placeholder) when nothing needs attention.
+  function insightCardHtml(insight) {
+    return (
+      '<div class="app-insights__card">' +
+      '<img alt="" src="assets/icons/app/icon-app-insights-warn.svg" />' +
+      "<div>" +
+      '<p class="app-insights__headline">' + escapeHtml(insight.headline) + "</p>" +
+      '<p class="app-insights__desc">' + escapeHtml(insight.desc) + "</p>" +
+      "</div></div>"
+    );
+  }
+  function renderInsights(list) {
+    if (!insights || !insightsList) return;
+    if (!list.length) {
+      insights.hidden = true;
+      insightsList.innerHTML = "";
+      return;
+    }
+    insights.hidden = false;
+    insightsList.innerHTML = list.map(insightCardHtml).join("");
+  }
+  async function loadInsights() {
+    var photos = await Promise.all(
+      stations.map(function (s) {
+        return GrowAI.getLatestPhoto(s.id).catch(function () {
+          return null;
+        });
+      })
+    );
+    var list = [];
+    stations.forEach(function (s, i) {
+      var photo = photos[i];
+      if (photo && photo.health_status === "atencao") {
+        list.push({ headline: s.name + " precisa de atenção", desc: photo.analysis_text });
+      }
+    });
+    renderInsights(list.slice(0, 4));
+  }
+
   function setStatus(el, message, isError) {
     if (!message) {
       el.hidden = true;
@@ -175,17 +217,18 @@
 
   // Everything below the (variable-height) station grid/list has its
   // position recomputed after each render instead of relying on the
-  // fixed Figma coordinates, which only account for exactly two cards.
+  // fixed Figma coordinates, which only account for exactly two cards. The
+  // mobile tab bar itself is `position:fixed` (css/app-shell.css) and no
+  // longer part of this — .m-app-estacoes's own `padding-bottom` reserves
+  // its footprint instead.
   function positionDependents() {
     if (insights) {
       var gridBottomPx = appGrid.offsetTop + appGrid.offsetHeight;
       insights.style.top = gridBottomPx / 10 + 5.5 + "rem";
     }
-    if (tabbar && mPage) {
+    if (mPage) {
       var listBottomPx = mList.offsetTop + mList.offsetHeight;
-      var tabbarTopRem = listBottomPx / 10 + 1.2;
-      tabbar.style.top = tabbarTopRem + "rem";
-      mPage.style.minHeight = tabbarTopRem + 9.4 + "rem";
+      mPage.style.minHeight = listBottomPx / 10 + 1.2 + "rem";
     }
   }
 
@@ -198,7 +241,10 @@
     } catch (err) {
       setStatus(appStatus, err.message, true);
       setStatus(mStatus, err.message, true);
+      renderInsights([]);
+      return;
     }
+    loadInsights();
   }
 
   // ---- modal ----
@@ -268,6 +314,7 @@
           return s.id !== delStation.id;
         });
         render();
+        loadInsights();
       } catch (err) {
         target.disabled = false;
         showToast(err.message, "error");
@@ -306,6 +353,7 @@
         stations = stations.concat([created]);
       }
       render();
+      loadInsights();
       closeModal();
     } catch (err) {
       modalError.textContent = err.message;

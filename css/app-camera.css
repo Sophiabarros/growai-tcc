@@ -227,6 +227,9 @@
     background: var(--app-bg);
     overflow: hidden;
     transform-origin: top center;
+    /* Room for the fixed tab bar (see .m-app-tabbar, css/app-shell.css) so
+       content never sits underneath it. */
+    padding-bottom: 10.4rem;
   }
 
   .m-app-camera__title {
@@ -367,7 +370,4 @@
     cursor: pointer;
   }
 
-  .m-app-tabbar {
-    top: 102.9rem;
-  }
 }

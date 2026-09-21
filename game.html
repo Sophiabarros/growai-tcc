@@ -10,19 +10,46 @@
       href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/reset.css?v=35" />
-    <link rel="stylesheet" href="css/variables.css?v=35" />
-    <link rel="stylesheet" href="css/global.css?v=35" />
-    <link rel="stylesheet" href="css/header.css?v=35" />
-    <link rel="stylesheet" href="css/footer.css?v=35" />
-    <link rel="stylesheet" href="css/game.css?v=35" />
-    <link rel="stylesheet" href="css/animations.css?v=35" />
-    <link rel="stylesheet" href="css/responsive.css?v=35" />
+    <link rel="stylesheet" href="css/reset.css?v=36" />
+    <link rel="stylesheet" href="css/variables.css?v=36" />
+    <link rel="stylesheet" href="css/global.css?v=36" />
+    <link rel="stylesheet" href="css/header.css?v=36" />
+    <link rel="stylesheet" href="css/footer.css?v=36" />
+    <link rel="stylesheet" href="css/game.css?v=36" />
+    <link rel="stylesheet" href="css/animations.css?v=36" />
+    <link rel="stylesheet" href="css/responsive.css?v=36" />
   </head>
   <body>
     <div class="page-loader" id="pageLoader" aria-hidden="true">
       <div class="page-loader__spinner"></div>
     </div>
+    <!-- ===== TRAILER DE FUNDO =====
+         Toca mudo e escurecido atrás da página. Depois de 20s sem interação o
+         conteúdo dissolve e o trailer passa sozinho do começo (com som, se o
+         navegador deixar); quando termina, o conteúdo volta. Ver js/game.js. -->
+    <video
+      class="game-trailer"
+      id="gameTrailer"
+      muted
+      autoplay
+      playsinline
+      preload="auto"
+      disablepictureinpicture
+      aria-hidden="true"
+      tabindex="-1"
+    >
+      <source src="assets/video/trailer.mp4" type="video/mp4" />
+    </video>
+    <div class="game-trailer__shade" aria-hidden="true"></div>
+    <button type="button" class="game-trailer__sound" id="gameTrailerSound" aria-label="Ativar o som do trailer" hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+      </svg>
+      Ativar som
+    </button>
+
     <div class="game-wrapper">
       <div class="game" id="gamePage" data-theme="dark">
         <div class="game__bg">
@@ -123,10 +150,10 @@
       </div>
     </div>
 
-    <script src="js/theme.js?v=35"></script>
-    <script src="js/game.js?v=35"></script>
-    <script src="js/menu.js?v=35"></script>
-    <script src="js/navigation.js?v=35"></script>
-    <script src="js/page-loader.js?v=35"></script>
+    <script src="js/theme.js?v=36"></script>
+    <script src="js/game.js?v=36"></script>
+    <script src="js/menu.js?v=36"></script>
+    <script src="js/navigation.js?v=36"></script>
+    <script src="js/page-loader.js?v=36"></script>
   </body>
 </html>

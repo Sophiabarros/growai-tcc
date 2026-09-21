@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="css/variables.css?v=39" />
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
-    <link rel="stylesheet" href="css/app-shell.css?v=39" />
-    <link rel="stylesheet" href="css/app-estacoes.css?v=39" />
+    <link rel="stylesheet" href="css/app-shell.css?v=40" />
+    <link rel="stylesheet" href="css/app-estacoes.css?v=41" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -52,16 +52,10 @@
         <p class="app-estacoes__status" id="appEstacoesStatus" hidden></p>
         <div class="app-estacoes__grid" id="appEstacoesGrid"></div>
 
-        <!-- ===== INSIGHTS ===== -->
-        <div class="app-insights">
+        <!-- ===== INSIGHTS (só existe no DOM quando o backend manda algo — ver js/app-estacoes.js) ===== -->
+        <div class="app-insights" id="appInsights" hidden>
           <p class="app-insights__title">Insights de Saúde</p>
-          <div class="app-insights__card">
-            <img alt="" src="assets/icons/app/icon-app-insights-warn.svg" />
-            <div>
-              <p class="app-insights__headline">Estação 1 precisa de ajuste de pH</p>
-              <p class="app-insights__desc">O nível de pH da Camomila está ligeiramente acima do alvo de 6.5. Recomendamos verificação manual.</p>
-            </div>
-          </div>
+          <div class="app-insights__list" id="appInsightsList"></div>
         </div>
       </div>
     </div>
@@ -89,13 +83,16 @@
         <!-- ===== STATION CARDS + "add" TILE (rendered by js/app-estacoes.js) ===== -->
         <div class="m-est-list" id="mAppEstacoesList"></div>
 
-        <!-- ===== BOTTOM TAB BAR ===== -->
-        <nav class="m-app-tabbar">
+      </div>
+
+      <!-- ===== BOTTOM TAB BAR — fixed to the real viewport, lives outside
+           the scaled canvas above (see css/app-shell.css) ===== -->
+      <nav class="m-app-tabbar">
           <a href="app-home.html" class="m-app-tab">
             <span class="m-app-tab__icon">
               <span class="m-app-tab__icon-inner" style="width: 1.8rem; height: 2rem">
-                <img alt="" style="left: 0; top: 0; width: 1.8rem; height: 2rem" src="assets/icons/app/icon-nav-home-inactive-1.svg" />
-                <img alt="" style="left: 0.6rem; top: 1rem; width: 0.6rem; height: 1rem" src="assets/icons/app/icon-nav-home-inactive-2.svg" />
+                <img alt="" style="left: 0; top: 0; width: 1.8rem; height: 2rem" src="assets/icons/app/icon-nav-home-inactive-1.svg?v=2" />
+                <img alt="" style="left: 0.6rem; top: 1rem; width: 0.6rem; height: 1rem" src="assets/icons/app/icon-nav-home-inactive-2.svg?v=2" />
               </span>
             </span>
             <span class="m-app-tab__label">Home</span>
@@ -136,8 +133,7 @@
             </span>
             <span class="m-app-tab__label">Config</span>
           </a>
-        </nav>
-      </div>
+      </nav>
     </div>
 
     <!-- ===== CREATE/EDIT STATION MODAL ===== -->
@@ -188,9 +184,9 @@
       </form>
     </div>
 
-    <script src="js/api.js?v=39"></script>
+    <script src="js/api.js?v=41"></script>
     <script src="js/toast.js?v=39"></script>
-    <script src="js/responsive-canvas.js?v=39"></script>
-    <script src="js/app-estacoes.js?v=39"></script>
+    <script src="js/responsive-canvas.js?v=40"></script>
+    <script src="js/app-estacoes.js?v=41"></script>
   </body>
 </html>

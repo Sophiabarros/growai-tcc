@@ -47,6 +47,15 @@
   position: absolute;
   top: 0;
   color: var(--app-muted-alt);
+  transition: color 0.15s ease;
+}
+.app-nav__link:hover {
+  color: var(--app-text);
+}
+.app-nav__link:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 4px;
+  border-radius: 0.4rem;
 }
 .app-nav__link--active {
   color: var(--app-accent);
@@ -150,17 +159,33 @@
     height: 100%;
   }
 
-  /* `top` is set per-page (content height varies), see app-*.css */
+  /* Truly pinned to the bottom of the real viewport — NOT the scaled
+     Figma canvas. Needs to sit outside any transformed ancestor to do
+     that: `position:fixed` is positioned relative to the nearest ancestor
+     with a `transform`, and js/responsive-canvas.js sets `transform:scale()`
+     directly on the mobile page div (.m-app-home etc.) to fit real
+     viewports. So this <nav> is a sibling of that page div in the HTML
+     (inside .m-app-*-wrapper, which has no transform), not a child of it —
+     otherwise "fixed" would just track the scaled canvas's own box again,
+     the same bug this replaces. Content no longer needs `top` math to
+     avoid the bar; each .m-app-* page reserves the same height back as
+     `padding-bottom` (see css/app-*.css) so nothing renders underneath it. */
   .m-app-tabbar {
-    position: absolute;
+    position: fixed;
     left: 0;
-    width: 41.2rem;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 41.2rem;
+    margin: 0 auto;
     height: 9.4rem;
     background: var(--app-card-bg);
     display: flex;
     align-items: center;
     justify-content: space-around;
     padding-bottom: 1rem;
+    box-sizing: content-box;
+    z-index: 900;
   }
   .m-app-tab {
     display: flex;
@@ -169,6 +194,15 @@
     gap: 0.4rem;
     color: var(--app-muted-alt);
     text-decoration: none;
+    transition: color 0.15s ease, transform 0.1s ease;
+  }
+  .m-app-tab:active {
+    transform: scale(0.94);
+  }
+  .m-app-tab:focus-visible {
+    outline: 2px solid var(--app-accent);
+    outline-offset: -2px;
+    border-radius: 0.8rem;
   }
   .m-app-tab--active {
     color: var(--app-accent);

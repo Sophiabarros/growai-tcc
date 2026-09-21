@@ -33,7 +33,9 @@
 .rel-subtitle {
   position: absolute;
   left: 14rem;
-  top: 26.2rem;
+  /* Era 26.2rem — o título (4.8rem/normal) já ocupa até ~25.96rem de altura
+     real, então ficava encostado nele sem respiro nenhum. +1.6rem (16px). */
+  top: 27.8rem;
   color: var(--app-info);
   font: 400 2.4rem/normal var(--font-body);
 }
@@ -245,6 +247,9 @@
     background: var(--app-bg);
     overflow: hidden;
     transform-origin: top center;
+    /* Room for the fixed tab bar (see .m-app-tabbar, css/app-shell.css) so
+       content never sits underneath it. */
+    padding-bottom: 10.4rem;
   }
 
   .m-rel-title {
@@ -432,7 +437,4 @@
     cursor: default;
   }
 
-  .m-app-tabbar {
-    top: 104.6rem;
-  }
 }

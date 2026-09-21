@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="css/variables.css?v=39" />
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
-    <link rel="stylesheet" href="css/app-shell.css?v=39" />
-    <link rel="stylesheet" href="css/app-home.css?v=39" />
+    <link rel="stylesheet" href="css/app-shell.css?v=40" />
+    <link rel="stylesheet" href="css/app-home.css?v=43" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -40,9 +40,9 @@
             <a href="app-relatorios.html" class="app-nav__link app-nav__link--relatorios">Relatórios</a>
             <a href="app-configuracoes.html" class="app-nav__link app-nav__link--config">Configurações</a>
           </nav>
-          <div class="app-header__avatar"><img alt="" src="assets/images/app/img-app-avatar.svg" /></div>
+          <div class="app-header__avatar" aria-hidden="true"><img alt="" src="assets/images/app/img-app-avatar.svg" /></div>
           <div class="app-header__divider"></div>
-          <div class="app-header__bell"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
+          <div class="app-header__bell" aria-hidden="true"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
         </header>
 
         <!-- ===== LEFT COLUMN: saudação + "Suas plantas" ===== -->
@@ -50,23 +50,36 @@
         <h1 class="app-greeting__title" id="appGreetingTitle">Olá!</h1>
         <p class="app-greeting__subtitle">Sua horta está saudável hoje. Continue assim!</p>
 
-        <div class="app-plants">
-          <div class="app-plants__header">
+        <div class="app-plants" id="appPlants">
+          <a href="app-estacoes.html" class="app-plants__header">
             <img alt="" src="assets/icons/app/icon-app-planta-station.svg" />
             <p>Suas plantas</p>
             <img class="app-plants__header-arrow" alt="" src="assets/icons/app/icon-cfg-seta-d.svg" />
-          </div>
+          </a>
           <div class="app-plants__list" id="appPlantsList">
-            <p class="app-plants__empty">Carregando...</p>
+            <div class="app-skeleton-row" aria-hidden="true">
+              <span class="app-skeleton app-skeleton--avatar"></span>
+              <span class="app-skeleton-row__lines">
+                <span class="app-skeleton app-skeleton--line-sm"></span>
+                <span class="app-skeleton app-skeleton--line-xs"></span>
+              </span>
+            </div>
+            <div class="app-skeleton-row" aria-hidden="true">
+              <span class="app-skeleton app-skeleton--avatar"></span>
+              <span class="app-skeleton-row__lines">
+                <span class="app-skeleton app-skeleton--line-sm"></span>
+                <span class="app-skeleton app-skeleton--line-xs"></span>
+              </span>
+            </div>
           </div>
           <hr class="app-plants__sep" />
           <div class="app-plants__footer">
             <img alt="" src="assets/icons/app/icon-app-planta-station.svg" />
             <div class="app-plants__footer-text">
               <p>Sistema online</p>
-              <p>Todos os dispositivos funcionando</p>
+              <p id="appSystemStatusText">Todos os dispositivos funcionando</p>
             </div>
-            <span class="app-plant-row__dot"></span>
+            <span class="app-plant-row__dot" id="appSystemStatusDot"></span>
           </div>
         </div>
 
@@ -86,8 +99,8 @@
           </button>
         </div>
 
-        <h2 class="app-sensors__title">Sensores</h2>
-        <p class="app-sensors__updated">Última atualização: agora<span class="app-sensors__updated-dot"></span></p>
+        <h2 class="app-sensors__title" id="appSensorsTitle">Sensores</h2>
+        <p class="app-sensors__updated" id="appSensorsUpdated">Última atualização: agora<span class="app-sensors__updated-dot"></span></p>
         <div class="app-sensors" id="appSensors">
           <div class="app-sensor-card">
             <span class="app-sensor-card__icon"><img alt="" src="assets/icons/app/icon-app-sun.svg" /></span>
@@ -115,46 +128,32 @@
           </div>
         </div>
 
-        <h2 class="app-alerts__title">Alertas</h2>
-        <a href="app-estacoes.html" class="app-alerts__see-all">Ver todos <img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></a>
-        <div class="app-alerts">
-          <a href="app-estacoes.html" class="app-alert">
-            <img class="app-alert__icon" alt="" src="assets/icons/app/icon-app-warning.svg" />
-            <span class="app-alert__body">
-              <p class="app-alert__title">Planta precisa de luz</p>
-              <span class="app-alert__meta">Camomila · hoje</span>
-            </span>
-            <img class="app-alert__arrow" alt="" src="assets/icons/app/icon-cfg-seta-d.svg" />
-          </a>
-          <a href="app-estacoes.html" class="app-alert">
-            <img class="app-alert__icon" alt="" src="assets/icons/app/icon-app-humidity.svg" />
-            <span class="app-alert__body">
-              <p class="app-alert__title">Planta foi regada</p>
-              <span class="app-alert__meta">Hortelã · hoje</span>
-            </span>
-            <img class="app-alert__arrow" alt="" src="assets/icons/app/icon-cfg-seta-d.svg" />
-          </a>
+        <h2 class="app-alerts__title" id="appAlertsTitle">Alertas</h2>
+        <a href="app-estacoes.html" class="app-alerts__see-all" id="appAlertsSeeAll">Ver todos <img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></a>
+        <div class="app-alerts" id="appAlerts">
+          <p class="app-alerts__empty">Carregando...</p>
         </div>
 
         <!-- ===== RIGHT COLUMN: Câmeras + dica ===== -->
-        <div class="app-cameras">
-          <div class="app-cameras__header">
+        <div class="app-cameras" id="appCameras">
+          <a href="app-camera.html" class="app-cameras__header">
             <img alt="" src="assets/icons/app/icon-app-camera-outline.svg" />
             <p>Câmeras</p>
             <img class="app-cameras__header-arrow" alt="" src="assets/icons/app/icon-cfg-seta-d.svg" />
-          </div>
+          </a>
           <a href="app-camera.html" class="app-cameras__thumb">
-            <img alt="" id="appCameraThumb" src="assets/images/app/img-app-hortela.png" />
-            <span class="app-cameras__live">
+            <img alt="" id="appCameraThumb" src="" hidden />
+            <span class="app-cameras__live" id="appCameraLive">
               <span class="app-cameras__live-dot"></span>
               <span>LIVE</span>
             </span>
+            <p class="app-cameras__offline" id="appCameraOffline" hidden>Câmera desconectada</p>
           </a>
           <p class="app-cameras__caption" id="appCameraCaption">Câmera 1 · Horta</p>
           <div class="app-cameras__dots"><span></span><span></span><span></span></div>
         </div>
 
-        <div class="app-tip">
+        <div class="app-tip" id="appTip">
           <img class="app-tip__icon" alt="" src="assets/icons/app/icon-app-planta-station.svg" />
           <p class="app-tip__text">Pequenos cuidados geram grandes resultados.</p>
           <span class="app-tip__underline"></span>
@@ -174,7 +173,7 @@
             <div class="v4"><img class="fill" alt="" src="assets/icons/logo-vector-4.svg" /></div>
             <div class="v5"><img class="fill" alt="" src="assets/icons/logo-vector-5.svg" /></div>
           </a>
-          <div class="m-app-header__bell"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
+          <div class="m-app-header__bell" aria-hidden="true"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
           <a href="index.html" class="m-app-header__back" aria-label="Voltar ao site">
             <img alt="" src="assets/icons/app/icon-app-navegador.svg" />
           </a>
@@ -197,19 +196,15 @@
         </div>
 
         <h2 class="m-app-alerts__title">Alertas</h2>
-        <div class="m-app-alerts">
-          <div class="m-app-alert m-app-alert--warn">
-            <img alt="" src="assets/icons/app/icon-app-warning.svg" />
-            <span>Planta precisa de luz</span>
-          </div>
-          <div class="m-app-alert m-app-alert--info">
-            <img alt="" src="assets/icons/app/icon-app-humidity.svg" />
-            <span>Planta foi regada</span>
-          </div>
+        <div class="m-app-alerts" id="mAppAlerts">
+          <p class="m-app-alerts__empty">Carregando...</p>
         </div>
 
-        <!-- ===== BOTTOM TAB BAR ===== -->
-        <nav class="m-app-tabbar">
+      </div>
+
+      <!-- ===== BOTTOM TAB BAR — fixed to the real viewport, lives outside
+           the scaled canvas above (see css/app-shell.css) ===== -->
+      <nav class="m-app-tabbar">
           <a href="app-home.html" class="m-app-tab m-app-tab--active">
             <span class="m-app-tab__icon">
               <span class="m-app-tab__icon-inner" style="width: 1.8rem; height: 2rem">
@@ -255,12 +250,12 @@
             </span>
             <span class="m-app-tab__label">Config</span>
           </a>
-        </nav>
-      </div>
+      </nav>
     </div>
 
-    <script src="js/api.js?v=39"></script>
-    <script src="js/responsive-canvas.js?v=39"></script>
-    <script src="js/app-home.js?v=39"></script>
+    <script src="js/api.js?v=41"></script>
+    <script src="js/toast.js?v=40"></script>
+    <script src="js/responsive-canvas.js?v=40"></script>
+    <script src="js/app-home.js?v=42"></script>
   </body>
 </html>

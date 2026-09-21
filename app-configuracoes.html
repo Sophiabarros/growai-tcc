@@ -14,8 +14,8 @@
     <link rel="stylesheet" href="css/variables.css?v=39" />
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
-    <link rel="stylesheet" href="css/app-shell.css?v=39" />
-    <link rel="stylesheet" href="css/app-configuracoes.css?v=39" />
+    <link rel="stylesheet" href="css/app-shell.css?v=40" />
+    <link rel="stylesheet" href="css/app-configuracoes.css?v=41" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -74,7 +74,7 @@
               <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-wifi-d.svg" />
               <div>
                 <p class="cfg-row__title">Conexão ESP32</p>
-                <p class="cfg-row__subtitle cfg-row__subtitle--accent">2 dispositivos conectados</p>
+                <p class="cfg-row__subtitle cfg-row__subtitle--accent" id="cfgWifiSubtitle">Verificando...</p>
               </div>
               <span class="cfg-row__trailing cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></span>
             </div>
@@ -82,7 +82,7 @@
               <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-dados-d.svg" />
               <div>
                 <p class="cfg-row__title">Armazenamento de Dados</p>
-                <p class="cfg-row__subtitle">1.2 MB usados</p>
+                <p class="cfg-row__subtitle">Sincronizado com o banco de dados na nuvem</p>
               </div>
               <span class="cfg-row__trailing cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></span>
             </div>
@@ -176,7 +176,7 @@
                 <img class="m-cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-wifi.svg" />
                 <div>
                   <p class="m-cfg-row__title">Conexão ESP32</p>
-                  <p class="m-cfg-row__subtitle m-cfg-row__subtitle--accent">2 dispositivos conectados</p>
+                  <p class="m-cfg-row__subtitle m-cfg-row__subtitle--accent" id="mCfgWifiSubtitle">Verificando...</p>
                 </div>
                 <span class="m-cfg-row__trailing m-cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta.svg" /></span>
               </div>
@@ -184,7 +184,7 @@
                 <img class="m-cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-dados.svg" />
                 <div>
                   <p class="m-cfg-row__title">Armazenamento de Dados</p>
-                  <p class="m-cfg-row__subtitle">1.2 MB usados</p>
+                  <p class="m-cfg-row__subtitle">Sincronizado com o banco de dados na nuvem</p>
                 </div>
                 <span class="m-cfg-row__trailing m-cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta.svg" /></span>
               </div>
@@ -224,13 +224,16 @@
           </div>
         </div>
 
-        <!-- ===== BOTTOM TAB BAR ===== -->
-        <nav class="m-app-tabbar">
+      </div>
+
+      <!-- ===== BOTTOM TAB BAR — fixed to the real viewport, lives outside
+           the scaled canvas above (see css/app-shell.css) ===== -->
+      <nav class="m-app-tabbar">
           <a href="app-home.html" class="m-app-tab">
             <span class="m-app-tab__icon">
               <span class="m-app-tab__icon-inner" style="width: 1.8rem; height: 2rem">
-                <img alt="" style="left: 0; top: 0; width: 1.8rem; height: 2rem" src="assets/icons/app/icon-nav-home-inactive-1.svg" />
-                <img alt="" style="left: 0.6rem; top: 1rem; width: 0.6rem; height: 1rem" src="assets/icons/app/icon-nav-home-inactive-2.svg" />
+                <img alt="" style="left: 0; top: 0; width: 1.8rem; height: 2rem" src="assets/icons/app/icon-nav-home-inactive-1.svg?v=2" />
+                <img alt="" style="left: 0.6rem; top: 1rem; width: 0.6rem; height: 1rem" src="assets/icons/app/icon-nav-home-inactive-2.svg?v=2" />
               </span>
             </span>
             <span class="m-app-tab__label">Home</span>
@@ -271,8 +274,7 @@
             </span>
             <span class="m-app-tab__label">Config</span>
           </a>
-        </nav>
-      </div>
+      </nav>
     </div>
 
     <!-- ===== EDIT PROFILE MODAL ===== -->
@@ -306,9 +308,9 @@
       </form>
     </div>
 
-    <script src="js/api.js?v=39"></script>
+    <script src="js/api.js?v=41"></script>
     <script src="js/toast.js?v=39"></script>
-    <script src="js/responsive-canvas.js?v=39"></script>
-    <script src="js/app-configuracoes.js?v=39"></script>
+    <script src="js/responsive-canvas.js?v=40"></script>
+    <script src="js/app-configuracoes.js?v=41"></script>
   </body>
 </html>

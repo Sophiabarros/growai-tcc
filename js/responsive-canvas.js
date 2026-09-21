@@ -55,16 +55,17 @@
   }
 
   // Several mobile screens render a variable number of cards/slots (some
-  // hidden depending on data) directly above the tab bar, but the tab bar's
-  // `top` in CSS assumes a fixed content height. When fewer slots are
-  // visible than assumed, that leaves a big empty gap before the tab bar;
-  // when more content grows past it, it would overlap instead. This measures
-  // the actual bottom edge of whichever content is visible and repositions
-  // the tab bar (and the page's min-height) right after it.
+  // hidden depending on data); the page's static min-height in CSS assumes
+  // a fixed content height, which would leave a gap when fewer slots are
+  // visible than assumed, or overlap when more content grows past it. This
+  // measures the actual bottom edge of whichever content is visible and
+  // sets the page's min-height right after it. The mobile tab bar itself is
+  // `position:fixed` (css/app-shell.css), pinned to the real viewport, not
+  // to this content — each .m-app-* page's own `padding-bottom` reserves
+  // its footprint instead, so it's untouched here.
   function positionMobileTabbar(config) {
-    var tabbar = document.querySelector(config.tabbarSelector || ".m-app-tabbar");
     var mobilePage = document.getElementById(config.mobilePageId);
-    if (!tabbar || !mobilePage) return;
+    if (!mobilePage) return;
 
     var bottomPx = 0;
     (config.contentSelectors || []).forEach(function (selector) {
@@ -76,10 +77,7 @@
     if (bottomPx === 0) return;
 
     var gapRem = config.gapRem || 1.2;
-    var tabbarHeightRem = config.tabbarHeightRem || 9.4;
-    var tabbarTopRem = bottomPx / 10 + gapRem;
-    tabbar.style.top = tabbarTopRem + "rem";
-    mobilePage.style.minHeight = tabbarTopRem + tabbarHeightRem + "rem";
+    mobilePage.style.minHeight = bottomPx / 10 + gapRem + "rem";
   }
 
   window.initResponsiveCanvas = initResponsiveCanvas;
