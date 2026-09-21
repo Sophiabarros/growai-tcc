@@ -66,6 +66,7 @@
 
     var enterCinema = function () {
       cinema = true;
+      moveOrigin = null;
       body.classList.add("is-cinema");
       video.currentTime = 0;
       video.muted = false;
@@ -122,10 +123,34 @@
       });
     }
 
+    // Qualquer interação (clique, tecla, scroll, toque ou o mouse andando de
+    // verdade) durante o cinema interrompe o trailer e traz o conteúdo de
+    // volta, pra ninguém ficar preso na tela. O clique no "Ativar som" não
+    // conta, senão não haveria como ligar o som.
+    var MOVE_TOLERANCE = 24; // px que o mouse precisa andar (evita tremida da mesa)
+    var moveOrigin = null;
+
+    var onActivity = function (e) {
+      if (!cinema) {
+        resetIdle();
+        return;
+      }
+      if (e && e.target && soundBtn && soundBtn.contains(e.target)) return;
+      if (e && e.type === "mousemove") {
+        if (!moveOrigin) {
+          moveOrigin = { x: e.clientX, y: e.clientY };
+          return;
+        }
+        if (Math.hypot(e.clientX - moveOrigin.x, e.clientY - moveOrigin.y) < MOVE_TOLERANCE) return;
+      }
+      moveOrigin = null;
+      exitCinema();
+    };
+
     ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "pointerdown"].forEach(function (ev) {
-      window.addEventListener(ev, resetIdle, { passive: true });
+      window.addEventListener(ev, onActivity, { passive: true });
     });
-    document.addEventListener("scroll", resetIdle, { passive: true, capture: true });
+    document.addEventListener("scroll", onActivity, { passive: true, capture: true });
     document.addEventListener("visibilitychange", resetIdle);
 
     safePlay();
