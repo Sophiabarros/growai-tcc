@@ -378,6 +378,10 @@
     setStatus(mStatus, "Carregando...", false);
     renderGreeting();
 
+    // Sincroniza perfil (avatar, nome, etc) com o backend, caso tenha mudado
+    // em outro dispositivo. Falha silenciosa pra não bloquear o carregamento.
+    GrowAI.syncProfile();
+
     var stations;
     try {
       stations = await GrowAI.getStations();

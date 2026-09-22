@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Câmeras da horta | TrackLink App</title>
+    <title>CÃ¢meras da horta | TrackLink App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -36,17 +36,17 @@
           </a>
           <nav class="app-nav">
             <a href="app-home.html" class="app-nav__link app-nav__link--home">Home</a>
-            <a href="app-estacoes.html" class="app-nav__link app-nav__link--estacoes">Estações</a>
-            <a href="app-camera.html" class="app-nav__link app-nav__link--camera app-nav__link--active">Câmera</a>
-            <a href="app-relatorios.html" class="app-nav__link app-nav__link--relatorios">Relatórios</a>
-            <a href="app-configuracoes.html" class="app-nav__link app-nav__link--config">Configurações</a>
+            <a href="app-estacoes.html" class="app-nav__link app-nav__link--estacoes">EstaÃ§Ãµes</a>
+            <a href="app-camera.html" class="app-nav__link app-nav__link--camera app-nav__link--active">CÃ¢mera</a>
+            <a href="app-relatorios.html" class="app-nav__link app-nav__link--relatorios">RelatÃ³rios</a>
+            <a href="app-configuracoes.html" class="app-nav__link app-nav__link--config">ConfiguraÃ§Ãµes</a>
           </nav>
           <div class="app-header__avatar"><img alt="" src="assets/images/app/img-app-avatar.svg" /></div>
           <div class="app-header__divider"></div>
           <div class="app-header__bell"><img alt="" src="assets/icons/app/icon-app-bell.svg" /></div>
         </header>
 
-        <h1 class="app-camera__title">Câmeras da horta</h1>
+        <h1 class="app-camera__title">CÃ¢meras da horta</h1>
         <button type="button" class="app-camera__refresh" id="cameraRefreshBtn">
           <img alt="" src="assets/icons/app/icon-app-atualizar.svg" />
           Atualizar
@@ -54,14 +54,14 @@
 
         <!-- ===== CAMERA CARDS (rendered by js/app-camera.js) ===== -->
         <p class="app-camera__status" id="appCameraStatus" hidden></p>
-        <!-- Grid de 2 colunas: cards de câmera (um por estação) e, no fim, o
-             card "adicionar estação". O 3º card quebra a linha e fica logo
-             abaixo do da esquerda. Tudo é renderizado por js/app-camera.js. -->
+        <!-- Grid de 2 colunas: cards de cÃ¢mera (um por estaÃ§Ã£o) e, no fim, o
+             card "adicionar estaÃ§Ã£o". O 3Âº card quebra a linha e fica logo
+             abaixo do da esquerda. Tudo Ã© renderizado por js/app-camera.js. -->
         <div class="cam-grid" id="camGrid"></div>
       </div>
     </div>
 
-    <!-- ===== MOBILE (Câmera, 412px artboard) ===== -->
+    <!-- ===== MOBILE (CÃ¢mera, 412px artboard) ===== -->
     <div class="m-app-camera-wrapper">
       <div class="m-app-camera" id="mAppCameraPage">
         <header class="m-app-header">
@@ -78,7 +78,7 @@
           </a>
         </header>
 
-        <h1 class="m-app-camera__title">Câmeras da horta</h1>
+        <h1 class="m-app-camera__title">CÃ¢meras da horta</h1>
         <button type="button" class="m-app-camera__refresh" id="mCameraRefreshBtn">
           <img alt="" src="assets/icons/app/icon-app-atualizar-m.svg" />
           Atualizar
@@ -89,7 +89,7 @@
 
       </div>
 
-      <!-- ===== BOTTOM TAB BAR — fixed to the real viewport, lives outside
+      <!-- ===== BOTTOM TAB BAR â€” fixed to the real viewport, lives outside
            the scaled canvas above (see css/app-shell.css) ===== -->
       <nav class="m-app-tabbar">
           <a href="app-home.html" class="m-app-tab">
@@ -107,7 +107,7 @@
                 <img alt="" style="left: 0; top: 0; width: 2.9rem; height: 2.3rem" src="assets/icons/app/icon-nav-estacoes.svg" />
               </span>
             </span>
-            <span class="m-app-tab__label">Estações</span>
+            <span class="m-app-tab__label">EstaÃ§Ãµes</span>
           </a>
           <a href="app-camera.html" class="m-app-tab m-app-tab--active">
             <span class="m-app-tab__icon">
@@ -116,7 +116,7 @@
                 <img alt="" style="left: 0.7rem; top: 0.6rem; width: 0.8rem; height: 0.8rem" src="assets/icons/app/icon-nav-camera-active-2.svg" />
               </span>
             </span>
-            <span class="m-app-tab__label">Câmera</span>
+            <span class="m-app-tab__label">CÃ¢mera</span>
           </a>
           <a href="app-relatorios.html" class="m-app-tab">
             <span class="m-app-tab__icon">
@@ -126,7 +126,7 @@
                 <img alt="" style="left: 0; top: 1.2rem; width: 0.2rem; height: 0.6rem" src="assets/icons/app/icon-nav-relatorios-3.svg" />
               </span>
             </span>
-            <span class="m-app-tab__label">Relatórios</span>
+            <span class="m-app-tab__label">RelatÃ³rios</span>
           </a>
           <a href="app-configuracoes.html" class="m-app-tab">
             <span class="m-app-tab__icon">
@@ -140,9 +140,9 @@
       </nav>
     </div>
 
-    <script src="js/api.js?v=42"></script>
+    <script src="js/api.js?v=43"></script>
     <script src="js/responsive-canvas.js?v=40"></script>
     <script src="js/station-modal.js?v=1"></script>
-    <script src="js/app-camera.js?v=41"></script>
+    <script src="js/app-camera.js?v=42"></script>
   </body>
 </html>

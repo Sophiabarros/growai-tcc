@@ -63,6 +63,23 @@
     applyCachedAvatar();
   }
 
+  // Sincroniza o perfil do usuário com o servidor (puxando avatar e outros
+  // dados atualizados) e atualiza a exibição. Chamado ao carregar as páginas
+  // do app (app-home, app-camera, etc) pra garantir que mudanças feitas em
+  // outro dispositivo (ex: foto de perfil) apareçam na página atual.
+  async function syncProfile() {
+    if (!isAuthenticated()) return;
+    try {
+      await request("/auth/me").then(function (user) {
+        updateCachedUser(user);
+        applyCachedAvatar();
+      });
+    } catch (e) {
+      // Se a sincronização falhar (rede, 401), continua com o cache.
+      // Não joga erro pra não quebrar o carregamento da página.
+    }
+  }
+
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -143,6 +160,9 @@
       var user = await request("/auth/me");
       updateCachedUser(user);
       return user;
+    },
+    async syncProfile() {
+      return syncProfile();
     },
     async updateProfile(formData) {
       var user = await request("/auth/me", { method: "PUT", body: formData });

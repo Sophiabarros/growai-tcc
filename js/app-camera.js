@@ -146,6 +146,8 @@
     setStatus(appStatus, "Carregando câmeras...", false);
     setStatus(mStatus, "Carregando câmeras...", false);
 
+    GrowAI.syncProfile();
+
     var stations;
     try {
       stations = await GrowAI.getStations();

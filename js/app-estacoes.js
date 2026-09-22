@@ -229,6 +229,7 @@
   async function load() {
     setStatus(appStatus, "Carregando estações...", false);
     setStatus(mStatus, "Carregando estações...", false);
+    GrowAI.syncProfile();
     try {
       stations = await GrowAI.getStations();
       render();

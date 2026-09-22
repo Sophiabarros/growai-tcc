@@ -213,6 +213,7 @@
 
   async function load() {
     renderWeekRange();
+    GrowAI.syncProfile();
     try {
       var reports = await GrowAI.getWeeklyReports();
       renderCharts(reports[0] || null);

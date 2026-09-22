@@ -382,7 +382,8 @@
       "Bash(python -m http.server 5500)",
       "Bash(grep -n -B6 \"width: 100%;\\\\s*$\" app-camera.css app-configuracoes.css app-estacoes.css app-relatorios.css app-home.css app-shell.css)",
       "Bash(python -c ' *)",
-      "Bash(python -c \"import cairosvg\")"
+      "Bash(python -c \"import cairosvg\")",
+      "Bash(curl -s -X POST https://growai-xi.vercel.app/api/contact -H 'Content-Type: application/json' -d '{\"nome\":\"Teste Claude\",\"email\":\"tracklink.system@gmail.com\",\"mensagem\":\"Mensagem de teste da API de contato - 2026-09-21\"}')"
     ]
   }
 }
