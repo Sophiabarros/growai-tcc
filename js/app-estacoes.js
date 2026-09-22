@@ -20,14 +20,8 @@
   var mPage = document.getElementById("mAppEstacoesPage");
 
   var newStationBtn = document.getElementById("newStationBtn");
-  var modal = document.getElementById("stationModal");
-  var modalTitle = document.getElementById("stationModalTitle");
-  var form = document.getElementById("stationForm");
-  var modalError = document.getElementById("stationModalError");
-  var modalSubmit = document.getElementById("stationModalSubmit");
 
   var stations = [];
-  var editingId = null;
 
   function escapeHtml(value) {
     var div = document.createElement("div");
@@ -247,49 +241,25 @@
     loadInsights();
   }
 
-  // ---- modal ----
+  // ---- modal (js/station-modal.js, compartilhado com a página Câmera) ----
   function openModal(mode, station) {
-    editingId = mode === "edit" ? station.id : null;
-    modalTitle.textContent = mode === "edit" ? "Editar Estação" : "Nova Estação";
-    modalError.hidden = true;
-    modal.classList.remove("is-closing");
-    form.reset();
-
-    if (mode === "edit") {
-      form.name.value = station.name;
-      form.plant.value = station.plant;
-      form.tag.value = station.tag || "";
-      form.water_interval_h.value = station.water_interval_h;
-      form.light_hours.value = station.light_hours;
-      form.humidity_target.value = station.humidity_target;
-      form.ph_target.value = station.ph_target;
-    }
-
-    // Nome/planta só fazem sentido ao criar uma estação nova.
-    form.name.disabled = mode === "edit";
-    form.plant.disabled = mode === "edit";
-    form.tag.disabled = mode === "edit";
-
-    modal.hidden = false;
-  }
-
-  function closeModal() {
-    modal.classList.add("is-closing");
-    window.setTimeout(function () {
-      modal.hidden = true;
-      modal.classList.remove("is-closing");
-    }, 180);
-    editingId = null;
+    StationModal.open(mode, station, function (saved, savedMode) {
+      if (savedMode === "edit") {
+        stations = stations.map(function (s) {
+          return s.id === saved.id ? saved : s;
+        });
+      } else {
+        stations = stations.concat([saved]);
+      }
+      render();
+      loadInsights();
+    });
   }
 
   document.addEventListener("click", async function (event) {
     var target = event.target.closest("[data-action]");
     if (!target) return;
 
-    if (target.dataset.action === "close-modal") {
-      closeModal();
-      return;
-    }
     if (target.dataset.action === "edit") {
       var card = target.closest("[data-station-id]");
       var station = card && findStation(card.dataset.stationId);
@@ -324,44 +294,6 @@
 
   newStationBtn.addEventListener("click", function () {
     openModal("create");
-  });
-
-  form.addEventListener("submit", async function (event) {
-    event.preventDefault();
-    modalError.hidden = true;
-    modalSubmit.disabled = true;
-    modalSubmit.textContent = "Salvando...";
-
-    var payload = {
-      name: form.name.value,
-      plant: form.plant.value,
-      tag: form.tag.value || null,
-      water_interval_h: Number(form.water_interval_h.value),
-      light_hours: Number(form.light_hours.value),
-      humidity_target: Number(form.humidity_target.value),
-      ph_target: Number(form.ph_target.value),
-    };
-
-    try {
-      if (editingId) {
-        var updated = await GrowAI.updateStation(editingId, payload);
-        stations = stations.map(function (s) {
-          return s.id === updated.id ? updated : s;
-        });
-      } else {
-        var created = await GrowAI.createStation(payload);
-        stations = stations.concat([created]);
-      }
-      render();
-      loadInsights();
-      closeModal();
-    } catch (err) {
-      modalError.textContent = err.message;
-      modalError.hidden = false;
-    } finally {
-      modalSubmit.disabled = false;
-      modalSubmit.textContent = "Salvar";
-    }
   });
 
   // ---- canvas scaling (recomputed on every render since content height

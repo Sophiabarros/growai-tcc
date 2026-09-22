@@ -54,7 +54,9 @@
 .app-camera__status {
   position: absolute;
   left: 10rem;
-  top: 29.6rem;
+  /* acima do grid de cards (que começa em 29.6rem), pra a mensagem não ficar
+     em cima do primeiro card / do card de adicionar */
+  top: 26.6rem;
   color: var(--app-info);
   font: 400 1.8rem/normal var(--font-body);
 }
@@ -68,17 +70,29 @@
 }
 
 /* ============ CAMERA CARDS ============ */
-.cam-card {
+/* Grid de exatamente 2 colunas (56.8rem cada, 10.4rem de vão = as posições
+   10rem / 77.2rem do design). Os cards de câmera (um por estação) entram em
+   ordem e o card "adicionar estação" vai por último: com 2 estações ele
+   quebra a linha e cai logo abaixo do card da esquerda; com 3, fica ao lado
+   do 3º, e assim por diante. */
+.cam-grid {
   position: absolute;
+  left: 10rem;
   top: 29.6rem;
+  display: grid;
+  grid-template-columns: repeat(2, 56.8rem);
+  column-gap: 10.4rem;
+  row-gap: 4rem;
+  align-items: start;
+}
+.cam-card {
+  position: relative;
   width: 56.8rem;
   height: 35rem;
   background: var(--app-card-bg);
   border-radius: 1.5rem;
   overflow: hidden;
 }
-.cam-card--1 { left: 10rem; }
-.cam-card--2 { left: 77.2rem; }
 
 .cam-card__photo {
   display: block;
@@ -174,8 +188,8 @@
 
 /* ============ ADD CAMERA PLACEHOLDER CARDS ============ */
 .cam-add-card {
-  position: absolute;
-  top: 68.6rem;
+  cursor: pointer;
+  padding: 0;
   width: 56.8rem;
   height: 32rem;
   background: #101614;
@@ -185,9 +199,8 @@
   align-items: center;
   justify-content: center;
 }
-.cam-add-card[hidden] { display: none; }
-.cam-add-card--1 { left: 10rem; }
-.cam-add-card--2 { left: 77.2rem; }
+.cam-add-card:hover { border-color: var(--app-muted); }
+.cam-add-card:focus-visible { outline: 2px solid var(--app-muted-alt); outline-offset: 2px; }
 .cam-add-card img {
   width: 9rem;
   height: 9rem;
@@ -265,7 +278,7 @@
     position: absolute;
     left: 2.5rem;
     right: 2.5rem;
-    top: 15.7rem;
+    top: 13.2rem;
     color: var(--app-info);
     font: 400 1.3rem/normal var(--font-body);
   }
@@ -278,15 +291,41 @@
     font: 400 1.2rem/normal var(--font-body);
   }
 
-  .cam-m-card {
+  /* Lista em fluxo (um card por estação + o de "adicionar"), em vez de
+     `top` fixo pra exatamente 2 cards: a altura de cada card varia com o
+     texto da análise, e mais estações empilham sem sobrepor. */
+  .cam-m-list {
     position: absolute;
+    left: 2.5rem;
+    top: 15.7rem;
+    width: 36.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+  .cam-m-card {
+    position: relative;
     width: 36.3rem;
     background: var(--app-card-bg);
     border-radius: 1.5rem;
     overflow: hidden;
   }
-  .cam-m-card--1 { left: 2.5rem; top: 15.7rem; }
-  .cam-m-card--2 { left: 2.3rem; top: 58.6rem; }
+  .cam-m-add-card {
+    width: 36.3rem;
+    height: 22rem;
+    padding: 0;
+    background: #101614;
+    border: 2px solid var(--app-card-bg);
+    border-radius: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .cam-m-add-card img {
+    width: 9rem;
+    height: 9rem;
+  }
 
   .cam-m-card__photo {
     display: block;

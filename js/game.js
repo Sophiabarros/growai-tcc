@@ -53,11 +53,30 @@
   if (video) {
     var body = document.body;
     var idleTimer = null;
+    var lastIdleReset = 0;
     var cinema = false;
+    var started = false;
+
+    // Desempenho: o arquivo original tinha 46 MB (1080p, 4 Mbps) e era
+    // baixado por inteiro (`preload="auto"`) junto com o resto da página, o
+    // que travava a Game. Agora são versões H.264 leves (720p ≈ 6,6 MB, 480p
+    // ≈ 3,2 MB) e o vídeo só começa a carregar depois do `load` da página.
+    // Com "economia de dados" ligada nem baixa: fica a foto de fundo.
+    var connection = navigator.connection || {};
+    var smallScreen = window.matchMedia && window.matchMedia("(max-width: 767px)").matches;
 
     var safePlay = function () {
+      if (!started) return;
       var p = video.play();
       if (p && p.catch) p.catch(function () {});
+    };
+
+    var startTrailer = function () {
+      if (started || connection.saveData) return;
+      started = true;
+      video.src = smallScreen ? video.getAttribute("data-src-mobile") : video.getAttribute("data-src-desktop");
+      safePlay();
+      resetIdle();
     };
 
     var syncSoundButton = function () {
@@ -132,7 +151,13 @@
 
     var onActivity = function (e) {
       if (!cinema) {
-        resetIdle();
+        // mousemove/wheel/scroll disparam dezenas de vezes por segundo: não
+        // precisa rearmar o timer de 20s a cada evento
+        var now = Date.now();
+        if (now - lastIdleReset > 400) {
+          lastIdleReset = now;
+          resetIdle();
+        }
         return;
       }
       if (e && e.target && soundBtn && soundBtn.contains(e.target)) return;
@@ -151,9 +176,19 @@
       window.addEventListener(ev, onActivity, { passive: true });
     });
     document.addEventListener("scroll", onActivity, { passive: true, capture: true });
-    document.addEventListener("visibilitychange", resetIdle);
+    // aba em segundo plano: pausa o vídeo (não gasta CPU/GPU/bateria à toa)
+    // e retoma quando ela volta
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        clearTimeout(idleTimer);
+        if (started) video.pause();
+      } else {
+        safePlay();
+        resetIdle();
+      }
+    });
 
-    safePlay();
-    resetIdle();
+    if (document.readyState === "complete") startTrailer();
+    else window.addEventListener("load", startTrailer, { once: true });
   }
 })();

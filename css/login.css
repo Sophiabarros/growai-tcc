@@ -393,7 +393,7 @@
     display: block;
     width: 25.7rem;
     height: 3.9rem;
-    margin: 5.7rem 0 0 5.1rem;
+    margin: 2.5rem 0 0 5.1rem;
     border: 0;
     border-radius: 1.5rem;
     background: var(--color-green-active);
@@ -413,16 +413,20 @@
   .m-login-form__signup .accent {
     color: var(--su-m-link-accent);
   }
+  /* Fica dentro do <form>, em fluxo, logo abaixo da mensagem de erro. Antes
+     era `position: absolute` (top: 70.2rem) e a mensagem "Credenciais
+     inválidas" — que ocupa o mesmo vão — ficava por cima dele. */
   .m-login-forgot {
-    position: absolute;
-    left: 4.7rem;
-    top: 70.2rem;
+    display: block;
     width: 27.1rem;
+    margin: 1.7rem 0 0 4.7rem;
     text-align: center;
     color: var(--su-m-link-rest);
     font: 400 1.2rem/normal var(--font-body);
     text-decoration: none;
-    z-index: 1;
+  }
+  .m-login-form__error:not([hidden]) + .m-login-forgot {
+    margin-top: 0.8rem;
   }
   .m-login-forgot .accent {
     color: var(--su-m-link-accent);

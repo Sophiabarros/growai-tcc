@@ -9,28 +9,18 @@
     wrapperSelectors: [".sobre-wrapper", ".m-sobre-wrapper"],
   });
 
-  // Em localhost/rede local (dev), usa o backend/ Express na porta 3000
-  // (mesmo host da página, não "localhost" fixo, pra funcionar também
-  // quando testado de outro dispositivo na rede, ex.: celular abrindo
-  // http://<ip-do-pc>:5500/sobre.html). No site publicado (Vercel), usa a
-  // serverless function em /api/contact.js, que roda no mesmo domínio e
-  // não depende do backend/ (que não está deployado lá).
-  function isLocalHost(hostname) {
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-      /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
-    );
-  }
-  var CONTACT_ENDPOINT = isLocalHost(window.location.hostname)
-    ? "http://" + window.location.hostname + ":3000/api/contact"
-    : "/api/contact";
+  // No site publicado (Vercel) chama a serverless function /api/contact do
+  // próprio domínio (api/contact.js). Fora dele (localhost, Live Server, IP
+  // da rede) não existe /api/contact — e o backend/ Express não roda mais na
+  // porta 3000 (ver js/api.js) —, então aponta pra função já publicada, que
+  // libera CORS pra essas origens. Sem isso o formulário só dava "Failed to
+  // fetch" no ambiente local.
+  var PRODUCTION_ORIGIN = "https://growai-xi.vercel.app";
+  var isProductionHost = /\.vercel\.app$/.test(window.location.hostname) || window.location.hostname === "growai-xi.vercel.app";
+  var CONTACT_ENDPOINT = (isProductionHost ? "" : PRODUCTION_ORIGIN) + "/api/contact";
 
   // Wires the "Contate-nos" form (desktop and mobile) to POST /api/contact,
-  // which sends the message through Resend (backend/controllers/contactController.js
-  // locally, or api/contact.js on the deployed Vercel site).
+  // which sends the message through Resend (api/contact.js).
   function wireContactForm(formId) {
     var form = document.getElementById(formId);
     if (!form) return;
@@ -65,7 +55,14 @@
         showToast("Mensagem enviada! Retornaremos em breve.");
         form.reset();
       } catch (err) {
-        showToast(err.message || "Não foi possível enviar sua mensagem.", "error");
+        // "Failed to fetch" / "Load failed" = sem rede ou bloqueio de CORS
+        var isNetworkError = err instanceof TypeError;
+        showToast(
+          isNetworkError
+            ? "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente."
+            : err.message || "Não foi possível enviar sua mensagem.",
+          "error"
+        );
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = submitLabel;

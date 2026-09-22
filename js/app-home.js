@@ -323,6 +323,21 @@
     var mPage = document.getElementById("mAppHomePage");
     if (!mSensors || !mAlertsTitle || !mAlerts || !mPage) return;
 
+    // Os cards têm altura própria (o "saudável" é bem mais baixo que o com
+    // aviso), então o 2º card é empilhado logo abaixo do 1º em vez de ficar
+    // num `top` fixo do CSS.
+    var CARDS_TOP_REM = 15.7;
+    var CARDS_GAP_REM = 2.3;
+    var nextCardTopRem = CARDS_TOP_REM;
+    [
+      document.getElementById("mAppStationCard1"),
+      document.getElementById("mAppStationCard2"),
+    ].forEach(function (card) {
+      if (!card || card.hidden) return;
+      card.style.top = nextCardTopRem + "rem";
+      nextCardTopRem += card.offsetHeight / 10 + CARDS_GAP_REM;
+    });
+
     var bottomPx = 0;
     [
       document.getElementById("mAppHomeStatus"),

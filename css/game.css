@@ -116,12 +116,6 @@
   height: 5.2rem;
 }
 
-.game .theme-toggle {
-  position: absolute;
-  left: 3.8rem;
-  top: 94.317rem;
-}
-
 /*
   MOBILE LAYOUT — "Games mobile" (353:321), 375px design width, same
   convention as css/responsive.css.

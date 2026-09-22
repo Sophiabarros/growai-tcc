@@ -13,9 +13,9 @@
     <link rel="stylesheet" href="css/reset.css?v=36" />
     <link rel="stylesheet" href="css/variables.css?v=36" />
     <link rel="stylesheet" href="css/global.css?v=36" />
-    <link rel="stylesheet" href="css/header.css?v=36" />
-    <link rel="stylesheet" href="css/footer.css?v=36" />
-    <link rel="stylesheet" href="css/game.css?v=36" />
+    <link rel="stylesheet" href="css/header.css?v=44" />
+    <link rel="stylesheet" href="css/footer.css?v=40" />
+    <link rel="stylesheet" href="css/game.css?v=38" />
     <link rel="stylesheet" href="css/animations.css?v=36" />
     <link rel="stylesheet" href="css/responsive.css?v=36" />
   </head>
@@ -26,20 +26,26 @@
     <!-- ===== TRAILER DE FUNDO =====
          Toca mudo e escurecido atrás da página. Depois de 20s sem interação o
          conteúdo dissolve e o trailer passa sozinho do começo (com som, se o
-         navegador deixar); quando termina, o conteúdo volta. Ver js/game.js. -->
+         navegador deixar); quando termina, o conteúdo volta. Ver js/game.js.
+         Sem `src` aqui de propósito: o js/game.js escolhe o arquivo (720p no
+         desktop, 480p no celular / economia de dados) e só começa a baixar
+         depois que a página terminou de carregar, pra o vídeo não competir
+         com as imagens e as fontes. `preload="metadata"` evita baixar o
+         arquivo inteiro de cara. Os arquivos são H.264 com `faststart`
+         (começam a tocar sem esperar o download todo). -->
     <video
       class="game-trailer"
       id="gameTrailer"
+      data-src-desktop="assets/video/trailer-720p.mp4"
+      data-src-mobile="assets/video/trailer-480p.mp4"
       muted
-      autoplay
       playsinline
-      preload="auto"
+      preload="metadata"
       disablepictureinpicture
+      disableremoteplayback
       aria-hidden="true"
       tabindex="-1"
-    >
-      <source src="assets/video/trailer.mp4" type="video/mp4" />
-    </video>
+    ></video>
     <div class="game-trailer__shade" aria-hidden="true"></div>
     <button type="button" class="game-trailer__sound" id="gameTrailerSound" aria-label="Ativar o som do trailer" hidden>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -69,6 +75,7 @@
             </div>
           </a>
           <button type="button" class="header__menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false">&#9776;</button>
+          <button type="button" aria-label="Alternar tema claro/escuro" class="theme-toggle" id="themeToggle"></button>
           <nav class="header__nav" id="headerNav">
             <a href="sistema.html" class="header__nav-link header__nav-link--sistema">Sistema</a>
             <a href="investimento.html" class="header__nav-link header__nav-link--investimento">Investimento</a>
@@ -95,10 +102,6 @@
           <img alt="" src="assets/icons/icon-game-play.svg" />
         </button>
 
-        <button type="button" aria-label="Alternar tema claro/escuro" class="theme-toggle" id="themeToggle">
-          <img class="icon-dark" alt="" src="assets/icons/icon-theme-toggle.svg" />
-          <img class="icon-light" alt="" src="assets/icons/icon-theme-toggle-light.svg" />
-        </button>
       </div>
     </div>
 
@@ -151,7 +154,7 @@
     </div>
 
     <script src="js/theme.js?v=36"></script>
-    <script src="js/game.js?v=37"></script>
+    <script src="js/game.js?v=38"></script>
     <script src="js/menu.js?v=36"></script>
     <script src="js/navigation.js?v=36"></script>
     <script src="js/page-loader.js?v=36"></script>

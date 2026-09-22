@@ -1,7 +1,8 @@
 /*
   There is no traditional footer in this design - the bottom of the
-  page ("Frame 713" in Figma) only has the theme toggle (bottom-left)
-  and the scroll-to-top button (bottom-right).
+  page ("Frame 713" in Figma) only has the scroll-to-top button
+  (bottom-right). The theme toggle moved into the header (css/header.css);
+  only login/signup, which have no desktop header, still keep it here.
 */
 .utility-bar {
   position: absolute;
@@ -11,7 +12,10 @@
   width: 135.6042rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* o botão de tema agora mora no header; aqui sobra só o "voltar ao topo"
+     (que continua na ponta direita). Login/signup ainda usam a barra com os
+     dois botões, mas com `width: auto`, então não são afetados. */
+  justify-content: flex-end;
   z-index: 20;
 }
 .theme-toggle,

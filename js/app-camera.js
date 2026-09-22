@@ -93,27 +93,49 @@
     );
   }
 
-  function renderSlot(station, photo, deskEl, deskAddEl, mEl) {
-    if (!station) {
-      deskEl.hidden = true;
-      if (deskAddEl) deskAddEl.hidden = true;
-      mEl.hidden = true;
-      return;
-    }
-    deskEl.hidden = false;
-    if (deskAddEl) deskAddEl.hidden = false;
-    mEl.hidden = false;
-    deskEl.innerHTML = cardHtml(station, photo, "assets/icons/app/icon-app-cam-check.svg", "assets/icons/app/icon-app-cam-aviso.svg", true);
-    mEl.innerHTML = cardHtml(station, photo, "assets/icons/app/icon-app-cam-check.svg", "assets/icons/app/icon-app-cam-aviso.svg", false);
+  var CHECK_ICON = "assets/icons/app/icon-app-cam-check.svg";
+  var AVISO_ICON = "assets/icons/app/icon-app-cam-aviso.svg";
+  var ADD_STAR_ICON = "assets/icons/app/icon-app-star-sparkle.svg";
+
+  var grid = document.getElementById("camGrid");
+  var mList = document.getElementById("camMList");
+
+  // Card "adicionar estação": sempre o último do grid/lista. Abre o mesmo
+  // modal de nova estação da página Estações (js/station-modal.js).
+  var ADD_CARD_HTML =
+    '<button type="button" class="cam-add-card" data-action="add-station" aria-label="Adicionar estação">' +
+    '<img alt="" src="' + ADD_STAR_ICON + '" /></button>';
+  var M_ADD_CARD_HTML =
+    '<button type="button" class="cam-m-add-card" data-action="add-station" aria-label="Adicionar estação">' +
+    '<img alt="" src="' + ADD_STAR_ICON + '" /></button>';
+
+  // Um card por estação (desktop e mobile), mais o card de adicionar.
+  function render(stations, photos) {
+    grid.innerHTML =
+      stations
+        .map(function (station, i) {
+          return '<div class="cam-card">' + cardHtml(station, photos[i], CHECK_ICON, AVISO_ICON, true) + "</div>";
+        })
+        .join("") + ADD_CARD_HTML;
+    mList.innerHTML =
+      stations
+        .map(function (station, i) {
+          return '<div class="cam-m-card">' + cardHtml(station, photos[i], CHECK_ICON, AVISO_ICON, false) + "</div>";
+        })
+        .join("") + M_ADD_CARD_HTML;
   }
 
-  // The mobile tab bar's `top` assumes exactly 2 camera cards; with fewer
-  // stations (or none) that leaves a big gap, so it's repositioned right
-  // after whatever actually ended up visible.
+  function clearCards() {
+    grid.innerHTML = "";
+    mList.innerHTML = "";
+  }
+
+  // A altura da lista mobile varia com o número de estações e com o texto
+  // de cada análise, então a altura da página é medida depois de renderizar.
   function updateMobileTabbar() {
     positionMobileTabbar({
       mobilePageId: "mAppCameraPage",
-      contentSelectors: ["#mAppCameraStatus", "#camMCard1", "#camMCard2"],
+      contentSelectors: ["#mAppCameraStatus", "#camMList"],
     });
     applyScale();
   }
@@ -126,8 +148,9 @@
 
     var stations;
     try {
-      stations = (await GrowAI.getStations()).slice(0, 2);
+      stations = await GrowAI.getStations();
     } catch (err) {
+      clearCards();
       setStatus(appStatus, err.message, true);
       setStatus(mStatus, err.message, true);
       updateMobileTabbar();
@@ -135,8 +158,10 @@
     }
 
     if (stations.length === 0) {
-      setStatus(appStatus, "Você ainda não tem estações. Crie uma na tela Estações.", false);
-      setStatus(mStatus, "Você ainda não tem estações. Crie uma na tela Estações.", false);
+      var emptyMsg = "Você ainda não tem estações. Crie a primeira no card abaixo!";
+      setStatus(appStatus, emptyMsg, false);
+      setStatus(mStatus, emptyMsg, false);
+      render([], []);
       updateMobileTabbar();
       return;
     }
@@ -151,23 +176,16 @@
       })
     );
 
-    renderSlot(
-      stations[0],
-      photos[0],
-      document.getElementById("camCard1"),
-      document.getElementById("camAddCard1"),
-      document.getElementById("camMCard1")
-    );
-    renderSlot(
-      stations[1],
-      photos[1],
-      document.getElementById("camCard2"),
-      document.getElementById("camAddCard2"),
-      document.getElementById("camMCard2")
-    );
-
+    render(stations, photos);
     updateMobileTabbar();
   }
+
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest('[data-action="add-station"]')) return;
+    StationModal.open("create", null, function () {
+      return load();
+    });
+  });
 
   function wireRefresh(btnId) {
     var btn = document.getElementById(btnId);

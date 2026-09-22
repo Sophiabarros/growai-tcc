@@ -288,25 +288,29 @@
   background: var(--color-teal);
 }
 .why-card--accent .why-card__image { background: var(--color-green-dark); }
+/* Título e descrição em fluxo normal (um logo abaixo do outro), em vez de
+   cada um num `top` fixo: com o `top` fixo da descrição, os cards de título
+   de 1 linha (Controle Inteligente, Cultivo Vertical) ficavam com um vão
+   enorme entre título e texto, e os de 2 linhas não — desalinhado. A margem
+   de cima do título (21.9rem) reproduz a posição de antes; ela também
+   funciona porque `.why-card__content` é um bloco posicionado (sem colapso
+   de margem). Alinhado à esquerda (era `justify`, que abria buracos). */
 .why-card__title {
-  position: absolute;
-  left: 0;
-  top: 21.9rem;
+  margin-top: 21.9rem;
   width: 23.4rem;
   color: var(--dm-text);
   font: 700 2rem/normal var(--font-body);
   letter-spacing: 1px;
-  text-align: justify;
+  text-align: left;
+  text-wrap: balance;
 }
 .why-card__desc {
-  position: absolute;
-  left: 0;
-  top: 28rem;
+  margin-top: 1.4rem;
   width: 23.4rem;
   color: var(--dm-text);
   font: 400 2rem/normal var(--font-body);
   letter-spacing: 1px;
-  text-align: justify;
+  text-align: left;
 }
 
 /* ============ SECTION 3: HOW IT WORKS ============ */

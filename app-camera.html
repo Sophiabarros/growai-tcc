@@ -15,7 +15,8 @@
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
     <link rel="stylesheet" href="css/app-shell.css?v=42" />
-    <link rel="stylesheet" href="css/app-camera.css?v=40" />
+    <link rel="stylesheet" href="css/app-camera.css?v=44" />
+    <link rel="stylesheet" href="css/station-modal.css?v=1" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -53,16 +54,10 @@
 
         <!-- ===== CAMERA CARDS (rendered by js/app-camera.js) ===== -->
         <p class="app-camera__status" id="appCameraStatus" hidden></p>
-        <div class="cam-card cam-card--1" id="camCard1" hidden></div>
-        <div class="cam-card cam-card--2" id="camCard2" hidden></div>
-
-        <!-- ===== ADD CAMERA PLACEHOLDERS ===== -->
-        <button type="button" class="cam-add-card cam-add-card--1" id="camAddCard1" aria-label="Adicionar câmera à Estação 1" hidden>
-          <img alt="" src="assets/icons/app/icon-app-star-sparkle.svg" />
-        </button>
-        <button type="button" class="cam-add-card cam-add-card--2" id="camAddCard2" aria-label="Adicionar câmera à Estação 2" hidden>
-          <img alt="" src="assets/icons/app/icon-app-star-sparkle.svg" />
-        </button>
+        <!-- Grid de 2 colunas: cards de câmera (um por estação) e, no fim, o
+             card "adicionar estação". O 3º card quebra a linha e fica logo
+             abaixo do da esquerda. Tudo é renderizado por js/app-camera.js. -->
+        <div class="cam-grid" id="camGrid"></div>
       </div>
     </div>
 
@@ -90,8 +85,7 @@
         </button>
 
         <p class="m-app-camera__status" id="mAppCameraStatus" hidden></p>
-        <div class="cam-m-card cam-m-card--1" id="camMCard1" hidden></div>
-        <div class="cam-m-card cam-m-card--2" id="camMCard2" hidden></div>
+        <div class="cam-m-list" id="camMList"></div>
 
       </div>
 
@@ -148,6 +142,7 @@
 
     <script src="js/api.js?v=42"></script>
     <script src="js/responsive-canvas.js?v=40"></script>
-    <script src="js/app-camera.js?v=39"></script>
+    <script src="js/station-modal.js?v=1"></script>
+    <script src="js/app-camera.js?v=41"></script>
   </body>
 </html>

@@ -387,9 +387,16 @@
 .app-sensors__updated {
   position: absolute;
   z-index: 1;
-  left: 84.6rem;
+  /* Mesma borda direita de antes (99.6rem), mas com folga: o texto + a
+     bolinha somavam ~15.4rem e estouravam os 15rem antigos, jogando a
+     bolinha pra linha de baixo. */
+  left: 74.6rem;
   top: 48.6rem;
-  width: 15rem;
+  width: 25rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
   text-align: right;
   color: var(--app-muted-alt);
   font: 400 1.1rem/normal var(--font-body);
@@ -398,10 +405,10 @@
   display: inline-block;
   width: 0.6rem;
   height: 0.6rem;
+  flex-shrink: 0;
   margin-left: 0.6rem;
   border-radius: 50%;
   background: var(--color-green-normal);
-  vertical-align: middle;
 }
 .app-sensors {
   position: absolute;
@@ -810,7 +817,10 @@
     position: absolute;
     left: 2.5rem;
     width: 36.3rem;
-    height: 14.5rem;
+    /* Altura acompanha o conteúdo: o card "saudável" (nome + stats + botão)
+       não deixa mais um vão enorme entre as stats e o botão. Só o card com
+       aviso mantém os 14.5rem do design (ver regra com :has() abaixo). */
+    height: auto;
     background: var(--app-card-bg);
     border-radius: 1.5rem;
     padding: 1.3rem 1.4rem;
@@ -818,6 +828,7 @@
     display: flex;
     flex-direction: column;
   }
+  .m-app-station-card:has(.m-app-station-card__warning) { height: 14.5rem; }
   .m-app-station-card[hidden] { display: none; }
   .m-app-station-card--camomila { top: 15.7rem; }
   .m-app-station-card--hortela { top: 32.5rem; }
@@ -843,6 +854,11 @@
   .m-app-station-card__stat img {
     width: 1.5rem;
     height: 1.5rem;
+    flex-shrink: 0;
+    /* Os SVGs exportados do Figma trazem preserveAspectRatio="none"; sem
+       object-fit o termômetro (14.5x34) e a gota eram esticados num quadrado
+       de 1.5rem. */
+    object-fit: contain;
   }
   .m-app-station-card__warning {
     margin-top: 1.2rem;
@@ -865,9 +881,12 @@
   .m-app-home__status--error {
     color: var(--color-danger);
   }
+  .m-app-station-card:has(.m-app-station-card__warning) .m-app-station-card__btn {
+    margin-top: auto;
+  }
   .m-app-station-card__btn {
     display: block;
-    margin-top: auto;
+    margin-top: 1.4rem;
     width: 100%;
     height: 2.2rem;
     border: 0;
@@ -948,6 +967,7 @@
     width: 1.6rem;
     height: 1.6rem;
     flex-shrink: 0;
+    object-fit: contain;
   }
   .m-app-alerts__empty {
     margin: 0;

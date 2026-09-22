@@ -1,5 +1,17 @@
 const RESEND_API_URL = "https://api.resend.com/emails";
 
+// Mantido igual a api/contact.js (função da Vercel que serve o site).
+const DEFAULT_FROM = "TrackLink <onboarding@resend.dev>";
+const DEFAULT_TO = "tracklink.system@gmail.com";
+const MAX_NOME = 100;
+const MAX_EMAIL = 254;
+const MAX_MENSAGEM = 5000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function clean(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -10,10 +22,21 @@ function escapeHtml(str) {
 }
 
 async function sendContactEmail(req, res) {
-  const { nome, email, mensagem } = req.body || {};
+  const body = req.body || {};
+  const nome = clean(body.nome);
+  const email = clean(body.email);
+  const mensagem = clean(body.mensagem);
 
   if (!nome || !email || !mensagem) {
     return res.status(400).json({ error: "Preencha nome, email e mensagem." });
+  }
+
+  if (!EMAIL_RE.test(email) || email.length > MAX_EMAIL) {
+    return res.status(400).json({ error: "Informe um e-mail válido." });
+  }
+
+  if (nome.length > MAX_NOME || mensagem.length > MAX_MENSAGEM) {
+    return res.status(400).json({ error: "Nome ou mensagem muito longos." });
   }
 
   if (!process.env.RESEND_API_KEY) {
@@ -21,7 +44,8 @@ async function sendContactEmail(req, res) {
     return res.status(500).json({ error: "Serviço de e-mail não configurado." });
   }
 
-  const to = process.env.CONTACT_TO_EMAIL || "tracklink.system@gmail.com";
+  const to = process.env.CONTACT_TO_EMAIL || DEFAULT_TO;
+  const from = process.env.CONTACT_FROM_EMAIL || DEFAULT_FROM;
 
   let resendRes;
   try {
@@ -32,10 +56,10 @@ async function sendContactEmail(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "TrackLink <onboarding@resend.dev>",
+        from,
         to: [to],
         reply_to: email,
-        subject: `Novo contato pelo site - ${nome}`,
+        subject: `Novo contato pelo site - ${nome.replace(/[\r\n]+/g, " ")}`,
         html:
           `<p><strong>Nome:</strong> ${escapeHtml(nome)}</p>` +
           `<p><strong>Email:</strong> ${escapeHtml(email)}</p>` +
