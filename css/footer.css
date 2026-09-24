@@ -5,17 +5,17 @@
   only login/signup, which have no desktop header, still keep it here.
 */
 .utility-bar {
+  /* So ancora o botao no DOM: o "voltar ao topo" e position: fixed (ver
+     .scroll-top abaixo). Sem transform aqui, senao o fixed viraria relativo a
+     esta barra em vez da janela. O `top` de cada pagina (css/<pagina>.css)
+     e a altura mantem a extensao vertical da pagina como antes. */
   position: absolute;
-  left: 50%;
+  left: 0;
   top: 618rem;
-  transform: translateX(-50%);
-  width: 135.6042rem;
+  width: auto;
+  height: 5.9547rem;
   display: flex;
   align-items: center;
-  /* o botão de tema agora mora no header; aqui sobra só o "voltar ao topo"
-     (que continua na ponta direita). Login/signup ainda usam a barra com os
-     dois botões, mas com `width: auto`, então não são afetados. */
-  justify-content: flex-end;
   z-index: 20;
 }
 .theme-toggle,
@@ -58,8 +58,44 @@
   display: block;
 }
 .scroll-top {
+  /* fixo no canto inferior direito da janela, acompanha a rolagem */
+  position: fixed;
+  right: 2.4rem;
+  bottom: 2.4rem;
+  z-index: 50;
   width: 6.1042rem;
   height: 5.9547rem;
+}
+/* Aparece/some com transicao (fade + sobe/desce + escala). O seletor com
+   `button.` e as propriedades individuais translate/scale existem porque o
+   css/animations.css (carregado depois) redefine `transition` do .scroll-top e
+   usa transform no :active; assim a nossa transicao nao e sobrescrita. A classe
+   .is-visible vem de js/navigation.js (depois de rolar 300px). */
+button.scroll-top {
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 1.6rem;
+  scale: 0.8;
+  transition: opacity 0.3s ease, translate 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+    scale 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.35s,
+    transform 0.15s ease;
+}
+button.scroll-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  scale: 1;
+  transition-delay: 0s;
+}
+button.scroll-top.is-visible:hover {
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  button.scroll-top {
+    translate: none;
+    scale: none;
+    transition: opacity 0.01s, visibility 0s;
+  }
 }
 .scroll-top img {
   display: block;

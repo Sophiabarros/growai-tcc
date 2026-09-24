@@ -189,6 +189,7 @@
 }
 
 .login .utility-bar {
+  height: auto;
   left: 8.7rem;
   top: 92.8rem;
   width: auto;
@@ -432,13 +433,4 @@
     color: var(--su-m-link-accent);
   }
 
-  .m-login .m-utility-bar {
-    position: absolute;
-    left: 3rem;
-    top: 41.5rem;
-    margin-top: 0;
-    padding: 0;
-    justify-content: flex-start;
-    z-index: 2;
-  }
 }

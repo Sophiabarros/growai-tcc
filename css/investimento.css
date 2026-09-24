@@ -375,15 +375,4 @@
     color: var(--dm-price);
   }
 
-    .m-investimento .m-utility-bar {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 1.6rem;   /* era top: 232.95rem — agora cola no fim da página */
-    top: auto;
-    width: auto;
-    margin-top: 0;
-    padding: 0 2.5rem;
-    z-index: 1;
-  }
 }

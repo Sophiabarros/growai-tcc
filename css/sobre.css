@@ -592,9 +592,4 @@
     text-decoration: underline;
   }
 
-  .m-sobre .m-utility-bar {
-    position: relative;
-    z-index: 1;
-    margin-top: 2.6rem;
-  }
 }

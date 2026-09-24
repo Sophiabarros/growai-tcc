@@ -113,7 +113,7 @@
   }
   .m-header__logo {
     position: absolute;
-    left: 0;
+    left: 3.6rem;
     top: 0.6rem;
     width: 4.3rem;
     height: 4.3rem;
@@ -145,36 +145,165 @@
     border: 0;
     cursor: pointer;
     padding: 0.6rem;
+    -webkit-tap-highlight-color: transparent;
   }
   .m-header__menu-toggle img {
     display: block;
     width: 100%;
     height: 100%;
+    transition: transform 0.3s ease, opacity 0.2s ease;
+  }
+  .m-header__menu-toggle[aria-expanded="true"] img {
+    transform: scale(0.88);
+    opacity: 0.75;
+  }
+
+  /* Botao de tema na extremidade esquerda do header (o logo andou 3.6rem pra
+     direita pra dar espaco). Mesma tecnica do desktop (css/header.css): icone
+     do sol em mascara pintada com currentColor, traco grosso, mesma cor verde
+     dos links. Centro vertical ~ o do logo e do hamburguer. */
+  .m-header .m-theme-toggle {
+    position: absolute;
+    left: 0;
+    top: 1.5rem;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-green-normal);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-header .m-theme-toggle::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: currentColor;
+    -webkit-mask: url("../assets/icons/icon-theme-toggle-header.svg") center / contain no-repeat;
+    mask: url("../assets/icons/icon-theme-toggle-header.svg") center / contain no-repeat;
+  }
+  .m-game .m-header .m-theme-toggle {
+    color: #e7f2eb;
+  }
+
+  /* Menu aberto: painel arredondado que desce do header, com fundo escurecido
+     atras (scrim) e itens que entram em cascata. Usa visibility/opacity em vez
+     de display:none pra poder animar; .is-open e .is-menu-open vem de
+     js/menu.js. */
+  .m-header::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(4, 12, 10, 0.55);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  }
+  .m-header.is-menu-open::after {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
   }
   .m-header__nav {
     position: absolute;
     left: 0;
-    top: 100%;
+    top: calc(100% + 0.2rem);
     width: 100%;
+    display: flex;
     flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.8rem;
     background: var(--dm-surface);
-    border-bottom: 1px solid var(--dm-border);
-    padding: 0.8rem 1.8rem 1.6rem;
-    display: none;
+    border: 1px solid var(--dm-border);
+    border-radius: 1.6rem;
+    box-shadow: 0 1.6rem 3.2rem rgba(0, 0, 0, 0.35);
+    transform-origin: top right;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-0.8rem) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 0.3s;
     z-index: 30;
   }
   .m-header__nav.is-open {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    pointer-events: auto;
+    transition-delay: 0s;
   }
   .m-header__nav a {
-    display: block;
-    padding: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 4.4rem;
+    padding: 0 1.4rem;
+    border-radius: 1.1rem;
     color: var(--color-green-normal);
-    font: 700 1.4rem var(--font-body);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font: 700 1.5rem var(--font-body);
+    letter-spacing: 0.02rem;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0;
+    transform: translateY(-0.5rem);
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.3s ease,
+      transform 0.3s ease;
+  }
+  .m-header__nav a::after {
+    content: "";
+    flex: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-right: 0.3rem;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+    transform: rotate(45deg);
+    opacity: 0.5;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+  .m-header__nav.is-open a {
+    opacity: 1;
+    transform: none;
+  }
+  .m-header__nav.is-open a:nth-child(1) { transition-delay: 0s, 0s, 0.04s, 0.04s; }
+  .m-header__nav.is-open a:nth-child(2) { transition-delay: 0s, 0s, 0.08s, 0.08s; }
+  .m-header__nav.is-open a:nth-child(3) { transition-delay: 0s, 0s, 0.12s, 0.12s; }
+  .m-header__nav.is-open a:nth-child(4) { transition-delay: 0s, 0s, 0.16s, 0.16s; }
+  .m-header__nav.is-open a:nth-child(5) { transition-delay: 0s, 0s, 0.2s, 0.2s; }
+  .m-header__nav a:hover,
+  .m-header__nav a:focus-visible {
+    background: rgba(93, 165, 120, 0.14);
+    outline: none;
+  }
+  .m-header__nav a:active {
+    background: rgba(93, 165, 120, 0.24);
+  }
+  .m-header__nav a:hover::after,
+  .m-header__nav a:focus-visible::after {
+    transform: translateX(0.2rem) rotate(45deg);
+    opacity: 1;
   }
   .m-header__nav a.is-active {
     color: #88d3cf;
+    background: rgba(136, 211, 207, 0.14);
+  }
+  .m-header__nav a.is-active::after {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .m-header::after,
+    .m-header__nav,
+    .m-header__nav a,
+    .m-header__nav a::after,
+    .m-header__menu-toggle img {
+      transition: none;
+    }
   }
 
   .m-hero__text {
@@ -756,51 +885,46 @@
     white-space: nowrap;
   }
 
-  .m-utility-bar {
-    position: relative;
-    margin-top: 5rem;
-    padding: 0 2.5rem 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .m-theme-toggle,
+  /* "Voltar ao topo": fixo no canto inferior direito, acompanha a rolagem.
+     Fica escondido no topo da pagina e aparece depois de rolar um pouco
+     (a classe .is-visible vem de js/navigation.js). 3rem = um pouco menor
+     que os 3.4rem de antes. */
   .m-scroll-top {
-    background: transparent;
-    border: 0;
-    cursor: pointer;
+    position: fixed;
+    right: 1.6rem;
+    bottom: 1.6rem;
+    z-index: 50;
+    width: 3rem;
+    height: 3rem;
     padding: 0;
-    width: 3.4rem;
-    height: 3.4rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    translate: 0 1.4rem;
+    scale: 0.8;
+    transition: opacity 0.3s ease, translate 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+      scale 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.35s;
   }
-  .m-theme-toggle img,
+  .m-scroll-top.is-visible {
+    opacity: 1;
+    visibility: visible;
+    translate: 0 0;
+    scale: 1;
+    transition-delay: 0s;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .m-scroll-top {
+      translate: none;
+      scale: none;
+      transition: opacity 0.01s, visibility 0s;
+    }
+  }
   .m-scroll-top img {
     display: block;
     width: 100%;
     height: 100%;
-  }
-  .m-theme-toggle .icon-light {
-    display: none;
-  }
-  .mobile-canvas[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-sistema[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-investimento[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-bibliografia[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-sobre[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-game[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-signup[data-theme="light"] .m-theme-toggle .icon-dark,
-  .m-login[data-theme="light"] .m-theme-toggle .icon-dark {
-    display: none;
-  }
-  .mobile-canvas[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-sistema[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-investimento[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-bibliografia[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-sobre[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-game[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-signup[data-theme="light"] .m-theme-toggle .icon-light,
-  .m-login[data-theme="light"] .m-theme-toggle .icon-light {
-    display: block;
   }
   .m-scroll-top .icon-light {
     display: none;

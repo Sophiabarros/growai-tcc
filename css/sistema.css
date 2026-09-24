@@ -419,13 +419,18 @@
     overflow: hidden;
     pointer-events: none;
   }
+  /* era um recorte "no chute" exportado do Figma (height: 567% + top: -213%),
+     que corta/distorce conforme a proporcao da imagem. object-fit: cover
+     preenche a faixa sem distorcer, igual ao desktop (.sistema-manual__photo). */
   .m-sistema-manual__photo img {
     position: absolute;
-    left: 0.12%;
-    top: -213.58%;
+    display: block;
+    inset: 0;
     width: 100%;
-    height: 567.14%;
+    height: 100%;
     max-width: none;
+    object-fit: cover;
+    object-position: center;
   }
   .m-sistema-manual__caption {
     position: absolute;
@@ -513,16 +518,4 @@
     text-decoration: none;
   }
 
-  .m-sistema .m-utility-bar {
-    position: absolute;
-    left: 2.5rem;
-    top: 91.7rem;
-    margin-top: 0;
-    padding: 0;
-    justify-content: flex-start;
-  }
-  .m-sistema .m-theme-toggle {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
 }

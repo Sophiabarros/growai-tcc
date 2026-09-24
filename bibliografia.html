@@ -14,10 +14,10 @@
     <link rel="stylesheet" href="css/variables.css?v=35" />
     <link rel="stylesheet" href="css/global.css?v=35" />
     <link rel="stylesheet" href="css/header.css?v=44" />
-    <link rel="stylesheet" href="css/footer.css?v=40" />
-    <link rel="stylesheet" href="css/bibliografia.css?v=35" />
+    <link rel="stylesheet" href="css/footer.css?v=42" />
+    <link rel="stylesheet" href="css/bibliografia.css?v=36" />
     <link rel="stylesheet" href="css/animations.css?v=35" />
-    <link rel="stylesheet" href="css/responsive.css?v=35" />
+    <link rel="stylesheet" href="css/responsive.css?v=37" />
   </head>
   <body>
     <div class="page-loader" id="pageLoader" aria-hidden="true">
@@ -140,6 +140,7 @@
           <button type="button" class="m-header__menu-toggle" id="mMenuToggle" aria-label="Abrir menu" aria-expanded="false">
             <img alt="" src="assets/icons/icon-hamburger-dark.svg" />
           </button>
+          <button type="button" aria-label="Alternar tema claro/escuro" class="m-theme-toggle" id="mThemeToggle"></button>
           <nav class="m-header__nav" id="mHeaderNav">
             <a href="sistema.html">Sistema</a>
             <a href="investimento.html">Investimento</a>
@@ -203,24 +204,18 @@
           </p>
         </div>
 
-        <div class="m-utility-bar">
-          <button type="button" aria-label="Alternar tema claro/escuro" class="m-theme-toggle" id="mThemeToggle">
-            <img class="icon-dark" alt="" src="assets/icons/icon-theme-toggle.svg" />
-            <img class="icon-light" alt="" src="assets/icons/icon-theme-toggle-light.svg" />
+        <button type="button" aria-label="Voltar ao topo" class="m-scroll-top" id="mScrollTop">
+          <img class="icon-dark" alt="" src="assets/icons/icon-scroll-top.svg" />
+          <img class="icon-light" alt="" src="assets/icons/icon-scroll-top-light.svg" />
           </button>
-          <button type="button" aria-label="Voltar ao topo" class="m-scroll-top" id="mScrollTop">
-            <img class="icon-dark" alt="" src="assets/icons/icon-scroll-top.svg" />
-            <img class="icon-light" alt="" src="assets/icons/icon-scroll-top-light.svg" />
-          </button>
-        </div>
       </div>
     </div>
 
     <script src="js/theme.js?v=35"></script>
     <script src="js/bibliografia.js?v=35"></script>
     <script src="js/bib-carousel.js?v=35"></script>
-    <script src="js/menu.js?v=35"></script>
-    <script src="js/navigation.js?v=35"></script>
+    <script src="js/menu.js?v=36"></script>
+    <script src="js/navigation.js?v=36"></script>
     <script src="js/page-loader.js?v=35"></script>
   </body>
 </html>
