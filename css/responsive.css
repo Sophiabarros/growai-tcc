@@ -113,7 +113,7 @@
   }
   .m-header__logo {
     position: absolute;
-    left: 3.6rem;
+    left: 0;
     top: 0.6rem;
     width: 4.3rem;
     height: 4.3rem;
@@ -137,7 +137,8 @@
   .m-header__logo img.fill { position: absolute; inset: 0; width: 100%; height: 100%; }
   .m-header__menu-toggle {
     position: absolute;
-    right: 0;
+    /* recuado pra abrir espaco pro botao de tema, que fica na ponta direita */
+    right: 3.2rem;
     top: 0.6rem;
     width: 3.8rem;
     height: 3.8rem;
@@ -158,14 +159,15 @@
     opacity: 0.75;
   }
 
-  /* Botao de tema na extremidade esquerda do header (o logo andou 3.6rem pra
-     direita pra dar espaco). Mesma tecnica do desktop (css/header.css): icone
-     do sol em mascara pintada com currentColor, traco grosso, mesma cor verde
-     dos links. Centro vertical ~ o do logo e do hamburguer. */
+  /* Botao de tema na extremidade DIREITA do header, com o hamburguer logo a
+     esquerda dele - igual ao desktop (css/header.css), onde o botao tambem e o
+     elemento mais a direita. Mesma tecnica: icone do sol em mascara pintada
+     com currentColor, traco grosso, mesma cor verde dos links. Centro vertical
+     = o do hamburguer. */
   .m-header .m-theme-toggle {
     position: absolute;
-    left: 0;
-    top: 1.5rem;
+    right: 0;
+    top: 1.3rem;
     width: 2.4rem;
     height: 2.4rem;
     padding: 0;
