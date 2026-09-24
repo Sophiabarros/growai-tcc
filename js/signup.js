@@ -41,6 +41,12 @@
   wireSignupForm("signupForm", "signupError");
   wireSignupForm("mSignupForm", "mSignupError");
 
+  // Regras da senha (mín. 8 caracteres + 1 caractere especial): lista de
+  // requisitos que acende enquanto a pessoa digita e bloqueia o envio até a
+  // senha valer (js/password-policy.js). O backend valida de novo.
+  PasswordPolicy.attach(document.getElementById("signupSenha"), document.getElementById("signupSenhaHint"));
+  PasswordPolicy.attach(document.getElementById("mSignupSenha"), document.getElementById("mSignupSenhaHint"));
+
   // Scales the fixed 1440px desktop canvas down to fit tablet-width
   // viewports, same approach as js/sistema.js.
   var DESIGN_WIDTH = 1440;

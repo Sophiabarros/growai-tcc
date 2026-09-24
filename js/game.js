@@ -57,13 +57,58 @@
     var cinema = false;
     var started = false;
 
-    // Desempenho: o arquivo original tinha 46 MB (1080p, 4 Mbps) e era
-    // baixado por inteiro (`preload="auto"`) junto com o resto da página, o
-    // que travava a Game. Agora são versões H.264 leves (720p ≈ 6,6 MB, 480p
-    // ≈ 3,2 MB) e o vídeo só começa a carregar depois do `load` da página.
-    // Com "economia de dados" ligada nem baixa: fica a foto de fundo.
+    // ---- Desempenho ----
+    // O arquivo original tinha 46 MB (1080p) e era baixado por inteiro junto
+    // com a página, o que travava a Game em máquinas e conexões fracas. Agora:
+    //  1. o vídeo só começa a carregar depois do `load` da página;
+    //  2. há 3 qualidades (720p / 480p / 360p) e a escolhida depende do
+    //     aparelho, da tela e da conexão (pickTier);
+    //  3. em alguns casos nem baixa: fica a foto de fundo (pickTier -> null);
+    //  4. enquanto toca, vigia os quadros perdidos e, se engasgar, cai para
+    //     uma qualidade menor - e, no limite, volta para a foto (watchPlayback).
+    var TIERS = ["720", "480", "360"]; // do mais pesado ao mais leve
+    var TIER_KEY = "tracklink_trailer_tier";
     var connection = navigator.connection || {};
     var smallScreen = window.matchMedia && window.matchMedia("(max-width: 767px)").matches;
+    var reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+    var tier = null; // qualidade em uso; null = sem vídeo (só a foto de fundo)
+    var guardTimer = null;
+
+    // Lembra, só nesta sessão, que o vídeo engasgou (ou foi desligado), para
+    // um reload não tentar de novo a qualidade que já deu problema.
+    var readSavedTier = function () {
+      try {
+        return sessionStorage.getItem(TIER_KEY);
+      } catch (e) {
+        return null;
+      }
+    };
+    var writeSavedTier = function (value) {
+      try {
+        sessionStorage.setItem(TIER_KEY, value);
+      } catch (e) {}
+    };
+
+    // Decide se o vídeo toca e em qual qualidade (null = não toca).
+    var pickTier = function () {
+      if (reduceMotion && reduceMotion.matches) return null; // pediu menos movimento
+      if (connection.saveData) return null; // economia de dados
+      if (/2g$/.test(connection.effectiveType || "")) return null; // slow-2g / 2g
+
+      var memory = navigator.deviceMemory; // GB aproximados (só Chromium)
+      var cores = navigator.hardwareConcurrency;
+      if ((memory && memory <= 2) || (cores && cores <= 2)) return null; // aparelho fraco
+
+      var picked = smallScreen ? "480" : "720";
+      if ((memory && memory <= 4) || (cores && cores <= 4) || connection.effectiveType === "3g") {
+        picked = "360";
+      }
+
+      var saved = readSavedTier();
+      if (saved === "off") return null;
+      if (saved && TIERS.indexOf(saved) > TIERS.indexOf(picked)) picked = saved;
+      return picked;
+    };
 
     var safePlay = function () {
       if (!started) return;
@@ -71,12 +116,101 @@
       if (p && p.catch) p.catch(function () {});
     };
 
+    // Volta para a foto de fundo: solta o vídeo (libera rede, memória e
+    // decodificador) e, se estava no modo cinema, devolve o conteúdo.
+    var stopTrailer = function (remember) {
+      if (remember) writeSavedTier("off");
+      started = false;
+      tier = null;
+      cinema = false;
+      clearTimeout(idleTimer);
+      clearInterval(guardTimer);
+      body.classList.remove("is-cinema", "trailer-ready");
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      if (soundBtn) soundBtn.hidden = true;
+    };
+
+    // Troca para outra qualidade continuando do ponto em que estava.
+    var switchTier = function (next) {
+      var resumeAt = video.currentTime || 0;
+      tier = next;
+      writeSavedTier(next);
+      video.addEventListener("loadedmetadata", function onMeta() {
+        video.removeEventListener("loadedmetadata", onMeta);
+        try {
+          video.currentTime = resumeAt;
+        } catch (e) {}
+        safePlay();
+      });
+      video.src = video.getAttribute("data-src-" + next);
+      video.load();
+    };
+
+    var degrade = function () {
+      var next = TIERS[TIERS.indexOf(tier) + 1];
+      if (next) {
+        switchTier(next);
+        watchPlayback();
+      } else {
+        stopTrailer(true);
+      }
+    };
+
+    // Vigia o vídeo por ~50 s (o custo/engasgo aparece logo no começo): a cada
+    // 2,5 s compara quadros mostrados e perdidos; 2 janelas seguidas com mais
+    // de 25% perdidos = máquina não dá conta, então rebaixa a qualidade.
+    var watchPlayback = function () {
+      clearInterval(guardTimer);
+      if (!video.getVideoPlaybackQuality) return;
+      var last = video.getVideoPlaybackQuality();
+      var strikes = 0;
+      var rounds = 0;
+      guardTimer = setInterval(function () {
+        if (video.paused || document.hidden) return;
+        var q = video.getVideoPlaybackQuality();
+        var frames = q.totalVideoFrames - last.totalVideoFrames;
+        var dropped = q.droppedVideoFrames - last.droppedVideoFrames;
+        last = q;
+        strikes = frames >= 20 && dropped / frames > 0.25 ? strikes + 1 : 0;
+        if (strikes >= 2) degrade();
+        else if (++rounds >= 20) clearInterval(guardTimer);
+      }, 2500);
+    };
+
+    // Travadas de buffer ("waiting") repetidas também rebaixam a qualidade.
+    var waitingAt = [];
+    video.addEventListener("waiting", function () {
+      if (!started) return;
+      var now = Date.now();
+      waitingAt = waitingAt.filter(function (t) {
+        return now - t < 30000;
+      });
+      waitingAt.push(now);
+      if (waitingAt.length >= 4) {
+        waitingAt = [];
+        degrade();
+      }
+    });
+
+    // Se a pessoa ligar "reduzir movimento" no sistema com a página aberta, o
+    // vídeo sai de cena na hora (sem gravar a escolha para a próxima visita).
+    if (reduceMotion && reduceMotion.addEventListener) {
+      reduceMotion.addEventListener("change", function (event) {
+        if (event.matches && started) stopTrailer(false);
+      });
+    }
+
     var startTrailer = function () {
-      if (started || connection.saveData) return;
+      if (started) return;
+      tier = pickTier();
+      if (!tier) return; // nenhum byte de vídeo é baixado: fica a foto de fundo
       started = true;
-      video.src = smallScreen ? video.getAttribute("data-src-mobile") : video.getAttribute("data-src-desktop");
+      video.src = video.getAttribute("data-src-" + tier);
       safePlay();
       resetIdle();
+      watchPlayback();
     };
 
     var syncSoundButton = function () {
@@ -113,7 +247,7 @@
 
     var resetIdle = function () {
       clearTimeout(idleTimer);
-      if (cinema || document.hidden) return;
+      if (!started || cinema || document.hidden) return;
       if (video.paused) safePlay(); // ex.: economia de bateria pausou o fundo
       idleTimer = setTimeout(function () {
         if (body.classList.contains("trailer-ready")) enterCinema();

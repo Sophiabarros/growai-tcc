@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- página aberta pelo link do e-mail: não deve aparecer em buscadores -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Redefinir senha | TrackLink</title>
+    <!-- Ícone do site: SVG para navegadores modernos, .ico/PNG de reserva,
+         apple-touch-icon para iPhone/iPad e manifesto para Android/PWA -->
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <meta name="theme-color" content="#182825" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/reset.css?v=1" />
+    <link rel="stylesheet" href="css/variables.css?v=1" />
+    <link rel="stylesheet" href="css/global.css?v=1" />
+    <link rel="stylesheet" href="css/header.css?v=1" />
+    <link rel="stylesheet" href="css/auth-recovery.css?v=1" />
+    <script>
+      // aplica o tema escolhido no site (mesma chave do js/theme.js) antes de pintar
+      try {
+        if (localStorage.getItem("tracklink_theme") === "light") {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div class="auth-page" id="authPage" data-theme="dark">
+      <a href="index.html" class="auth-page__brand" aria-label="TrackLink - voltar ao início">
+        <div class="header__logo">
+          <div class="v1"><img class="fill" alt="" src="assets/icons/logo-vector-1.svg" /></div>
+          <div class="v2"><img class="fill" alt="" src="assets/icons/logo-vector-2.svg" /></div>
+          <div class="v3"><img class="fill" alt="" src="assets/icons/logo-vector-3.svg" /></div>
+          <div class="v4"><img class="fill" alt="" src="assets/icons/logo-vector-4.svg" /></div>
+          <div class="v5"><img class="fill" alt="" src="assets/icons/logo-vector-5.svg" /></div>
+        </div>
+        TRACKLINK
+      </a>
+
+      <main class="auth-page__main">
+        <!-- estado 1: formulário para criar a nova senha -->
+        <form class="auth-card" id="resetForm" hidden>
+          <h1 class="auth-card__title">Criar nova senha</h1>
+          <p class="auth-card__text">Escolha uma nova senha para a sua conta TrackLink.</p>
+
+          <div class="auth-card__field">
+            <label for="resetSenha">Nova senha</label>
+            <input type="password" id="resetSenha" name="senha" placeholder="Digite a nova senha..." autocomplete="new-password" required />
+            <ul class="pw-hint" id="resetSenhaHint" aria-live="polite">
+              <li data-rule="length">Mínimo de 8 caracteres</li>
+              <li data-rule="special">Pelo menos 1 caractere especial (! @ # $ % &amp;)</li>
+            </ul>
+          </div>
+          <div class="auth-card__field">
+            <label for="resetConfirma">Confirmar nova senha</label>
+            <input type="password" id="resetConfirma" name="confirma" placeholder="Repita a nova senha..." autocomplete="new-password" required />
+          </div>
+
+          <p class="auth-card__error" id="resetError" role="alert" hidden></p>
+
+          <div class="auth-card__actions">
+            <a class="auth-card__btn" href="login.html">Voltar ao login</a>
+            <button type="submit" class="auth-card__btn auth-card__btn--primary" id="resetSubmit">Salvar nova senha</button>
+          </div>
+        </form>
+
+        <!-- estado 2: senha trocada -->
+        <section class="auth-card" id="resetDone" hidden>
+          <h1 class="auth-card__title">Senha alterada</h1>
+          <p class="auth-card__success" role="status">Sua senha foi redefinida com sucesso. Enviamos um e-mail de confirmação.</p>
+          <div class="auth-card__actions">
+            <a class="auth-card__btn auth-card__btn--primary" href="login.html">Ir para o login</a>
+          </div>
+        </section>
+
+        <!-- estado 3: sem token, link expirado ou já usado -->
+        <section class="auth-card" id="resetInvalid" hidden>
+          <h1 class="auth-card__title">Link inválido ou expirado</h1>
+          <p class="auth-card__text" id="resetInvalidText">
+            Este link de redefinição não é mais válido. Ele vale por 30 minutos e só pode ser usado uma vez.
+          </p>
+          <div class="auth-card__actions">
+            <a class="auth-card__btn auth-card__btn--primary" href="login.html#esqueci-senha">Solicitar novo link</a>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="js/api.js?v=44"></script>
+    <script src="js/password-policy.js?v=1"></script>
+    <script src="js/redefinir-senha.js?v=1"></script>
+  </body>
+</html>

@@ -64,3 +64,17 @@ CREATE TABLE IF NOT EXISTS notification_settings (
   watering_updates  BOOLEAN NOT NULL DEFAULT true,
   weekly_reports    BOOLEAN NOT NULL DEFAULT false
 );
+
+-- Tokens de "esqueci minha senha". Só o hash SHA-256 do token é guardado; o
+-- token em texto puro vai apenas no e-mail. Expira em expires_at e só vale
+-- uma vez (used_at). O backend também cria esta tabela sozinho na primeira
+-- utilização (services/passwordReset.js), então rodar este arquivo é opcional.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);

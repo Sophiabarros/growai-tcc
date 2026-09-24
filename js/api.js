@@ -150,6 +150,20 @@
       setSession(data.user, data.token);
       return data;
     },
+    // Recuperação de senha (rotas públicas do backend). O e-mail traz um link
+    // com token para redefinir-senha.html; o token expira e só vale uma vez.
+    forgotPassword(email) {
+      return request("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: email }),
+      });
+    },
+    resetPassword(token, password) {
+      return request("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token: token, password: password }),
+      });
+    },
     logout() {
       clearSession();
       window.location.href = "login.html";

@@ -323,3 +323,21 @@ body.is-cinema .game-trailer__sound {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* Quem pediu menos movimento no sistema (prefers-reduced-motion) não recebe o
+   vídeo (js/game.js nem baixa o arquivo): fica só a foto de fundo, sem as
+   dissolvências longas. O display:none é uma garantia extra. */
+@media (prefers-reduced-motion: reduce) {
+  .game-trailer,
+  .game-trailer__shade,
+  .game__bg,
+  .m-game__bg,
+  .game > *:not(.game__bg),
+  .m-game > *:not(.m-game__bg),
+  .game-trailer__sound {
+    transition: none;
+  }
+  .game-trailer {
+    display: none;
+  }
+}

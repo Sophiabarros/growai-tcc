@@ -149,6 +149,12 @@
   color: var(--su-input-text);
   opacity: 1;
 }
+/* regras da senha (css/auth-recovery.css tem os estados); ocupam parte do vão
+   que existia acima do botão, por isso o botão abaixo tem menos margem */
+.signup-field .pw-hint {
+  font-size: 2rem;
+  color: var(--su-label);
+}
 .signup-form__error {
   width: 61.3rem;
   margin: -0.4rem 0 0 1.9rem;
@@ -159,7 +165,7 @@
   display: block;
   width: 61.3rem;
   height: 6.379rem;
-  margin: 5.2rem 0 0 1.9rem;
+  margin: 2.4rem 0 0 1.9rem;
   border: 0;
   border-radius: 1.5rem;
   background: var(--color-green-active);
@@ -375,6 +381,10 @@
   .m-signup-field input::placeholder {
     color: var(--su-input-text);
     opacity: 1;
+  }
+  .m-signup-field .pw-hint {
+    font-size: 1rem;
+    color: var(--su-label);
   }
   .m-signup-form__error {
     width: 25.7rem;

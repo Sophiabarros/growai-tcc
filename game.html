@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Game | TrackLink</title>
+    <!-- Ícone do site: SVG para navegadores modernos, .ico/PNG de reserva,
+         apple-touch-icon para iPhone/iPad e manifesto para Android/PWA -->
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <meta name="theme-color" content="#182825" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,7 +23,7 @@
     <link rel="stylesheet" href="css/global.css?v=36" />
     <link rel="stylesheet" href="css/header.css?v=44" />
     <link rel="stylesheet" href="css/footer.css?v=42" />
-    <link rel="stylesheet" href="css/game.css?v=39" />
+    <link rel="stylesheet" href="css/game.css?v=40" />
     <link rel="stylesheet" href="css/animations.css?v=36" />
     <link rel="stylesheet" href="css/responsive.css?v=38" />
   </head>
@@ -27,20 +35,30 @@
          Toca mudo e escurecido atrás da página. Depois de 20s sem interação o
          conteúdo dissolve e o trailer passa sozinho do começo (com som, se o
          navegador deixar); quando termina, o conteúdo volta. Ver js/game.js.
-         Sem `src` aqui de propósito: o js/game.js escolhe o arquivo (720p no
-         desktop, 480p no celular / economia de dados) e só começa a baixar
-         depois que a página terminou de carregar, pra o vídeo não competir
-         com as imagens e as fontes. `preload="metadata"` evita baixar o
-         arquivo inteiro de cara. Os arquivos são H.264 com `faststart`
-         (começam a tocar sem esperar o download todo). -->
+
+         Desempenho (o arquivo original tinha 46 MB e travava máquinas fracas):
+         - sem `src` de propósito: o js/game.js escolhe a qualidade e só começa
+           a baixar depois do `load` da página, pra não competir com imagens e
+           fontes. `preload="none"` garante que o navegador não baixe nada por
+           conta própria.
+         - 3 qualidades H.264 com `faststart`: 720p (~6,6 MB, computador bom),
+           480p (~3,2 MB, celular) e 360p (~0,9 MB, máquina/conexão média).
+         - NÃO baixa o vídeo (fica só a foto de fundo) se a pessoa pediu menos
+           movimento (prefers-reduced-motion), ligou a economia de dados, está
+           em conexão 2G ou usa um aparelho fraco (<= 2 GB de RAM ou 2 núcleos).
+         - se, tocando, o vídeo perder muitos quadros, cai sozinho para uma
+           qualidade menor e, no limite, volta para a foto.
+         - `poster` é o primeiro quadro (23 KB). -->
     <video
       class="game-trailer"
       id="gameTrailer"
-      data-src-desktop="assets/video/trailer-720p.mp4"
-      data-src-mobile="assets/video/trailer-480p.mp4"
+      data-src-720="assets/video/trailer-720p.mp4"
+      data-src-480="assets/video/trailer-480p.mp4"
+      data-src-360="assets/video/trailer-360p.mp4"
+      poster="assets/video/trailer-poster.jpg"
       muted
       playsinline
-      preload="metadata"
+      preload="none"
       disablepictureinpicture
       disableremoteplayback
       aria-hidden="true"
@@ -151,7 +169,7 @@
     </div>
 
     <script src="js/theme.js?v=36"></script>
-    <script src="js/game.js?v=38"></script>
+    <script src="js/game.js?v=39"></script>
     <script src="js/menu.js?v=37"></script>
     <script src="js/navigation.js?v=37"></script>
     <script src="js/page-loader.js?v=36"></script>

@@ -1,0 +1,277 @@
+/*
+  Estilos compartilhados de senha e recuperação de conta:
+    - .pw-hint            lista de regras da senha (cadastro, redefinição)
+    - .auth-modal/.auth-card   modal "Esqueceu a senha?" (js/forgot-password.js)
+    - .auth-page          página de redefinição (redefinir-senha.html)
+
+  Os modais são anexados ao <body>, fora dos containers que definem as
+  variáveis --dm-* de cada página, por isso as cores são definidas aqui em
+  .auth-card / .auth-page com variante clara via [data-theme="light"].
+*/
+
+/* ============ REGRAS DA SENHA ============ */
+.pw-hint {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2em;
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.3;
+  opacity: 0.85;
+}
+.pw-hint li {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  transition: color 0.2s ease;
+}
+.pw-hint li::before {
+  content: "";
+  flex: none;
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  border: 0.14em solid currentColor;
+  opacity: 0.6;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+.pw-hint li.is-met {
+  color: var(--color-green-normal);
+}
+.pw-hint li.is-met::before {
+  opacity: 1;
+  background: var(--color-green-normal)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4L9.5 3.6' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / 80% no-repeat;
+}
+.pw-hint li.is-unmet {
+  color: var(--color-danger);
+}
+.pw-hint li.is-unmet::before {
+  opacity: 1;
+}
+
+/* ============ CARTÃO (modal e página) ============ */
+.auth-card,
+.auth-page {
+  --ac-bg: #182825;
+  --ac-text: #e7f2eb;
+  --ac-muted: #8fb5a0;
+  --ac-input-bg: #0f1a17;
+  --ac-border: rgba(93, 165, 120, 0.4);
+  --ac-primary: #5da578;
+  --ac-primary-text: #0f1a17;
+  --ac-page-bg: #0f1a17;
+}
+.auth-card[data-theme="light"],
+.auth-page[data-theme="light"] {
+  --ac-bg: #f5f5f7;
+  --ac-text: #2d4e49;
+  --ac-muted: #5f7a72;
+  --ac-input-bg: #ffffff;
+  --ac-border: #bdbeb8;
+  --ac-primary: #5da578;
+  --ac-primary-text: #ffffff;
+  --ac-page-bg: #fcfcfd;
+}
+
+.auth-card {
+  width: min(44rem, calc(100vw - 3.2rem));
+  padding: 2.8rem;
+  border-radius: 2rem;
+  border: 1px solid var(--ac-border);
+  background: var(--ac-bg);
+  color: var(--ac-text);
+  font-family: var(--font-body);
+  box-shadow: 0 2.4rem 6rem rgba(0, 0, 0, 0.45);
+}
+.auth-card__title {
+  font: 700 2.2rem/1.2 var(--font-body);
+  margin: 0 0 0.8rem;
+}
+.auth-card__text {
+  margin: 0 0 2rem;
+  color: var(--ac-muted);
+  font: 400 1.4rem/1.5 var(--font-body);
+}
+.auth-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-bottom: 1.6rem;
+}
+.auth-card__field label {
+  font: 700 1.3rem/1 var(--font-body);
+}
+.auth-card__field input {
+  height: 4.6rem;
+  width: 100%;
+  padding: 0 1.6rem;
+  border: 1px solid var(--ac-border);
+  border-radius: 1.2rem;
+  background: var(--ac-input-bg);
+  color: var(--ac-text);
+  font: 500 1.5rem/normal var(--font-body);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.auth-card__field input:focus {
+  border-color: var(--ac-primary);
+  box-shadow: 0 0 0 3px rgba(93, 165, 120, 0.25);
+}
+.auth-card .pw-hint {
+  font-size: 1.25rem;
+  margin-top: 0.2rem;
+}
+.auth-card__error,
+.auth-card__success {
+  margin: 0 0 1.6rem;
+  padding: 1.1rem 1.4rem;
+  border-radius: 1rem;
+  font: 500 1.35rem/1.45 var(--font-body);
+}
+.auth-card__error {
+  color: var(--color-danger);
+  background: rgba(224, 96, 96, 0.12);
+}
+.auth-card__success {
+  color: var(--ac-text);
+  background: rgba(93, 165, 120, 0.18);
+}
+/* `display: flex/inline-flex` dos elementos acima anularia o atributo hidden */
+.auth-card [hidden],
+.auth-page [hidden] {
+  display: none !important;
+}
+.auth-card__actions {
+  display: flex;
+  gap: 1.2rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.auth-card__btn {
+  min-height: 4.4rem;
+  padding: 0 2.2rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--ac-border);
+  background: transparent;
+  color: var(--ac-text);
+  font: 700 1.4rem/normal var(--font-body);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+}
+.auth-card__btn--primary {
+  border-color: transparent;
+  background: var(--ac-primary);
+  color: var(--ac-primary-text);
+}
+.auth-card__btn:hover {
+  opacity: 0.9;
+}
+.auth-card__btn:active {
+  transform: scale(0.98);
+}
+.auth-card__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.auth-card__btn:focus-visible {
+  outline: 2px solid var(--ac-primary);
+  outline-offset: 2px;
+}
+
+/* ============ MODAL "ESQUECEU A SENHA?" ============ */
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.6rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+.auth-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.auth-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 12, 10, 0.6);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.auth-modal .auth-card {
+  position: relative;
+  transform: translateY(1.2rem) scale(0.97);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.auth-modal.is-open .auth-card {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-modal,
+  .auth-modal .auth-card {
+    transition: none;
+  }
+}
+
+/* ============ PÁGINA DE REDEFINIÇÃO ============ */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.4rem 1.6rem 4rem;
+  background: var(--ac-page-bg);
+  color: var(--ac-text);
+  font-family: var(--font-body);
+}
+.auth-page__brand {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  align-self: flex-start;
+  margin-bottom: 4rem;
+  text-decoration: none;
+  color: var(--color-green-normal-hover);
+  font: 700 2.2rem/1 var(--font-body);
+  letter-spacing: 0.02rem;
+}
+/* o logo reaproveita o .header__logo (css/header.css), que é absoluto e de 8rem */
+.auth-page__brand .header__logo {
+  position: relative;
+  width: 4.8rem;
+  height: 4.8rem;
+  flex: none;
+}
+.auth-page__main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.auth-page .auth-card {
+  box-shadow: 0 1.6rem 4rem rgba(0, 0, 0, 0.25);
+}
+
+/* celulares estreitos: cartão mais justo e botões lado a lado */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 2.2rem;
+  }
+  .auth-card__actions .auth-card__btn {
+    flex: 1 1 14rem;
+    padding: 0 1.2rem;
+  }
+}
