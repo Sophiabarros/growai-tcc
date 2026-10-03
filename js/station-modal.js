@@ -25,8 +25,13 @@
     '      <input type="text" id="stationPlant" name="plant" required />',
     "    </div>",
     '    <div class="station-modal__field">',
-    '      <label for="stationTag">Categoria</label>',
-    '      <input type="text" id="stationTag" name="tag" placeholder="Ex: Calmante" />',
+    // "Finalidade", nao "Categoria": e deste campo que a IA tira para QUE o
+    // usuario cultiva a planta, e dai qual parte dela importa (flor, folha,
+    // raiz) e o que a rotina deveria favorecer. Com o rotulo "Categoria" o
+    // usuario escrevia uma classificacao ("erva", "medicinal"), que nao diz
+    // nada sobre o que ele espera colher.
+    '      <label for="stationTag">Finalidade</label>',
+    '      <input type="text" id="stationTag" name="tag" placeholder="Ex: Calmante, Digestiva, Anti-inflamatória" />',
     "    </div>",
     '    <div class="station-modal__row">',
     '      <div class="station-modal__field">',
@@ -102,10 +107,17 @@
       form.ph_target.value = station.ph_target;
     }
 
-    // Nome/planta só fazem sentido ao criar uma estação nova.
-    form.name.disabled = mode === "edit";
-    form.plant.disabled = mode === "edit";
-    form.tag.disabled = mode === "edit";
+    /* Nome, planta e finalidade são editáveis também na edição.
+       Antes ficavam `disabled` no modo edição, com a ideia de que "só fazem
+       sentido ao criar". Na prática o usuário renomeia o canteiro, corrige a
+       espécie que digitou errado e troca a finalidade — e não conseguia.
+
+       A finalidade (`tag`) virou ainda mais importante depois que a IA passou
+       a julgar a rotina contra a espécie E a finalidade: deixá-la travada
+       significaria não poder corrigir o que a IA usa para decidir. */
+    form.name.disabled = false;
+    form.plant.disabled = false;
+    form.tag.disabled = false;
 
     modal.hidden = false;
   }
@@ -140,6 +152,18 @@
         ? await GrowAI.updateStation(editingId, payload)
         : await GrowAI.createStation(payload);
       if (onSaved) await onSaved(saved, editingId ? "edit" : "create");
+
+      /* Pede a IA para conferir se a rotina faz sentido para a especie e a
+         finalidade. Deliberadamente SEM await: a chamada leva ~6 s e o
+         salvamento tem que fechar na hora. O resultado nao aparece aqui - a
+         IA grava uma sugestao, e ela aparece na tela Relatorios (e se o ajuste
+         automatico estiver ligado, a rotina ja vai corrigida).
+         O .catch vazio e intencional: isto e um extra, nao pode transformar um
+         salvamento que deu certo em erro na tela. */
+      if (saved && saved.id && GrowAI.evaluateRoutine) {
+        GrowAI.evaluateRoutine(saved.id).catch(function () {});
+      }
+
       closeModal();
     } catch (err) {
       modalError.textContent = err.message;

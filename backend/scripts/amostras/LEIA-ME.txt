@@ -1,0 +1,34 @@
+Fotos de amostra para o simulador (scripts/simular-horta.js)
+===========================================================
+
+Ponha aqui arquivos .jpg de plantas. O simulador sorteia um deles a cada
+"--foto-a-cada N" minutos e manda para POST /api/device/foto, como se fosse o
+ESP32-CAM.
+
+Se esta pasta estiver vazia, o simulador avisa e segue mandando só telemetria.
+
+O que funciona bem aqui
+-----------------------
+- Uma planta inteira, enquadrada de frente, ocupando boa parte do quadro.
+- Foto tirada com luz branca (nao roxa). A CAM de verdade apaga o LED de
+  cultivo e usa o flash branco justamente para a cor sair real - amostra com
+  luz roxa faz a IA analisar uma cor que nao existe.
+- 800x600 e uns 40-90 kB, que e o que a placa manda de verdade
+  (FRAMESIZE_SVGA, qualidade 12). Foto de celular de 4 MB tambem funciona,
+  mas nao representa o que a IA vai receber em producao.
+
+Para testar os dois diagnosticos
+--------------------------------
+Vale ter pelo menos duas amostras:
+- uma planta claramente saudavel  -> deve virar health_status 'saudavel'
+- uma com folha amarelada, murcha ou manchada -> deve virar 'atencao'
+
+Assim da para conferir que a analise nao esta respondendo sempre a mesma coisa.
+
+Observacoes
+-----------
+- Os arquivos .jpg desta pasta NAO vao para o repositorio (ver .gitignore),
+  so este LEIA-ME. Sao fotos de teste, e cada uma viraria ~100 kB no git.
+- No banco a foto e guardada como data URL dentro de station_photos.image_url,
+  porque o disco da Vercel e somente leitura. A retencao mantem as ultimas 300
+  fotos por estacao.

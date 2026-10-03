@@ -10,6 +10,7 @@ const reportsRoutes = require("./routes/reports");
 const suggestionsRoutes = require("./routes/suggestions");
 const settingsRoutes = require("./routes/settings");
 const contactRoutes = require("./routes/contact");
+const deviceRoutes = require("./routes/device");
 const { requireAuth } = require("./middleware/auth");
 
 // Evita que uma falha assíncrona não capturada (ex.: pool do Postgres
@@ -49,6 +50,10 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+
+// As placas ESP32 se autenticam com X-Device-Key (middleware/deviceAuth), nao
+// com o JWT do usuario, entao esta rota NAO passa por requireAuth.
+app.use("/api/device", deviceRoutes);
 
 app.use("/api/contact", contactRoutes);
 app.use("/api/auth", authRoutes);

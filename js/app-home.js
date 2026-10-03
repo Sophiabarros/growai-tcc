@@ -6,10 +6,13 @@
     return;
   }
 
-  var HEALTH_LABEL = { saudavel: "boa", atencao: "média" };
+  var HEALTH_LABEL = { saudavel: "boa", atencao: "média", indefinido: "—" };
   var HEALTH_ICON = {
     saudavel: "assets/icons/app/icon-app-check.svg",
     atencao: "assets/icons/app/icon-app-warning.svg",
+    // 'indefinido' = a IA nao analisou (desligada, falhou ou deu timeout).
+    // Reaproveita o check, sem icone de alerta: nao e problema na planta.
+    indefinido: "assets/icons/app/icon-app-check.svg",
   };
 
   function escapeHtml(value) {
@@ -113,7 +116,12 @@
     card.hidden = false;
     document.getElementById("appFeaturedName").textContent = station.plant;
     document.getElementById("appFeaturedLoc").textContent = stationLocation(station);
-    document.getElementById("appFeaturedStatus").textContent = photo && photo.health_status === "atencao" ? "Atenção" : "Online";
+    /* Ordem: Offline (a placa nao fala com o servidor) tem prioridade sobre
+       Atencao (a IA viu algo na foto), porque com a placa fora do ar o dado da
+       foto pode ser de horas atras. `online` vem de readings/latest. */
+    var estaOnline = !!(reading && reading.online);
+    document.getElementById("appFeaturedStatus").textContent =
+      !estaOnline ? "Offline" : photo && photo.health_status === "atencao" ? "Atenção" : "Online";
 
     var photoImg = document.getElementById("appFeaturedPhoto");
     if (photo && photo.image_url) {
@@ -250,11 +258,26 @@
     var pct = Math.max(4, Math.min(100, Math.round((ratio || 0) * 100)));
     bar.style.width = pct + "%";
   }
+  // null != 0. Sensor com defeito manda null, e o projeto nao tem sensor de
+  // pH nem de luminosidade - mostrar "0%" ou "NaN" seria inventar leitura.
+  function temValor(v) {
+    return v !== null && v !== undefined && isFinite(v);
+  }
+  function fmtSensor(reading, campo, sufixo) {
+    if (!reading || !temValor(reading[campo])) return "—";
+    return Math.round(Number(reading[campo])) + sufixo;
+  }
+  function razaoSensor(reading, campo, max) {
+    if (!reading || !temValor(reading[campo])) return 0;
+    return Number(reading[campo]) / max;
+  }
+
   function renderSensors(reading) {
-    var light = reading ? Math.round(reading.light_h) + "h" : "—";
-    var ph = reading ? "pH " + reading.ph : "—";
-    var humidity = reading ? Math.round(reading.humidity) + "%" : "—";
-    var temp = reading ? Math.round(reading.temperature) + "°C" : "—";
+    var light = fmtSensor(reading, "light_h", "h");
+    // O projeto nao tem sensor de pH: este card fica sempre em "—".
+    var ph = reading && temValor(reading.ph) ? "pH " + reading.ph : "—";
+    var humidity = fmtSensor(reading, "humidity", "%");
+    var temp = fmtSensor(reading, "temperature", "°C");
 
     document.getElementById("appSensorLight").textContent = light;
     document.getElementById("appSensorPh").textContent = ph;
@@ -266,17 +289,20 @@
     document.getElementById("mSensorHumidity").textContent = humidity;
     document.getElementById("mSensorTemp").textContent = temp;
 
-    setSensorBar("appSensorLightBar", reading ? reading.light_h / SENSOR_MAX.light : 0);
-    setSensorBar("appSensorHumidityBar", reading ? reading.humidity / SENSOR_MAX.humidity : 0);
-    setSensorBar("appSensorPhBar", reading ? reading.ph / SENSOR_MAX.ph : 0);
-    setSensorBar("appSensorTempBar", reading ? reading.temperature / SENSOR_MAX.temperature : 0);
+    setSensorBar("appSensorLightBar", razaoSensor(reading, "light_h", SENSOR_MAX.light));
+    setSensorBar("appSensorHumidityBar", razaoSensor(reading, "humidity", SENSOR_MAX.humidity));
+    setSensorBar("appSensorPhBar", razaoSensor(reading, "ph", SENSOR_MAX.ph));
+    setSensorBar("appSensorTempBar", razaoSensor(reading, "temperature", SENSOR_MAX.temperature));
   }
 
   // ---- mobile: station cards (unchanged 2-slot layout/markup) ----
   function mobileCardBodyHtml(station, reading, photo) {
     var healthStat = photo
       ? '<span class="m-app-station-card__stat m-app-station-card__stat--health-' + (photo.health_status === "atencao" ? "warn" : "ok") + '">' +
-        '<img alt="" src="' + HEALTH_ICON[photo.health_status] + '" /> Saúde: ' + (HEALTH_LABEL[photo.health_status] || photo.health_status) +
+        '<img alt="" src="' + (HEALTH_ICON[photo.health_status] || HEALTH_ICON.saudavel) + '" /> ' +
+        (photo.health_status === "indefinido"
+          ? "Sem análise"
+          : "Saúde: " + (HEALTH_LABEL[photo.health_status] || photo.health_status)) +
         "</span>"
       : "";
 
@@ -289,8 +315,8 @@
       );
     }
     var extraStats = reading
-      ? '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /> ' + Math.round(reading.humidity) + "%</span>" +
-        '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /> ' + Math.round(reading.temperature) + "°C</span>"
+      ? '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /> ' + fmtSensor(reading, "humidity", "%") + "</span>" +
+        '<span class="m-app-station-card__stat"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /> ' + fmtSensor(reading, "temperature", "°C") + "</span>"
       : "";
     return (
       '<p class="m-app-station-card__name">' + escapeHtml(station.plant) + "</p>" +
@@ -440,7 +466,10 @@
     renderAlerts(alerts);
     renderMobileAlerts(alerts);
 
-    var allConnected = details.every(function (d) { return d[0] !== null; });
+    /* Antes bastava a requisicao ter respondido. Agora leitura sem `online`
+       tambem conta como offline: a placa pode ter parado de mandar e a ultima
+       leitura continuar no banco. */
+    var allConnected = details.every(function (d) { return d[0] !== null && d[0].online !== false; });
     renderSystemStatus(allConnected ? "ok" : "offline");
 
     renderMobileCard(document.getElementById("mAppStationCard1"), limited[0], details[0][0], details[0][1]);

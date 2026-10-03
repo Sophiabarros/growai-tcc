@@ -34,16 +34,23 @@
     });
   }
 
-  function renderDeviceCount(count) {
+  /* Conta PLACAS online, nao estacoes.
+     Antes recebia stations.length, entao "2 dispositivos conectados" na verdade
+     queria dizer "2 estacoes" - e marcava como conectado mesmo sem nenhuma
+     placa cadastrada. Agora: `online` de cada placa em /stations/:id/devices
+     (o backend usa o prazo certo para cada tipo; a cam vive em deep sleep). */
+  function renderDeviceCount(count, total) {
     var els = [document.getElementById("cfgWifiSubtitle"), document.getElementById("mCfgWifiSubtitle")];
     var label =
       count == null
         ? "Não foi possível verificar"
+        : total === 0
+        ? "Nenhuma placa cadastrada"
         : count === 0
-        ? "Nenhum dispositivo conectado"
+        ? (total === 1 ? "1 placa cadastrada, offline" : total + " placas cadastradas, todas offline")
         : count === 1
-        ? "1 dispositivo conectado"
-        : count + " dispositivos conectados";
+        ? "1 placa online" + (total > 1 ? " de " + total : "")
+        : count + " placas online de " + total;
     els.forEach(function (el) {
       if (el) el.textContent = label;
     });
@@ -228,13 +235,192 @@
 
     try {
       var stations = await GrowAI.getStations();
-      renderDeviceCount(stations.length);
+      var porEstacao = await Promise.all(
+        stations.map(function (s) {
+          return GrowAI.getDevices(s.id).catch(function () { return []; });
+        })
+      );
+      var todas = porEstacao.reduce(function (acc, l) { return acc.concat(l || []); }, []);
+      var online = todas.filter(function (d) { return d.online; }).length;
+      renderDeviceCount(online, todas.length);
     } catch (err) {
       renderDeviceCount(null);
     }
   }
 
+
+  // Nome de estação e de planta sao digitados pelo usuario e entram em
+  // innerHTML abaixo: escapar e obrigatorio.
+  function escapeHtml(value) {
+    var div = document.createElement("div");
+    div.textContent = value == null ? "" : String(value);
+    return div.innerHTML;
+  }
+
+  /* ================= CONEXÃO ESP32 =================
+     A linha "Conexão ESP32" abre esta tela, com as placas de cada estação e o
+     passo a passo de configurar.
+
+     Por que o app não configura o Wi-Fi da placa: ele fala com o backend pela
+     internet, e o backend não alcança a placa (é serverless, quem inicia a
+     conversa é sempre ela). Pior: antes de ter Wi-Fi a placa não está em rede
+     nenhuma, então não haveria por onde falar com ela. Por isso a senha é
+     digitada no PORTAL da própria placa, e esta tela serve para acompanhar e
+     para lembrar como se faz. */
+
+  var espModal = document.getElementById("espModal");
+  var espBody = document.getElementById("espModalBody");
+  var espFocoAnterior = null;
+
+  var TIPO_PLACA = { main: "Placa principal", cam: "Câmera" };
+  var FAZ_PLACA = {
+    main: "sensores, bomba, luz e ventilação",
+    cam: "uma foto a cada 30 min",
+  };
+
+  function espQuando(iso) {
+    if (!iso) return "nunca falou com o servidor";
+    var min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 1) return "agora mesmo";
+    if (min < 60) return "há " + min + " min";
+    if (min < 48 * 60) return "há " + Math.round(min / 60) + " h";
+    return "há " + Math.round(min / 1440) + " dias";
+  }
+
+  function espPlacaHtml(d) {
+    var on = !!d.online;
+    return (
+      '<div class="esp-placa">' +
+      '<span class="esp-placa__dot ' + (on ? "esp-placa__dot--on" : "esp-placa__dot--off") + '"></span>' +
+      '<span class="esp-placa__info">' +
+      '<span class="esp-placa__tipo">' + escapeHtml(TIPO_PLACA[d.tipo] || d.tipo) + "</span>" +
+      '<span class="esp-placa__meta">' + escapeHtml(FAZ_PLACA[d.tipo] || "") +
+      " · " + escapeHtml(espQuando(d.last_seen)) +
+      (d.fw ? " · " + escapeHtml(d.fw) : "") +
+      "</span></span>" +
+      '<span class="esp-placa__estado' + (on ? "" : " esp-placa__estado--off") + '">' +
+      (on ? "Online" : "Offline") +
+      "</span></div>"
+    );
+  }
+
+  var ESP_AJUDA_HTML =
+    '<div class="esp-ajuda">' +
+    '<p class="esp-ajuda__titulo">Como conectar uma placa ao Wi-Fi</p>' +
+    "<ol>" +
+    "<li>Ligue a placa. Sem rede configurada, ela cria a própria: <code>GrowAI-setup</code> (senha <code>growai123</code>).</li>" +
+    "<li>Conecte o celular nessa rede. A página de configuração abre sozinha; se não abrir, acesse <code>192.168.4.1</code>.</li>" +
+    "<li>Escolha a sua rede Wi-Fi (só <strong>2,4 GHz</strong>), digite a senha e cole a chave da placa.</li>" +
+    "<li>Salve. Ela reinicia já conectada e aparece aqui como Online.</li>" +
+    "</ol>" +
+    '<p class="esp-ajuda__nota">' +
+    "Para reconfigurar depois: na placa principal, segure o botão <strong>BOOT</strong> ao ligar. " +
+    "A câmera abre o portal sozinha depois de 3 tentativas falhas." +
+    "</p>" +
+    '<p class="esp-ajuda__nota">' +
+    "<strong>A chave da placa não aparece aqui de propósito.</strong> O servidor guarda só um resumo " +
+    "criptográfico dela, nunca a chave em si — então nem ele consegue mostrá-la de volta. " +
+    "Ela é exibida uma única vez, no computador, ao rodar <code>npm run criar-dispositivo</code>. " +
+    "Se você perdeu, gere outra: a anterior deixa de valer." +
+    "</p>" +
+    "</div>";
+
+  function espAbrir() {
+    espBody.innerHTML = '<p class="esp-vazio">Carregando placas...</p>';
+    espFocoAnterior = document.activeElement;
+    espModal.hidden = false;
+    espModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(function () {
+      espModal.classList.add("esp-modal--open");
+    });
+    document.getElementById("espModalClose").focus();
+    espCarregar();
+  }
+
+  function espFechar() {
+    if (espModal.hidden) return;
+    espModal.classList.remove("esp-modal--open");
+    espModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+    setTimeout(function () {
+      espModal.hidden = true;
+    }, 170);
+    if (espFocoAnterior && espFocoAnterior.focus) espFocoAnterior.focus();
+    espFocoAnterior = null;
+  }
+
+  async function espCarregar() {
+    var estacoes;
+    try {
+      estacoes = await GrowAI.getStations();
+    } catch (err) {
+      espBody.innerHTML = '<p class="esp-vazio">Não foi possível carregar: ' + escapeHtml(err.message) + "</p>";
+      return;
+    }
+
+    if (!estacoes.length) {
+      espBody.innerHTML =
+        '<p class="esp-vazio">Você ainda não tem estações. Crie uma na tela Estações para poder cadastrar placas.</p>' +
+        ESP_AJUDA_HTML;
+      return;
+    }
+
+    var placas = await Promise.all(
+      estacoes.map(function (e) {
+        return GrowAI.getDevices(e.id).catch(function () {
+          return null; // null = não deu para consultar; [] = consultou e não há placa
+        });
+      })
+    );
+
+    var html = estacoes
+      .map(function (e, i) {
+        var lista = placas[i];
+        var corpo;
+        if (lista === null) {
+          corpo = '<p class="esp-vazio">Não foi possível consultar as placas desta estação.</p>';
+        } else if (!lista.length) {
+          corpo = '<p class="esp-vazio">Nenhuma placa cadastrada ainda.</p>';
+        } else {
+          corpo = lista.map(espPlacaHtml).join("");
+        }
+        return (
+          '<div class="esp-estacao">' +
+          '<p class="esp-estacao__nome">' + escapeHtml(e.name) + " · " + escapeHtml(e.plant) + "</p>" +
+          corpo +
+          "</div>"
+        );
+      })
+      .join("");
+
+    espBody.innerHTML = html + ESP_AJUDA_HTML;
+  }
+
+  document.addEventListener("click", function (event) {
+    if (event.target.closest('[data-action="close-esp32"]')) {
+      espFechar();
+      return;
+    }
+    if (event.target.closest('[data-action="open-esp32"]')) espAbrir();
+  });
+
+  document.getElementById("espModalClose").addEventListener("click", espFechar);
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      espFechar();
+      return;
+    }
+    if (event.key !== "Enter" && event.key !== " ") return;
+    var linha = event.target.closest && event.target.closest('[data-action="open-esp32"]');
+    if (!linha) return;
+    event.preventDefault();
+    espAbrir();
+  });
+
   // ---- canvas scaling ----
+
   initResponsiveCanvas({
     desktopPageId: "appConfiguracoesPage",
     desktopWrapperSelector: ".app-configuracoes-wrapper",

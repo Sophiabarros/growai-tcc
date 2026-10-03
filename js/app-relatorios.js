@@ -102,6 +102,30 @@
   // ---- suggestions ----
   var HEALTHY_THRESHOLD = 85;
 
+  // "humidity_target" -> "umidade alvo", para o card nao mostrar nome de coluna
+  var NOME_CAMPO = {
+    humidity_target: "umidade alvo",
+    light_hours: "horas de luz",
+    vent_min_por_hora: "ventilação",
+    temp_max: "temperatura máxima",
+    nutri_s: "dose de nutriente",
+    luz_inicio: "início da luz",
+    nutri_hora: "hora do nutriente",
+  };
+
+  // "umidade alvo: 70 -> 85". Sem config_anterior, mostra so o valor novo.
+  function descreveMudanca(s) {
+    if (!s.config) return "";
+    var antes = s.config_anterior || {};
+    var partes = Object.keys(s.config).map(function (k) {
+      var nome = NOME_CAMPO[k] || k;
+      var de = antes[k];
+      var para = s.config[k];
+      return de === undefined || de === null ? nome + ": " + para : nome + ": " + de + " → " + para;
+    });
+    return partes.join(", ");
+  }
+
   function suggestionCardHtml(s, isDesktop) {
     var healthy = Number(s.health_pct) >= HEALTHY_THRESHOLD;
     var growthIcon = "assets/icons/app/icon-app-crescimento-1" + (isDesktop ? "-d" : "") + ".svg";
@@ -121,6 +145,17 @@
       badge = '<span class="' + badgeClass + '"><img alt="" src="assets/icons/app/icon-app-seta-crescimento.svg" /></span>';
     }
 
+    /* Com auto_aplicada, o texto conta o que a IA JA fez - nao o que ela
+       propoe. A diferenca importa: o usuario precisa saber que a rotina dele
+       mudou sozinha. */
+    var desc = escapeHtml(s.message);
+    if (s.auto_aplicada && !s.desfeita_em) {
+      var mudanca = descreveMudanca(s);
+      desc = "Ajustado pela IA" + (mudanca ? " (" + escapeHtml(mudanca) + ")" : "") + ". " + desc;
+    } else if (s.desfeita_em) {
+      desc = "Ajuste desfeito. " + desc;
+    }
+
     var growthStat =
       '<span class="' + statClass + (isDesktop ? " rel-suggestion__stat--growth" : "") + '"><img alt="" src="' +
       growthIcon + '" /> Crescimento: +' + escapeHtml(s.growth_pct) + "%</span>";
@@ -128,8 +163,19 @@
       '<span class="' + statClass + (isDesktop ? " rel-suggestion__stat--health" : "") + '"><img alt="" src="' +
       healthIcon + '" /> Saúde: ' + escapeHtml(s.health_pct) + "%</span>";
 
+    /* Tres estados possiveis, todos no mesmo botao (mesma classe, zero CSS
+       novo):
+         a IA aplicou sozinha e esta valendo -> "Desfazer ajuste"
+         o usuario desfez                    -> "Ajuste desfeito" (desabilitado)
+         fluxo antigo                        -> "Aplicar sugestao" / "aplicada"
+       O botao de desfazer aparece mesmo com health_pct alto: a IA mexeu na
+       rotina, e o usuario tem que poder voltar atras de qualquer jeito. */
     var btn = "";
-    if (!healthy) {
+    if (s.desfeita_em) {
+      btn = '<button type="button" class="' + btnClass + '" disabled>Ajuste desfeito</button>';
+    } else if (s.auto_aplicada) {
+      btn = '<button type="button" class="' + btnClass + '" data-action="undo" data-id="' + s.id + '">Desfazer ajuste</button>';
+    } else if (!healthy) {
       btn = s.applied
         ? '<button type="button" class="' + btnClass + '" disabled>Sugestão aplicada</button>'
         : '<button type="button" class="' + btnClass + '" data-action="apply" data-id="' + s.id + '">Aplicar sugestão</button>';
@@ -138,7 +184,7 @@
     if (isDesktop) {
       return (
         '<p class="' + nameClass + '">' + name + "</p>" +
-        '<p class="' + descClass + '">' + escapeHtml(s.message) + "</p>" +
+        '<p class="' + descClass + '">' + desc + "</p>" +
         growthStat +
         healthStat +
         badge +
@@ -149,7 +195,7 @@
     return (
       '<p class="' + nameClass + '">' + name + "</p>" +
       badge +
-      '<p class="' + descClass + '">' + escapeHtml(s.message) + "</p>" +
+      '<p class="' + descClass + '">' + desc + "</p>" +
       '<div class="m-rel-suggestion__stats">' + growthStat + healthStat + "</div>" +
       btn
     );
@@ -193,6 +239,26 @@
   }
 
   document.addEventListener("click", async function (event) {
+    var undoBtn = event.target.closest('[data-action="undo"]');
+    if (undoBtn) {
+      undoBtn.disabled = true;
+      undoBtn.textContent = "Desfazendo...";
+      try {
+        var revertida = await GrowAI.undoSuggestion(undoBtn.dataset.id);
+        suggestionsCache = suggestionsCache.map(function (s) {
+          return s.id === revertida.id ? Object.assign({}, s, revertida) : s;
+        });
+        renderSuggestions(suggestionsCache);
+        updateMobileTabbar();
+        if (window.showToast) showToast("Rotina voltou aos valores anteriores.", "success");
+      } catch (err) {
+        undoBtn.disabled = false;
+        undoBtn.textContent = "Desfazer ajuste";
+        if (window.showToast) showToast(err.message, "error");
+      }
+      return;
+    }
+
     var btn = event.target.closest('[data-action="apply"]');
     if (!btn) return;
     btn.disabled = true;

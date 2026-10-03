@@ -462,3 +462,177 @@
 }
 .cfg-row[data-action="edit-profile"] { cursor: pointer; }
 .m-cfg-row[data-action="edit-profile"] { cursor: pointer; }
+
+/* ============================================================
+   CONEXÃO ESP32 (abre ao tocar na linha "Conexão ESP32")
+   ------------------------------------------------------------
+   Tudo aqui é novo: nenhuma regra acima foi alterada.
+   position:fixed no viewport REAL, fora do canvas, então as
+   medidas são em px/vw/vh — rem seria escalado junto com a
+   página. Mesma abordagem do visor da câmera.
+   ============================================================ */
+
+.cfg-row--wifi[data-action="open-esp32"],
+.m-cfg-row[data-action="open-esp32"] {
+  cursor: pointer;
+}
+.cfg-row--wifi[data-action="open-esp32"]:focus-visible,
+.m-cfg-row[data-action="open-esp32"]:focus-visible {
+  outline: 2px solid var(--app-muted-alt);
+  outline-offset: 2px;
+}
+
+.esp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.esp-modal[hidden] { display: none; }
+
+.esp-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 13, 0.82);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.esp-modal__panel {
+  position: relative;
+  width: min(92vw, 560px);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--app-card-bg);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  transform: scale(0.94);
+  opacity: 0;
+  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease;
+}
+.esp-modal--open .esp-modal__panel { transform: scale(1); opacity: 1; }
+
+.esp-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+}
+.esp-modal__title {
+  color: var(--app-text);
+  font: 600 19px/1.3 var(--font-body);
+}
+.esp-modal__close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-muted-alt);
+  font: 400 24px/1 var(--font-body);
+  cursor: pointer;
+}
+.esp-modal__close:hover { background: rgba(255, 255, 255, 0.07); color: var(--app-text); }
+
+.esp-modal__body {
+  padding: 0 20px 20px;
+  overflow-y: auto;
+}
+
+/* ---- uma estação e suas placas ---- */
+.esp-estacao { margin-bottom: 18px; }
+.esp-estacao__nome {
+  margin-bottom: 8px;
+  color: var(--app-text);
+  font: 600 15px/1.3 var(--font-body);
+}
+.esp-placa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.esp-placa__dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--app-muted);
+}
+.esp-placa__dot--on { background: #4ade80; }
+.esp-placa__dot--off { background: #9ca3af; }
+.esp-placa__info { flex: 1; min-width: 0; }
+/* display:block nos dois: eles sao <span> e, inline, o tipo e a descricao
+   saiam colados numa linha so ("Camerauma foto a cada 30 min"). */
+.esp-placa__tipo {
+  display: block;
+  color: var(--app-text);
+  font: 500 14px/1.3 var(--font-body);
+}
+.esp-placa__meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-muted);
+  font: 400 12px/1.4 var(--font-body);
+}
+.esp-placa__estado {
+  flex-shrink: 0;
+  font: 500 12px/1 var(--font-body);
+  color: var(--app-muted-alt);
+}
+.esp-placa__estado--off { color: var(--app-accent); }
+
+.esp-vazio {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--app-muted);
+  font: 400 13px/1.5 var(--font-body);
+}
+
+/* ---- bloco de instruções ---- */
+.esp-ajuda {
+  margin-top: 6px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.esp-ajuda__titulo {
+  margin-bottom: 8px;
+  color: var(--app-text);
+  font: 600 14px/1.3 var(--font-body);
+}
+.esp-ajuda ol { margin: 0 0 0 18px; padding: 0; }
+.esp-ajuda li {
+  margin-bottom: 6px;
+  color: var(--app-muted-alt);
+  font: 400 13px/1.55 var(--font-body);
+}
+.esp-ajuda code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--app-text);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.esp-ajuda__nota {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--app-muted);
+  font: 400 12px/1.5 var(--font-body);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esp-modal__panel { transition: none; transform: none; opacity: 1; }
+}

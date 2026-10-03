@@ -10,7 +10,11 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "db:schema": "psql \"%DATABASE_URL%\" -f db/schema.sql",
-    "db:seed": "psql \"%DATABASE_URL%\" -f db/seed.sql"
+    "db:seed": "psql \"%DATABASE_URL%\" -f db/seed.sql",
+    "db:migrate": "node db/migrate.js",
+    "db:migrate:dry": "node db/migrate.js --dry",
+    "criar-dispositivo": "node scripts/criar-dispositivo.js",
+    "simular": "node scripts/simular-horta.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

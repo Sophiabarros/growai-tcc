@@ -1,0 +1,12 @@
+# Firmware (ver firmware/README.md)
+# Atencao: o Git nao aceita comentario na mesma linha do padrao,
+# so em linha propria como estas.
+
+# credenciais de Wi-Fi e DEVICE_KEY
+firmware/**/secrets.h
+
+# build do PlatformIO
+firmware/**/.pio/
+
+# fotos recebidas pelo mock-server
+firmware/tools/fotos/

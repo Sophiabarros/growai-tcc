@@ -12,3 +12,7 @@ uploads/
 .agents/
 .claude/
 skills-lock.json
+
+# Fotos de teste do simulador (o LEIA-ME.txt continua versionado)
+scripts/amostras/*
+!scripts/amostras/LEIA-ME.txt

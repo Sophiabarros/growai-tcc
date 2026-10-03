@@ -13,7 +13,41 @@
   // e cada card/seção caía no estado de erro/vazio ("Não foi possível
   // conectar ao servidor"). Agora sempre usa o backend de produção, local
   // ou publicado — os mesmos dados reais em qualquer lugar.
-  var API_BASE = "https://growai-backend.vercel.app/api";
+  var API_PRODUCAO = "https://growai-backend.vercel.app/api";
+
+  /* ...COM UMA SAÍDA para desenvolvimento.
+     O Live Server serve só as PÁGINAS; os dados continuam vindo do endereço
+     acima. Então, ao testar uma mudança de backend, o app segue falando com
+     produção e a mudança parece não funcionar — a correção está na sua
+     máquina, mas quem responde é a Vercel.
+
+     Para apontar para o backend local, no console do navegador:
+       localStorage.setItem("growai_api_local", "1");   location.reload();
+     E para voltar:
+       localStorage.removeItem("growai_api_local");     location.reload();
+
+     Pode-se passar uma URL completa em vez de "1" (útil para testar pelo
+     celular na mesma rede): localStorage.setItem("growai_api_local",
+     "http://192.168.0.10:3000/api").
+
+     Quem usa o site publicado nunca tem essa chave, então nada muda para o
+     usuário final. */
+  var API_BASE = API_PRODUCAO;
+  try {
+    var apiLocal = localStorage.getItem("growai_api_local");
+    if (apiLocal) {
+      API_BASE =
+        apiLocal === "1" || apiLocal === "true"
+          ? "http://localhost:3000/api"
+          : String(apiLocal).replace(/\/+$/, "");
+      console.warn(
+        "[GrowAI] usando API LOCAL: " + API_BASE +
+          "\nPara voltar a produção: localStorage.removeItem(\"growai_api_local\"); location.reload();"
+      );
+    }
+  } catch (e) {
+    /* localStorage bloqueado (modo anônimo, cookies desligados): segue em produção */
+  }
 
   var TOKEN_KEY = "growai_token";
   var USER_KEY = "growai_user";
@@ -193,10 +227,26 @@
     getLatestReading: (id) => request(`/stations/${id}/readings/latest`),
     getLatestPhoto: (id) => request(`/stations/${id}/photos/latest`),
 
+    // ---- controle manual das placas ----
+    // Ainda nao ha botao em tela ligado nisto (ver backend/README.md).
+    // createCommand enfileira; a placa pega na proxima telemetria (~15 s) e
+    // confirma no ciclo seguinte, entao o efeito nao e instantaneo.
+    // Os limites de seguranca (20 s de bomba, 30 s de nutriente por dia) sao
+    // do firmware: dur_s maior que isso e aceito e cortado pela placa.
+    createCommand: (id, data) =>
+      request(`/stations/${id}/commands`, { method: "POST", body: JSON.stringify(data) }),
+    getCommands: (id) => request(`/stations/${id}/commands`),
+    getDevices: (id) => request(`/stations/${id}/devices`),
+
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),
     getSuggestions: () => request("/suggestions"),
     applySuggestion: (id) => request(`/suggestions/${id}/apply`, { method: "PATCH" }),
+    // Desfaz um ajuste que a IA aplicou sozinha: volta aos valores de antes.
+    undoSuggestion: (id) => request(`/suggestions/${id}/undo`, { method: "PATCH" }),
+    // Pede a IA para avaliar a rotina contra a especie e a finalidade da
+    // estacao. Nao manda foto. Chamado depois de salvar a rotina.
+    evaluateRoutine: (id) => request(`/stations/${id}/avaliar-rotina`, { method: "POST" }),
 
     // ---- settings ----
     getNotificationSettings: () => request("/settings/notifications"),
