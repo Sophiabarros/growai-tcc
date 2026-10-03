@@ -692,3 +692,14 @@
   word-break: break-all;
   user-select: all;
 }
+
+/* Sub-lista dos campos do portal, dentro do passo 4 */
+.esp-ajuda__campos {
+  margin: 6px 0 0 16px;
+  padding: 0;
+  list-style: disc;
+}
+.esp-ajuda__campos li {
+  margin-bottom: 4px;
+  font-size: 12.5px;
+}

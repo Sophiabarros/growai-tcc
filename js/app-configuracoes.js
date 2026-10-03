@@ -304,26 +304,46 @@
     );
   }
 
-  var ESP_AJUDA_HTML =
-    '<div class="esp-ajuda">' +
-    '<p class="esp-ajuda__titulo">Como conectar uma placa ao Wi-Fi</p>' +
-    "<ol>" +
-    "<li>Ligue a placa. Sem rede configurada, ela cria a própria: <code>GrowAI-setup</code> (senha <code>growai123</code>).</li>" +
-    "<li>Conecte o celular nessa rede. A página de configuração abre sozinha; se não abrir, acesse <code>192.168.4.1</code>.</li>" +
-    "<li>Escolha a sua rede Wi-Fi (só <strong>2,4 GHz</strong>), digite a senha e cole a chave da placa.</li>" +
-    "<li>Salve. Ela reinicia já conectada e aparece aqui como Online.</li>" +
-    "</ol>" +
-    '<p class="esp-ajuda__nota">' +
-    "Para reconfigurar depois: na placa principal, segure o botão <strong>BOOT</strong> ao ligar. " +
-    "A câmera abre o portal sozinha depois de 3 tentativas falhas." +
-    "</p>" +
-    '<p class="esp-ajuda__nota">' +
-    "<strong>A chave da placa não aparece aqui de propósito.</strong> O servidor guarda só um resumo " +
-    "criptográfico dela, nunca a chave em si — então nem ele consegue mostrá-la de volta. " +
-    "Ela é exibida uma única vez, no computador, ao rodar <code>npm run criar-dispositivo</code>. " +
-    "Se você perdeu, gere outra: a anterior deixa de valer." +
-    "</p>" +
-    "</div>";
+  /* O passo a passo tem que casar com o que a tela realmente oferece. A versao
+     anterior mandava buscar a chave no computador, rodando um script — isso era
+     verdade antes de existirem os botoes de cadastrar placa logo acima. */
+  function espAjudaHtml() {
+    var api = (window.GrowAI && GrowAI.apiBase && GrowAI.apiBase()) || "";
+    return (
+      '<div class="esp-ajuda">' +
+      '<p class="esp-ajuda__titulo">Como conectar uma placa ao Wi-Fi</p>' +
+      "<ol>" +
+      "<li><strong>Aqui no app:</strong> clique em <em>Cadastrar</em> na placa que você vai ligar e " +
+      "<strong>copie a chave</strong>. Ela aparece uma única vez.</li>" +
+      "<li><strong>Ligue a placa.</strong> Sem rede configurada, ela cria a própria: " +
+      "<code>GrowAI-setup</code> (senha <code>growai123</code>).</li>" +
+      "<li>Conecte o <strong>celular</strong> nessa rede. A página de configuração abre sozinha; " +
+      "se não abrir, acesse <code>192.168.4.1</code>.</li>" +
+      "<li>Na página da placa, preencha:" +
+      '<ul class="esp-ajuda__campos">' +
+      "<li><strong>Rede e senha</strong> — a sua rede, só <strong>2,4 GHz</strong> (o ESP32 não enxerga 5 GHz).</li>" +
+      "<li><strong>Endereço da API</strong> — " + (api ? "<code>" + escapeHtml(api) + "</code>" : "o endereço do servidor") + "</li>" +
+      "<li><strong>Chave</strong> — a que você copiou no passo 1.</li>" +
+      "</ul></li>" +
+      "<li>Salve. Ela reinicia já conectada e aparece aqui como <strong>Online</strong> " +
+      "(a câmera pode levar até 30 min, porque ela dorme entre uma foto e outra).</li>" +
+      "</ol>" +
+      '<p class="esp-ajuda__nota">' +
+      "<strong>Cada placa tem a sua chave.</strong> A da placa principal não funciona na câmera e vice-versa — " +
+      "trocadas, a placa conecta no Wi-Fi normalmente mas o servidor recusa tudo." +
+      "</p>" +
+      '<p class="esp-ajuda__nota">' +
+      "<strong>Perdeu a chave?</strong> Clique em <em>Gerar nova chave</em> acima. " +
+      "Ela não pode ser mostrada de novo: o servidor guarda só um resumo criptográfico, nunca a chave em si. " +
+      "Gerar uma nova faz a anterior parar de valer na hora." +
+      "</p>" +
+      '<p class="esp-ajuda__nota">' +
+      "<strong>Trocar de rede depois:</strong> na placa principal, segure o botão <strong>BOOT</strong> enquanto liga. " +
+      "A câmera abre a página de configuração sozinha depois de 3 tentativas sem conseguir conectar." +
+      "</p>" +
+      "</div>"
+    );
+  }
 
   function espAbrir() {
     espBody.innerHTML = '<p class="esp-vazio">Carregando placas...</p>';
@@ -362,7 +382,7 @@
     if (!estacoes.length) {
       espBody.innerHTML =
         '<p class="esp-vazio">Você ainda não tem estações. Crie uma na tela Estações para poder cadastrar placas.</p>' +
-        ESP_AJUDA_HTML;
+        espAjudaHtml();
       return;
     }
 
@@ -396,7 +416,7 @@
       })
       .join("");
 
-    espBody.innerHTML = html + ESP_AJUDA_HTML;
+    espBody.innerHTML = html + espAjudaHtml();
 
     /* Acabou de gerar uma chave? A lista foi redesenhada, entao a caixa dela
        precisa voltar — senao a unica copia da chave sumiria da tela. */

@@ -203,6 +203,9 @@
       window.location.href = "login.html";
     },
     getUser: getUser,
+    // Endereco da API em uso agora (producao ou o override local). A tela
+    // Conexao ESP32 mostra este valor para o usuario colar no portal da placa.
+    apiBase: function () { return API_BASE; },
     isAuthenticated: isAuthenticated,
     async getMe() {
       var user = await request("/auth/me");
