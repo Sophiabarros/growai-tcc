@@ -237,6 +237,12 @@
       request(`/stations/${id}/commands`, { method: "POST", body: JSON.stringify(data) }),
     getCommands: (id) => request(`/stations/${id}/commands`),
     getDevices: (id) => request(`/stations/${id}/devices`),
+    /* Cadastra uma placa e devolve a chave EM TEXTO PURO no campo `chave`.
+       E a unica vez que ela existe fora da placa: o banco guarda so o sha256.
+       Pedir de novo para o mesmo tipo substitui a anterior. */
+    createDevice: (id, tipo, nome) =>
+      request(`/stations/${id}/devices`, { method: "POST", body: JSON.stringify({ tipo: tipo, nome: nome }) }),
+    deleteDevice: (id, deviceId) => request(`/stations/${id}/devices/${deviceId}`, { method: "DELETE" }),
 
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),

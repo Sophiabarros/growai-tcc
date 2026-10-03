@@ -350,7 +350,7 @@
     espFocoAnterior = null;
   }
 
-  async function espCarregar() {
+  async function espCarregar(chaveNova) {
     var estacoes;
     try {
       estacoes = await GrowAI.getStations();
@@ -386,15 +386,24 @@
           corpo = lista.map(espPlacaHtml).join("");
         }
         return (
-          '<div class="esp-estacao">' +
+          '<div class="esp-estacao" data-estacao="' + e.id + '">' +
           '<p class="esp-estacao__nome">' + escapeHtml(e.name) + " · " + escapeHtml(e.plant) + "</p>" +
           corpo +
+          espBotoesHtml(e.id, lista) +
+          '<div class="esp-chave-slot"></div>' +
           "</div>"
         );
       })
       .join("");
 
     espBody.innerHTML = html + ESP_AJUDA_HTML;
+
+    /* Acabou de gerar uma chave? A lista foi redesenhada, entao a caixa dela
+       precisa voltar — senao a unica copia da chave sumiria da tela. */
+    if (chaveNova) {
+      var est = espBody.querySelector('.esp-estacao[data-estacao="' + chaveNova.estacao + '"]');
+      if (est) espMostraChave(est.querySelector(".esp-chave-slot"), chaveNova.tipo, chaveNova.dados);
+    }
   }
 
   document.addEventListener("click", function (event) {
@@ -419,7 +428,87 @@
     espAbrir();
   });
 
+
+  /* Botoes de cadastrar placa e a caixa que mostra a chave.
+     A chave vem no POST e nunca mais: por isso ela aparece numa caixa
+     destacada, com botao de copiar e aviso explicito. */
+  function espBotoesHtml(estacaoId, lista) {
+    if (lista === null) return "";
+    var temMain = lista.some(function (d) { return d.tipo === "main"; });
+    var temCam = lista.some(function (d) { return d.tipo === "cam"; });
+    function botao(tipo, tem) {
+      var rotulo = tem
+        ? "Gerar nova chave da " + (tipo === "main" ? "placa principal" : "câmera")
+        : "Cadastrar " + (tipo === "main" ? "placa principal" : "câmera");
+      return (
+        '<button type="button" class="esp-btn' + (tem ? " esp-btn--secundario" : "") + '"' +
+        ' data-action="add-placa" data-estacao="' + estacaoId + '" data-tipo="' + tipo + '">' +
+        rotulo + "</button>"
+      );
+    }
+    return '<div class="esp-acoes">' + botao("main", temMain) + botao("cam", temCam) + "</div>";
+  }
+
+  function espMostraChave(caixa, tipo, dados) {
+    var nomeTipo = tipo === "main" ? "placa principal" : "câmera";
+    caixa.innerHTML =
+      '<div class="esp-chave">' +
+      '<p class="esp-chave__titulo">Chave da ' + nomeTipo + "</p>" +
+      '<p class="esp-chave__aviso">' +
+      (dados.substituiu_anterior ? "A chave anterior desta placa <strong>parou de valer agora</strong>. " : "") +
+      "Copie antes de fechar: por segurança, ela <strong>não aparece de novo</strong>." +
+      "</p>" +
+      '<code class="esp-chave__valor" id="espChaveValor">' + escapeHtml(dados.chave) + "</code>" +
+      '<button type="button" class="esp-btn" data-action="copiar-chave">Copiar chave</button>' +
+      "</div>";
+  }
+
+  document.addEventListener("click", async function (event) {
+    var btnCopiar = event.target.closest('[data-action="copiar-chave"]');
+    if (btnCopiar) {
+      var valor = document.getElementById("espChaveValor");
+      if (!valor) return;
+      try {
+        await navigator.clipboard.writeText(valor.textContent);
+        btnCopiar.textContent = "Copiada!";
+        setTimeout(function () { btnCopiar.textContent = "Copiar chave"; }, 1800);
+      } catch (e) {
+        // clipboard bloqueado (http sem https, permissao negada): seleciona
+        // o texto para o usuario copiar com Ctrl+C
+        var r = document.createRange();
+        r.selectNodeContents(valor);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(r);
+        btnCopiar.textContent = "Selecionada — Ctrl+C";
+      }
+      return;
+    }
+
+    var btn = event.target.closest('[data-action="add-placa"]');
+    if (!btn) return;
+
+    var tipo = btn.dataset.tipo;
+    var estacaoId = btn.dataset.estacao;
+    var rotuloOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Gerando...";
+    try {
+      var d = await GrowAI.createDevice(estacaoId, tipo);
+      // A caixa da chave entra logo abaixo dos botoes daquela estacao.
+      var caixa = btn.closest(".esp-estacao").querySelector(".esp-chave-slot");
+      espMostraChave(caixa, tipo, d);
+      // Recarrega a lista para a placa nova aparecer com o estado dela.
+      await espCarregar(d.chave ? { estacao: estacaoId, tipo: tipo, dados: d } : null);
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = rotuloOriginal;
+      if (window.showToast) showToast(err.message, "error");
+    }
+  });
+
   // ---- canvas scaling ----
+
 
   initResponsiveCanvas({
     desktopPageId: "appConfiguracoesPage",

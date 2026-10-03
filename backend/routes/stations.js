@@ -14,6 +14,9 @@ router.get("/:id/photos/latest", ctrl.getLatestPhoto);
 router.post("/:id/commands", cmds.create);
 router.get("/:id/commands", cmds.list);
 router.get("/:id/devices", cmds.listDevices);
+// Cadastra uma placa e devolve a chave dela UMA unica vez
+router.post("/:id/devices", cmds.createDevice);
+router.delete("/:id/devices/:deviceId", cmds.removeDevice);
 
 // A IA avalia a rotina contra a especie e a finalidade (sem foto)
 router.post("/:id/avaliar-rotina", ctrl.avaliarRotina);

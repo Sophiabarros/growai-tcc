@@ -636,3 +636,59 @@
 @media (prefers-reduced-motion: reduce) {
   .esp-modal__panel { transition: none; transform: none; opacity: 1; }
 }
+
+/* ---- cadastrar placa e mostrar a chave ---- */
+.esp-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.esp-btn {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--app-accent, #6ee7a8);
+  color: #0a0f0d;
+  font: 600 13px/1 var(--font-body);
+  cursor: pointer;
+}
+.esp-btn:hover { filter: brightness(1.08); }
+.esp-btn:disabled { opacity: 0.6; cursor: default; }
+.esp-btn--secundario {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text);
+}
+
+/* A chave aparece UMA vez. A caixa é destacada de propósito: é a única
+   chance de copiar, e perder significa gerar outra. */
+.esp-chave {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--app-accent, #6ee7a8);
+  border-radius: 10px;
+  background: rgba(110, 231, 168, 0.07);
+}
+.esp-chave__titulo {
+  margin-bottom: 4px;
+  color: var(--app-text);
+  font: 600 14px/1.3 var(--font-body);
+}
+.esp-chave__aviso {
+  margin-bottom: 8px;
+  color: var(--app-muted-alt);
+  font: 400 12px/1.5 var(--font-body);
+}
+.esp-chave__valor {
+  display: block;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--app-text);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-all;
+  user-select: all;
+}
