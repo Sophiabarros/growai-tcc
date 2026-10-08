@@ -6,6 +6,11 @@ const RELES = ["bomba", "nutri", "luz", "vent"];
 const ACOES = ["ligar", "desligar"];
 const DUR_MAX_S = 3600;
 
+/* Espelha o MAX_BOMBA do firmware (REGA_ENCHE + 2 x REGA_DOSE, hoje 20 + 2x15
+   em firmware/esp32-main/src/main.cpp). Mudou lá, mude aqui — isto serve só
+   para o app receber um aviso claro, o corte de verdade é da placa. */
+const BOMBA_MAX_S = 50;
+
 /* "Online" quer dizer coisas diferentes para cada placa, e usar o mesmo prazo
    para as duas dava um resultado errado.
 
@@ -28,7 +33,7 @@ async function estacaoDoUsuario(stationId, userId) {
 /* Cria um comando manual. Ele fica 'pendente' até a placa pedir a próxima
    telemetria — o servidor não consegue chamar a placa.
 
-   Os limites de segurança de verdade (20 s de bomba, 30 s de nutriente por
+   Os limites de segurança de verdade (50 s de bomba, 30 s de nutriente por
    dia) são do firmware e não dependem daqui. A validação abaixo existe para o
    app receber um erro claro em vez de enfileirar algo que a placa vai cortar
    em silêncio. */
@@ -56,9 +61,9 @@ async function create(req, res, next) {
         return res.status(400).json({ error: `dur_s no máximo ${DUR_MAX_S} s (1 hora)` });
       }
       dur_s = n;
-      // Aviso, não erro: a placa corta em 20 s e o comando ainda é válido.
-      if (rele === "bomba" && n > 20) {
-        res.set("X-Aviso", "a placa limita a bomba a 20 s por acionamento");
+      // Aviso, não erro: a placa corta no teto dela e o comando ainda é válido.
+      if (rele === "bomba" && n > BOMBA_MAX_S) {
+        res.set("X-Aviso", `a placa limita a bomba a ${BOMBA_MAX_S} s por acionamento`);
       }
     }
 

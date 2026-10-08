@@ -204,7 +204,7 @@ Detalhes que economizam dor de cabeça:
 
 | Relé | Limite |
 |---|---|
-| `bomba` | `dur_s` é cortado em 20 s (`MAX_BOMBA`), e a bomba **não liga** com `umidade: null` |
+| `bomba` | `dur_s` é cortado em `MAX_BOMBA` (hoje 50 s = `REGA_ENCHE` 20 s + 2 x `REGA_DOSE` 15 s), e a bomba **não liga** com `umidade: null` |
 | `nutri` | `dur_s` é cortado no que resta dos 30 s do dia; sem margem, o comando é ignorado |
 
 ### Ciclo de vida / `acks`

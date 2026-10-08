@@ -10,7 +10,7 @@ Duas placas, dois projetos PlatformIO independentes:
 As duas **não se falam**. Cada uma conversa só com o backend, e é sempre ela que
 inicia a conexão. O contrato HTTP está em [PROTOCOLO.md](PROTOCOLO.md).
 
-O controle é **sempre local**: histerese, corte de bomba em 20 s, pausa de
+O controle é **sempre local**: histerese, corte de bomba em 50 s, pausa de
 absorção, limite diário de nutriente e corte por sensor inválido funcionam sem
 Wi-Fi. Se a internet cair, a planta continua sendo cuidada.
 
@@ -97,12 +97,17 @@ repetir, sem computador e sem cabo.
 
 | Placa | Abre quando |
 |---|---|
-| ESP32 principal | nunca foi configurada, **ou** você segura o botão **BOOT** enquanto liga |
+| ESP32 principal | nunca foi configurada, **ou** você **aperta o botão BOOT nos 10 primeiros segundos** depois de ligar |
 | ESP32-CAM | nunca foi configurada, **ou** falha 3 ciclos seguidos ao conectar |
 
 A CAM não tem botão acessível (o GPIO 0 dela é o clock da câmera), por isso o
 gatilho é a falha repetida: se a rede mudou de nome ou de senha, em ~1h30 ela
 abre o portal sozinha.
+
+> **Por que "aperte depois de ligar" e não "segure enquanto liga"?** O BOOT é o
+> GPIO 0. Com ele em GND **no reset**, o ESP32 entra em modo de gravação e o
+> firmware nem roda — então segurar na hora de ligar nunca poderia abrir o
+> portal. A placa lê o botão nos primeiros 10 s de execução (`PORTAL_BOTAO_S`).
 
 O portal fica no ar por 3 minutos. Ninguém configurou? A placa reinicia e volta
 ao normal.
@@ -156,12 +161,75 @@ A placa MB normalmente reseta sozinha. Se der `Failed to connect`:
 4. **tire o jumper** e aperte RST de novo — senão ela fica em modo de gravação
    e não roda o firmware.
 
+### Alternativa: pelo Arduino IDE
+
+O PlatformIO continua sendo o jeito oficial, mas o firmware também compila no
+Arduino IDE. Três coisas mudam, e todas as três dão erro se forem esquecidas.
+
+**1. O `.ino` sozinho não compila.** Fora do PlatformIO ninguém passa o
+`-I ../shared`, então `protocolo.h`, `provisao.h` e `secrets.h` precisam estar
+dentro da pasta do sketch. Uma pasta pronta mora em
+`Documentos/Arduino/growai-cam/` e `Documentos/Arduino/growai-controlador/`.
+Para refazer (ou atualizar depois de mexer no firmware), do Git Bash:
+
+```bash
+SK="$HOME/OneDrive/Documentos/Arduino"
+cp firmware/esp32-cam/src/main.cpp        "$SK/growai-cam/main.cpp"
+cp firmware/shared/protocolo.h            "$SK/growai-cam/"
+cp firmware/shared/provisao.h             "$SK/growai-cam/"
+cp firmware/esp32-cam/include/secrets.h   "$SK/growai-cam/"
+```
+
+(o mesmo com `esp32-main` → `growai-controlador`)
+
+> **O repositório é a fonte da verdade.** A pasta do Arduino é cópia. Mexeu no
+> `firmware/`, rode o `cp` de novo — senão você grava a placa com código velho.
+
+**2. O código fica em `main.cpp`, e o `.ino` fica vazio.** Antes de compilar, o
+IDE reescreve arquivos `.ino`: ele inventa protótipos de todas as funções e
+cola no topo. Um protótipo que usa `struct Config` colado antes da declaração
+do struct dá `'Config' does not name a type`. Em `.cpp` o IDE não mexe. O IDE
+compila todo `.cpp` da pasta do sketch, então `setup()` e `loop()` valem igual.
+
+**3. As bibliotecas não vêm do `platformio.ini`.** Instale pelo Library Manager
+(`Ctrl+Shift+I`):
+
+| Biblioteca | Versão | Placa |
+|---|---|---|
+| WiFiManager (tzapu) | 2.0.17 | as duas |
+| ArduinoJson | 7.x | principal |
+| OneWire (Paul Stoffregen) | 2.3.8 | principal |
+| DallasTemperature | 4.0.6 | principal |
+
+> `DallasTemperature@3.11.0` do `platformio.ini` não existe no índice do
+> Arduino IDE — a 4.0.6 é a equivalente e compila sem mudar nada no código.
+
+Placa no menu **Tools → Board → esp32**:
+
+| Projeto | Placa a escolher |
+|---|---|
+| growai-cam | **AI Thinker ESP32-CAM** |
+| growai-controlador | **ESP32 Dev Module** |
+
+Testado no core `esp32:esp32` **3.3.12** (o `platformio.ini` fixa o 2.0.17; os
+dois funcionam, o `esp_task_wdt_init` já tem `#if` para as duas versões).
+
+> O controlador fica em **84% da flash** na partição padrão do ESP32 Dev
+> Module. Se um dia estourar, troque para **Tools → Partition Scheme → Minimal
+> SPIFFS (1.9MB APP with OTA)**.
+
 ### Tamanho atual
 
-| Projeto | RAM | Flash |
-|---|---|---|
-| esp32-main | 15,0% (49 kB de 320 kB) | 77,0% (1,01 MB de 1,31 MB) |
-| esp32-cam | 16,0% (52 kB de 320 kB) | 35,7% (1,12 MB de 3,15 MB) |
+| Projeto | RAM | Flash | Partição |
+|---|---|---|---|
+| esp32-main | 15,6% (50 kB de 320 kB) | 38,2% (1,15 MB de 3,00 MB) | `huge_app` |
+| esp32-cam | 18,8% (60 kB de 320 kB) | 39,6% (1,19 MB de 3,00 MB) | `huge_app` (padrão da placa) |
+
+> A principal **precisa** de `huge_app`. Na partição padrão de 1,31 MB ela dá
+> 91% e não sobra margem para nada — o portal do WiFiManager sozinho pesa ~90 kB.
+> No PlatformIO isso já está no `platformio.ini`; no Arduino IDE é
+> **Tools → Partition Scheme → Huge APP (3MB No OTA/1MB SPIFFS)**. A placa
+> `esp32cam` já vem com essa partição por padrão.
 
 ---
 
@@ -193,6 +261,69 @@ Terra, fibra de coco e perlita dão leituras diferentes.
 
 Se aparecer `umid INVALIDA`, o bruto saiu de 500–4000 — normalmente fio solto
 ou sensor em curto. A bomba é cortada na hora nesse caso.
+
+### 3.1 Medir o tempo de enchimento dos canos (`REGA_ENCHE`)
+
+O sensor fica enterrado perto de onde a água entra, então ele molha **antes** de
+a água chegar na última saída do cano. Se o corte por umidade valesse desde o
+primeiro segundo, a bomba desligaria com o cano pela metade: o sensor leria 60%,
+o firmware acharia que regou, e a ponta final do cano nunca receberia nada.
+
+Por isso existe o `REGA_MIN`: um **tempo mínimo ligada em que a umidade não
+desliga a bomba**. Ele cobre duas fases, e precisa cobrir as duas — quando o
+cano acaba de encher o sensor **já está molhado**, então um mínimo que parasse
+no enchimento faria a histerese cortar na mesma hora, e a dose nunca sairia:
+
+| Constante | O que é |
+|---|---|
+| `REGA_ENCHE` | enchendo o cano; a água ainda não chegou na planta — **é o que você mede** |
+| `REGA_DOSE` | regando de verdade, com o cano cheio |
+| `REGA_MIN` | `REGA_ENCHE + REGA_DOSE` — a umidade não corta antes disso |
+| `MAX_BOMBA` | `REGA_ENCHE + 2 x REGA_DOSE` — teto duro por acionamento |
+
+Passado o `REGA_MIN`, quem manda em desligar volta a ser o sensor. O teto dá a
+ele mais uma dose de margem e corta: **no pior caso a planta recebe o dobro da
+dose, nunca mais que isso.**
+
+#### Como medir
+
+1. Reservatório cheio e **canos vazios** — é como eles estarão no começo de uma
+   rega de verdade. Se você acabou de regar, espere escorrer.
+2. Ligue a bomba e marque no cronômetro **até sair água na última saída**. Duas
+   formas:
+   - **Pela placa:** o Serial agora imprime os segundos no estado `REGANDO`:
+     ```
+     14:22:19  umid 38% (2890)  temp 24.8C  REGANDO 12s  B1 N0 L1 V0 ...
+     ```
+     Olhe o número no instante em que a água sai na última saída.
+   - **Direto na fonte:** ligue a bomba na fonte 12 V dela, sem passar pelo
+     relé, e marque no cronômetro. Use este jeito se o enchimento passar do
+     `MAX_BOMBA` atual — pela placa a bomba corta antes e você não vê o fim.
+3. Repita 2–3 vezes. Pegue o **maior** tempo, não a média.
+4. Some ~20% de folga e ponha em
+   [esp32-main/src/main.cpp](esp32-main/src/main.cpp):
+   ```cpp
+   const unsigned long REGA_ENCHE = 20000;   // seu tempo medido + folga, em ms
+   const unsigned long REGA_DOSE  = 15000;   // rega de verdade, cano já cheio
+   ```
+   `REGA_MIN` e `MAX_BOMBA` saem dessas duas sozinhos — não precisa mexer.
+5. Grave de novo e confira no Serial: a bomba tem que passar de `REGA_MIN`
+   (enchimento + dose) mesmo com a umidade já acima de `umid_desliga`.
+
+`REGA_DOSE` é a parte que rega de fato. Comece com 15 s e ajuste olhando se o
+substrato fica encharcado ou seco demais — essa é a sua dose por ciclo.
+
+> Se você errar para cima e `MAX_BOMBA` passar de 2 minutos, **o build falha**
+> com `bomba acima de 2 min por acionamento: confira REGA_ENCHE/REGA_DOSE`. É um
+> `static_assert` de propósito: melhor não compilar do que gravar um firmware
+> que afoga a planta.
+
+#### Se cada rega paga o enchimento de novo
+
+Cano que escorre de volta durante a pausa de `ABSORCAO` (5 min) começa o ciclo
+seguinte vazio, e o enchimento é pago toda vez — gasta água e atrasa a rega. Duas
+saídas, nenhuma no código: uma **válvula de retenção** na saída da bomba, ou
+deixar o cano abaixo do nível da bomba para ele não sifonar.
 
 ---
 
@@ -247,7 +378,8 @@ Use um destes como endereço da API:
   http://192.168.18.22:3001/api
 ```
 
-Agora configure **cada placa pelo portal** (segure BOOT ao ligar a principal),
+Agora configure **cada placa pelo portal** (aperte BOOT nos 10 s iniciais na
+principal),
 pondo esse endereço e a chave **daquela** placa:
 
 | Placa | Endereço da API | Chave |
@@ -305,7 +437,7 @@ errar um valor o erro aparece no navegador na hora, e não escondido no Serial:
    liga, e no log do mock aparece `ack: comando 1 ... confirmado`. Depois de
    60 s ele volta ao automático sozinho.
 7. **Limite duro:** `/mock/cmd?rele=bomba&acao=ligar&dur_s=600`. O Serial mostra
-   `bomba ligado por 20 s`, não 600 — o firmware cortou.
+   `bomba ligado por 50 s`, não 600 — o firmware cortou.
 8. **Sem internet:** feche o mock. A placa tem que continuar regando e
    acendendo a luz, com o Serial mostrando o backoff (15 → 30 → 60 s).
 9. **Foto:** espere a janela (minuto `:00` ou `:30`). A luz apaga por 40 s, a
@@ -353,7 +485,8 @@ O Wi-Fi está bem, a placa alcança o servidor, mas ele recusa a chave. Em ordem
 4. a chave foi regerada depois de você configurar a placa? O script imprime uma
    vez e guarda só o hash — gerar de novo invalida a anterior.
 
-Para corrigir: abra o portal (BOOT na principal, ou espere 3 ciclos na CAM) e
+Para corrigir: abra o portal (BOOT nos 10 s iniciais na principal, ou espere
+3 ciclos na CAM) e
 cole a chave certa. **Não precisa recompilar nem ligar o cabo.**
 
 A placa tenta de novo a cada 60 s e **segue regando normalmente** enquanto isso.
@@ -399,6 +532,17 @@ outro pino livre (o 13 serve) em
 
 O pip instalou, mas o script não entrou no PATH. Use `python -m platformio` em
 todos os comandos deste README.
+
+### `WiFiManager.h: No such file or directory` no Arduino IDE
+
+O Arduino IDE não lê o `platformio.ini`, então nenhuma das bibliotecas de lá
+está instalada. Instale-as pelo Library Manager e monte a pasta do sketch
+completa — a lista e o passo a passo estão em
+[Alternativa: pelo Arduino IDE](#alternativa-pelo-arduino-ide).
+
+Os erros que vêm na sequência (`protocolo.h`, `provisao.h`, `secrets.h`,
+`'Config' does not name a type`) são a mesma causa: o `.ino` copiado sozinho
+não leva os headers do `shared/`.
 
 ### A bomba não liga
 

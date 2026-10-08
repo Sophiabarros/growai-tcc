@@ -11,7 +11,7 @@
 // Quando uma trava impede o auto-ajuste, a sugestão AINDA é gravada, só com
 // auto_aplicada = false: o usuário continua podendo aplicar no botão.
 //
-// Segurança física não depende daqui: o limite de 20 s de bomba e de 30 s de
+// Segurança física não depende daqui: o limite de 50 s de bomba e de 30 s de
 // nutriente por dia está no firmware. O pior que um ajuste errado faz é a
 // planta receber mais ou menos água do que devia, nunca afogar.
 

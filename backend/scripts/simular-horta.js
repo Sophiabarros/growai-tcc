@@ -37,6 +37,15 @@ const FOTO_A_CADA_MIN = arg("--foto-a-cada", 5);
 const MAX_CICLOS = arg("--ciclos", Infinity);
 const INTERVALO_FIXO = arg("--intervalo", 0);
 
+/* Espelha os tempos de rega do firmware (firmware/esp32-main/src/main.cpp).
+   REGA_MIN_MS é o tempo mínimo ligada, em que a umidade NÃO desliga a bomba:
+   cobre encher os canos (o sensor molha antes da planta receber água) mais a
+   dose em si. MAX_BOMBA_MS é o teto duro por acionamento. */
+const REGA_ENCHE_MS = 20000;
+const REGA_DOSE_MS = 15000;
+const REGA_MIN_MS = REGA_ENCHE_MS + REGA_DOSE_MS;
+const MAX_BOMBA_MS = REGA_ENCHE_MS + 2 * REGA_DOSE_MS;
+
 // ------------------------------------------------- estado da "placa main"
 const placa = {
   fw: "main-1.0.0-sim",
@@ -84,7 +93,8 @@ function passoLocal(segundos) {
     placa.tEstado = Date.now();
   } else if (placa.estado === "REGANDO") {
     const ligadaMs = Date.now() - (placa.tEstado || Date.now());
-    if (placa.umidade >= placa.cfg.umid_desliga || ligadaMs >= 20000) {
+    const deuOMinimo = ligadaMs >= REGA_MIN_MS;
+    if ((deuOMinimo && placa.umidade >= placa.cfg.umid_desliga) || ligadaMs >= MAX_BOMBA_MS) {
       placa.estado = "ABSORVENDO";
       placa.tEstado = Date.now();
     }
@@ -137,7 +147,7 @@ function aplicarComandos(comandos) {
       continue;
     }
     let dur = Math.min(Number(c.dur_s) || 60, 3600);
-    if (c.rele === "bomba") dur = Math.min(dur, 20);        // MAX_BOMBA
+    if (c.rele === "bomba") dur = Math.min(dur, MAX_BOMBA_MS / 1000);  // MAX_BOMBA
     if (c.rele === "nutri") dur = Math.min(dur, 30 - placa.nutri_s_hoje);
     if (dur <= 0) {
       console.log(`    [cmd ${c.id}] ${c.rele} sem margem no limite, ignorado`);

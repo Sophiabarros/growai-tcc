@@ -15,7 +15,7 @@
  *
  * O portal abre quando:
  *   - a placa nunca foi configurada;
-  *   - voce segura o botao BOOT enquanto liga a placa.
+  *   - voce aperta o botao BOOT nos 10 primeiros segundos depois de ligar.
  *
  * Os valores abaixo sao apenas o PADRAO DE FABRICA: valem enquanto a NVS
  * estiver vazia, e o que for configurado pelo portal sempre vence. Deixe-os

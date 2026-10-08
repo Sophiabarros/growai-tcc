@@ -170,8 +170,10 @@ telemetria já leva a config nova.
 ciclo seguinte — **não é instantâneo**.
 
 Os limites de segurança de verdade são do firmware e não dependem do backend:
-bomba no máximo 20 s por acionamento, nutriente no máximo 30 s por dia. Um
-`dur_s: 600` na bomba é aceito aqui e **cortado para 20 s pela placa**.
+bomba no máximo 50 s por acionamento (`MAX_BOMBA`), nutriente no máximo 30 s
+por dia. Um `dur_s: 600` na bomba é aceito aqui e **cortado para 50 s pela
+placa**. O 50 vem de `REGA_ENCHE` + 2 x `REGA_DOSE` no firmware: mudou lá, mude
+o `BOMBA_MAX_S` em `controllers/commandsController.js`.
 Comando sem ack em 10 min vira `expirado`, para uma placa que voltou de uma hora
 offline não executar um "ligar a bomba" velho.
 
@@ -303,7 +305,7 @@ Três travas impedem o ajuste automático. Quando uma delas atua, a sugestão
 O cooldown não é detalhe: sem ele, uma foto a cada 30 min poderia virar 48
 mudanças de rotina por dia e a planta nunca estabilizaria em nada.
 
-**Segurança física não depende disso.** O limite de 20 s de bomba e 30 s de
+**Segurança física não depende disso.** O limite de 50 s de bomba e 30 s de
 nutriente por dia está no firmware. O pior que um ajuste errado da IA faz é a
 planta receber mais ou menos água do que devia — nunca afogar.
 
@@ -338,7 +340,7 @@ Com cota paga, baixe `IA_FOTO_INTERVALO_MIN` para 30 e todas serão analisadas.
 - **Botões de controle manual no app.** A API (`POST /stations/:id/commands`) e o
   wrapper (`GrowAI.createCommand`) estão prontos, mas nenhuma tela tem botão
   ligado nisso ainda. O lugar mais natural é a tela **Estações**, no card de cada
-  estação: "Regar agora" (bomba, 20 s), "Ventilar" (vent, 300 s) e "Luz" — com o
+  estação: "Regar agora" (bomba, 50 s), "Ventilar" (vent, 300 s) e "Luz" — com o
   estado atual vindo do campo `reles` de `readings/latest`. A tela Câmera seria a
   segunda opção, já que é lá que se vê a planta.
 - **Mover as fotos para armazenamento de objeto** (Vercel Blob, S3, Cloudinary).

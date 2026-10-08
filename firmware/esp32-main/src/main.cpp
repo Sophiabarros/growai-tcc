@@ -45,12 +45,45 @@ const int AR = 3200, AGUA = 1350;            // seco no ar / dentro d'agua
 const int BRUTO_MIN = 500, BRUTO_MAX = 4000; // fora disso: solto ou em curto
 
 // ------------------------------------- limites duros (comando nao fura)
-const unsigned long MAX_BOMBA     = 20000;   // bomba: 20 s ligada por vez
+/* O sensor fica enterrado perto da ENTRADA da agua: ele molha primeiro,
+   enquanto a ultima saida do cano ainda esta seca. Se o corte por umidade
+   valesse desde o primeiro segundo, a bomba desligaria com o cano pela metade,
+   o sensor leria 60%, o firmware acharia que regou -- e a ponta final nunca
+   receberia nada. Pior: a cada ABSORCAO o cano escorre de volta, e o ciclo
+   seguinte comeca do zero.
+
+   Por isso REGA_MIN: o tempo minimo ligada, em que a umidade NAO desliga a
+   bomba. Ele tem que cobrir as duas fases, porque quando o cano acaba de
+   encher o sensor JA esta molhado -- se o minimo parasse no enchimento, a
+   histerese cortaria na mesma hora e a dose nunca sairia:
+
+     REGA_ENCHE   enchendo o cano, a agua ainda nao chegou na planta  (MEDIR)
+     REGA_DOSE    regando de verdade, com o cano cheio
+
+   Passado o REGA_MIN, quem manda em desligar volta a ser o sensor. O teto duro
+   da a ele mais uma dose de margem e corta: no pior caso a planta recebe o
+   DOBRO da dose, nunca mais que isso.
+
+   MEDIR o seu REGA_ENCHE: README secao 3.1. Enquanto nao medir, o valor abaixo
+   e so um ponto de partida. */
+const unsigned long REGA_ENCHE    = 20000;   // enchimento dos canos (MEDIR)
+const unsigned long REGA_DOSE     = 15000;   // rega de verdade, cano ja cheio
+const unsigned long REGA_MIN      = REGA_ENCHE + REGA_DOSE;      // sensor nao corta antes
+const unsigned long MAX_BOMBA     = REGA_ENCHE + 2 * REGA_DOSE;  // teto por acionamento
 const unsigned long ABSORCAO      = 300000;  // 5 min de pausa
 const unsigned long NUTRI_MAX_MS  = 30000;   // nutriente: 30 s por dia
 const int  DUR_MANUAL_MAX_S = 3600;
 const int  NUTRI_JANELA_MIN = 10;   // atraso tolerado para a dose do dia
 const int  WDT_S = 30;
+const int  PORTAL_BOTAO_S = 10;     // janela para apertar BOOT e abrir o portal
+
+/* Conferidos pelo compilador: mexer nos tempos de rega e quebrar uma destas
+   regras FALHA o build, em vez de gerar um firmware que afoga a planta ou que
+   corta a bomba antes de o cano encher. */
+static_assert(REGA_MIN < MAX_BOMBA,
+              "o teto duro cortaria a bomba antes de a dose do ciclo terminar");
+static_assert(MAX_BOMBA <= 120000,
+              "bomba acima de 2 min por acionamento: confira REGA_ENCHE/REGA_DOSE");
 
 // ---------------------------------------------------------------- reles
 enum { R_BOMBA, R_NUTRI, R_LUZ, R_VENT, N_RELES };
@@ -287,7 +320,12 @@ void leSensores(unsigned long agora) {
     erro = tempOk ? "" : "DS18B20 sem leitura (GPIO 25)";
     if (estado == MONITORANDO && umidade < cfg.umid_liga) {
       estado = REGANDO; tEstado = agora;
-    } else if (estado == REGANDO && umidade >= cfg.umid_desliga) {
+    } else if (estado == REGANDO && umidade >= cfg.umid_desliga
+               && (unsigned long)(agora - tEstado) >= REGA_MIN) {
+      /* A umidade so manda desligar DEPOIS de REGA_MIN. Antes disso o sensor
+         esta medindo a agua que acabou de passar por ele, nao a que chegou na
+         planta. Quem garante que a bomba nao fica ligada para sempre nesse
+         trecho e o MAX_BOMBA, la em atualizaCargas(). */
       estado = ABSORVENDO; tEstado = agora;
     }
   }
@@ -384,6 +422,7 @@ bool ehHttps() { return cred.apiBase.startsWith("https"); }
    modo nao bloqueante o loop() segue rodando normalmente e so chama
    wm.process() a cada volta. */
 void abrePortal(const char *motivo) {
+  if (portalAtivo) return;          // ja aberto: readicionar parametro duplica a tela
   Serial.printf("\n[portal] %s\n", motivo);
   Serial.printf("[portal] conecte-se a rede \"%s\" (senha %s)\n", PORTAL_SSID, PORTAL_SENHA);
   Serial.println("[portal] o controle local continua funcionando enquanto isso");
@@ -419,6 +458,7 @@ void portalSalvaSeConectou() {
 void cuidaWifi(unsigned long agora) {
   // Com o portal aberto quem cuida do radio e o WiFiManager.
   if (portalAtivo) return;
+  if (!provisaoCompleta(cred)) return;   // nada gravado: nao ha rede para retentar
   if (WiFi.status() == WL_CONNECTED) return;
   if ((unsigned long)(agora - tWifi) < 10000) return;   // nao bloqueia: so retenta
   tWifi = agora;
@@ -603,12 +643,28 @@ void setup() {
   carregaCfg();
   mostraCfg();
 
+  /* Credenciais: o que esta na NVS vence, e o secrets.h entra so como valor
+     de fabrica (ver provisao.h). Sem este provisaoCarregar a placa tentava
+     conectar nas strings VAZIAS do secrets.h: ela nunca achava a rede
+     configurada pelo portal, e o cicloTelemetria morria no
+     !provisaoCompleta(cred) -- nada chegava no app, para sempre. */
+  provisaoCarregar(cred, WIFI_SSID, WIFI_PASS, API_BASE, DEVICE_KEY);
+  provisaoMostrar(cred);
+
+  pinMode(PIN_BOOT, INPUT_PULLUP);
+
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
   configTzTime(TZ_SP, NTP1, NTP2);
-  Serial.printf("[rede] %s\n", API_BASE);
+
+  if (provisaoCompleta(cred)) {
+    WiFi.begin(cred.ssid.c_str(), cred.senha.c_str());
+  } else {
+    /* Nao bloqueia: o portal sobe e a irrigacao, a luz e a ventilacao
+       continuam decidindo sozinhas enquanto alguem configura pelo celular. */
+    abrePortal("sem credenciais gravadas");
+  }
 
 #if ESP_IDF_VERSION_MAJOR >= 5
   esp_task_wdt_config_t w = { .timeout_ms = (uint32_t)WDT_S * 1000,
@@ -625,6 +681,15 @@ void setup() {
 void loop() {
   unsigned long agora = millis();
   esp_task_wdt_reset();
+
+  /* Gatilho do portal nesta placa: APERTE o BOOT nos primeiros
+     PORTAL_BOTAO_S segundos depois de ligar. Nao da para "segurar BOOT
+     enquanto liga": com o GPIO 0 em GND no reset o ESP32 entra em modo de
+     gravacao e o firmware nem chega a rodar. */
+  if (!portalAtivo && agora < (unsigned long)PORTAL_BOTAO_S * 1000UL
+      && digitalRead(PIN_BOOT) == LOW) {
+    abrePortal("botao BOOT apertado no inicio");
+  }
 
   /* O portal roda JUNTO com o controle local, nunca no lugar dele: a bomba, a
      luz e a ventilacao continuam decidindo sozinhas enquanto alguem configura
@@ -661,8 +726,18 @@ void loop() {
     else              Serial.printf("INVALIDA (%d)", umidadeBruto);
     if (tempOk) Serial.printf("  temp %.1fC", tempC);
     else        Serial.print("  temp --");
+    /* No REGANDO vai o tempo ligada junto. E com esse numero que se mede o
+       enchimento dos canos: olhe em quantos segundos a agua sai na ultima
+       saida do cano (README secao 3.1). */
+    char est[24];
+    if (estado == REGANDO)
+      snprintf(est, sizeof est, "REGANDO %lus",
+               (unsigned long)((agora - tEstado) / 1000));
+    else
+      snprintf(est, sizeof est, "%s", NOME_ESTADO[estado]);
+
     Serial.printf("  %s  B%d N%d L%d V%d  nutri %ds/dia  rssi %d  cfg v%u\n",
-                  NOME_ESTADO[estado], ligado[R_BOMBA], ligado[R_NUTRI],
+                  est, ligado[R_BOMBA], ligado[R_NUTRI],
                   ligado[R_LUZ], ligado[R_VENT], (int)(nutriMsHoje / 1000),
                   WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0, cfg.cfg_versao);
     if (erro.length()) Serial.printf("  ERRO: %s\n", erro.c_str());

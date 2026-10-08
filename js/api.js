@@ -234,7 +234,7 @@
     // Ainda nao ha botao em tela ligado nisto (ver backend/README.md).
     // createCommand enfileira; a placa pega na proxima telemetria (~15 s) e
     // confirma no ciclo seguinte, entao o efeito nao e instantaneo.
-    // Os limites de seguranca (20 s de bomba, 30 s de nutriente por dia) sao
+    // Os limites de seguranca (50 s de bomba, 30 s de nutriente por dia) sao
     // do firmware: dur_s maior que isso e aceito e cortado pela placa.
     createCommand: (id, data) =>
       request(`/stations/${id}/commands`, { method: "POST", body: JSON.stringify(data) }),
