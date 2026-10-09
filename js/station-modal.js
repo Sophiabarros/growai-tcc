@@ -301,8 +301,11 @@
     var sg = r.sugestao;
     var depois = (sg && sg.config) || {};
     var antes = (sg && sg.config_anterior) || {};
+    // Campo devolvido com o mesmo valor de antes (9 -> 9) não é mudança.
     var campos = Object.keys(depois).filter(function (c) {
-      return CAMPOS[c];
+      if (!CAMPOS[c]) return false;
+      var de = antes[c] !== undefined ? antes[c] : saved[c];
+      return Number(de) !== Number(depois[c]);
     });
 
     document.getElementById("routineAlertEyebrow").textContent =

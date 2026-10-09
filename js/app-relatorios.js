@@ -102,28 +102,52 @@
   // ---- suggestions ----
   var HEALTHY_THRESHOLD = 85;
 
-  // "humidity_target" -> "umidade alvo", para o card nao mostrar nome de coluna
-  var NOME_CAMPO = {
-    humidity_target: "umidade alvo",
-    light_hours: "horas de luz",
-    vent_min_por_hora: "ventilação",
-    temp_max: "temperatura máxima",
-    nutri_s: "dose de nutriente",
-    luz_inicio: "início da luz",
-    nutri_hora: "hora do nutriente",
+  // Nome e unidade de cada campo da rotina, para o card nunca mostrar nome de
+  // coluna ("water_interval_h"). Os mesmos rótulos do aviso de rotina
+  // (js/station-modal.js) e do formulário da estação.
+  var CAMPO = {
+    light_hours: { nome: "Luz diária", un: " h" },
+    humidity_target: { nome: "Umidade alvo", un: "%" },
+    water_interval_h: { nome: "Rega a cada", un: " h" },
+    ph_target: { nome: "pH alvo", un: "" },
+    temp_max: { nome: "Ventilar acima de", un: " °C" },
+    vent_min_por_hora: { nome: "Ventilação", un: " min/h" },
+    nutri_s: { nome: "Nutriente", un: " s/dia" },
+    luz_inicio: { nome: "Luz acende às", un: "" },
+    nutri_hora: { nome: "Nutriente às", un: "" },
   };
 
-  // "umidade alvo: 70 -> 85". Sem config_anterior, mostra so o valor novo.
-  function descreveMudanca(s) {
+  function valorCampo(k, v) {
+    if (v === undefined || v === null || v === "") return null;
+    var n = Number(v);
+    var texto = Number.isFinite(n) ? String(Math.round(n * 10) / 10).replace(".", ",") : String(v).slice(0, 5);
+    return texto + ((CAMPO[k] && CAMPO[k].un) || "");
+  }
+
+  /* Lista "Luz diária  9 h -> 15 h" do que a sugestão muda. Campo que a IA
+     devolveu com o mesmo valor de antes (9 -> 9) não é mudança e fica de fora. */
+  function mudancasHtml(s, isDesktop) {
     if (!s.config) return "";
     var antes = s.config_anterior || {};
-    var partes = Object.keys(s.config).map(function (k) {
-      var nome = NOME_CAMPO[k] || k;
-      var de = antes[k];
-      var para = s.config[k];
-      return de === undefined || de === null ? nome + ": " + para : nome + ": " + de + " → " + para;
-    });
-    return partes.join(", ");
+    var itens = Object.keys(s.config)
+      .filter(function (k) {
+        var de = antes[k];
+        return !(de !== undefined && de !== null && String(Number(de)) === String(Number(s.config[k])) && de !== "");
+      })
+      .map(function (k) {
+        var nome = CAMPO[k] ? CAMPO[k].nome : k;
+        var de = valorCampo(k, antes[k]);
+        var para = valorCampo(k, s.config[k]);
+        return (
+          "<li>" +
+          '<span class="rel-change__name">' + escapeHtml(nome) + "</span>" +
+          (de ? '<s class="rel-change__old">' + escapeHtml(de) + '</s><span class="rel-change__arrow" aria-hidden="true">→</span>' : "") +
+          '<strong class="rel-change__new">' + escapeHtml(para || "—") + "</strong>" +
+          "</li>"
+        );
+      });
+    if (!itens.length) return "";
+    return '<ul class="rel-changes' + (isDesktop ? "" : " rel-changes--m") + '">' + itens.join("") + "</ul>";
   }
 
   function suggestionCardHtml(s, isDesktop) {
@@ -145,16 +169,20 @@
       badge = '<span class="' + badgeClass + '"><img alt="" src="assets/icons/app/icon-app-seta-crescimento.svg" /></span>';
     }
 
-    /* Com auto_aplicada, o texto conta o que a IA JA fez - nao o que ela
+    /* Com auto_aplicada, o card conta o que a IA JA fez - nao o que ela
        propoe. A diferenca importa: o usuario precisa saber que a rotina dele
-       mudou sozinha. */
+       mudou sozinha. O estado vai numa etiqueta curta e as mudanças numa
+       lista; a mensagem da IA fica sozinha no parágrafo. */
     var desc = escapeHtml(s.message);
-    if (s.auto_aplicada && !s.desfeita_em) {
-      var mudanca = descreveMudanca(s);
-      desc = "Ajustado pela IA" + (mudanca ? " (" + escapeHtml(mudanca) + ")" : "") + ". " + desc;
-    } else if (s.desfeita_em) {
-      desc = "Ajuste desfeito. " + desc;
-    }
+    var estado = "";
+    if (s.desfeita_em) estado = "Ajuste desfeito";
+    else if (s.auto_aplicada) estado = "Ajustado pela IA";
+    else if (s.applied) estado = "Sugestão aplicada";
+    else if (s.config) estado = "Sugestão da IA";
+    var estadoHtml = estado
+      ? '<span class="rel-suggestion__state' + (s.desfeita_em ? " rel-suggestion__state--off" : "") + '">' + estado + "</span>"
+      : "";
+    var mudancas = mudancasHtml(s, isDesktop);
 
     var growthStat =
       '<span class="' + statClass + (isDesktop ? " rel-suggestion__stat--growth" : "") + '"><img alt="" src="' +
@@ -184,18 +212,23 @@
     if (isDesktop) {
       return (
         '<p class="' + nameClass + '">' + name + "</p>" +
-        '<p class="' + descClass + '">' + desc + "</p>" +
-        growthStat +
-        healthStat +
         badge +
-        btn
+        estadoHtml +
+        '<p class="' + descClass + '">' + desc + "</p>" +
+        mudancas +
+        '<div class="rel-suggestion__footer">' +
+        '<div class="rel-suggestion__stats">' + growthStat + healthStat + "</div>" +
+        btn +
+        "</div>"
       );
     }
 
     return (
       '<p class="' + nameClass + '">' + name + "</p>" +
       badge +
+      estadoHtml +
       '<p class="' + descClass + '">' + desc + "</p>" +
+      mudancas +
       '<div class="m-rel-suggestion__stats">' + growthStat + healthStat + "</div>" +
       btn
     );
@@ -227,10 +260,37 @@
 
   var suggestionsCache = [];
 
+  /* Os cards crescem com o texto (a IA pode ajustar vários campos de uma vez),
+     mas a página é desenhada em posição absoluta. Então:
+     - no celular, o 2º card vai para logo abaixo do 1º, seja qual for a
+       altura dele (antes tinha `top` fixo e o 1º passava por cima);
+     - no desktop, a página cresce se um card passar do fim dela. */
+  var GAP_CARDS_M = 26; // px do canvas de 412: o mesmo vão do Figma entre os dois
+  var alturaBaseDesktop = null;
+
+  function encaixaCards() {
+    var m1 = document.getElementById("mRelSuggestion1");
+    var m2 = document.getElementById("mRelSuggestion2");
+    if (m1 && m2 && !m1.hidden && !m2.hidden) {
+      m2.style.top = m1.offsetTop + m1.offsetHeight + GAP_CARDS_M + "px";
+    }
+
+    var pagina = document.getElementById("appRelatoriosPage");
+    if (!pagina) return;
+    if (alturaBaseDesktop === null) alturaBaseDesktop = pagina.offsetHeight;
+    var fundo = 0;
+    ["relSuggestion1", "relSuggestion2"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && !el.hidden) fundo = Math.max(fundo, el.offsetTop + el.offsetHeight);
+    });
+    pagina.style.height = Math.max(alturaBaseDesktop, fundo + 60) + "px";
+  }
+
   // The mobile tab bar's `top` assumes both suggestion slots are visible;
   // with fewer (or none) that leaves a big gap, so it's repositioned right
   // after whatever actually ended up visible.
   function updateMobileTabbar() {
+    encaixaCards();
     positionMobileTabbar({
       mobilePageId: "mAppRelatoriosPage",
       contentSelectors: [".m-rel-chart-card--2", "#mRelSuggestion1", "#mRelSuggestion2", "#mRelSuggestionsEmpty"],

@@ -52,8 +52,18 @@ async function registrar({ stationId, sugestao, origem }) {
       return { sugestao: null, aplicada: false, motivo: "estação não existe" };
     }
 
-    // O que dá para aplicar, depois de cortar para os limites.
+    // O que dá para aplicar, depois de cortar para os limites. Campo que a IA
+    // devolveu com o valor que a estação JÁ tem não é mudança: sem tirar,
+    // o card mostrava "rega a cada: 9 -> 9".
     const { valores } = sanearEntrada(sugestao.config || {});
+    for (const campo of Object.keys(valores)) {
+      const atual = estacao[campo];
+      const igual =
+        campo === "luz_inicio" || campo === "nutri_hora"
+          ? String(atual).slice(0, 5) === String(valores[campo]).slice(0, 5)
+          : atual !== null && atual !== undefined && Number(atual) === Number(valores[campo]);
+      if (igual) delete valores[campo];
+    }
     const temOqueAplicar = Object.keys(valores).length > 0;
 
     let motivo = null;
