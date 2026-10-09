@@ -100,3 +100,94 @@
   opacity: 0.6;
   cursor: default;
 }
+
+/* ============ AVISO DE ROTINA INADEQUADA ============ */
+/* Aberto por js/station-modal.js quando a IA julga a rotina salva ruim para a
+   espécie e a finalidade. Mesmo painel do modal acima; o destaque de
+   "atenção" usa --app-accent e o ícone de aviso, como nos cards da Home. */
+.routine-alert__panel {
+  width: 46rem;
+  border-top: 0.4rem solid var(--app-accent);
+}
+.routine-alert__eyebrow {
+  color: var(--app-muted-alt);
+  font: 500 1.2rem/1.4 var(--font-body);
+  letter-spacing: 0.02em;
+  margin: 0 0 0.6rem;
+}
+.routine-alert__title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--app-accent);
+  margin-bottom: 1.2rem;
+}
+.routine-alert__icon {
+  width: 2.4rem;
+  height: 2rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.routine-alert__text {
+  color: var(--app-text);
+  font: 400 1.5rem/1.5 var(--font-body);
+  text-wrap: pretty;
+  margin: 0 0 1.8rem;
+}
+.routine-alert__changes {
+  background: var(--app-bg);
+  border-radius: 1rem;
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1.6rem;
+}
+.routine-alert__changes[hidden],
+.routine-alert__note[hidden] {
+  display: none;
+}
+.routine-alert__label {
+  color: var(--app-info);
+  font: 600 1.3rem/normal var(--font-body);
+  margin: 0 0 1rem;
+}
+.routine-alert__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+.routine-alert__item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: baseline;
+  gap: 0.8rem;
+  font: 400 1.4rem/1.3 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.routine-alert__name {
+  color: var(--app-text);
+}
+.routine-alert__old {
+  color: var(--app-muted);
+}
+.routine-alert__arrow {
+  color: var(--app-muted);
+}
+.routine-alert__new {
+  color: var(--app-accent);
+  font-weight: 700;
+}
+.routine-alert__why {
+  color: var(--app-muted-alt);
+  font: 400 1.3rem/1.5 var(--font-body);
+  text-wrap: pretty;
+  margin: 1.2rem 0 0;
+}
+.routine-alert__why:empty {
+  display: none;
+}
+.routine-alert__note {
+  color: var(--app-muted-alt);
+  font: 400 1.2rem/1.5 var(--font-body);
+  margin: 0 0 1.4rem;
+}

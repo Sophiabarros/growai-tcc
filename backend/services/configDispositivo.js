@@ -19,6 +19,10 @@ const LIMITES = {
   nutri_s: [0, 30],
   light_hours: [0, 24],
   humidity_target: [0, 100],
+  // O firmware não usa estes dois (a rega é por umidade e não há sensor de
+  // pH), mas o app os edita e a IA julga e corrige os dois junto com o resto.
+  water_interval_h: [1, 168],
+  ph_target: [0, 14],
 };
 
 function corta(valor, [min, max]) {
@@ -132,6 +136,8 @@ function sanearEntrada(body) {
   num("vent_min_por_hora", LIMITES.vent_min_por_hora, true);
   num("temp_max", LIMITES.temp_max, false);
   num("nutri_s", LIMITES.nutri_s, true);
+  num("water_interval_h", LIMITES.water_interval_h, false);
+  num("ph_target", LIMITES.ph_target, false);
   hora("luz_inicio");
   hora("nutri_hora");
 

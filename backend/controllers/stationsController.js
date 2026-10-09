@@ -72,15 +72,9 @@ async function update(req, res, next) {
 
     const { valores, erros } = sanearEntrada(req.body || {});
 
-    // water_interval_h e ph_target o firmware não usa: passam sem saneamento
-    // e sem mexer em cfg_versao.
-    const soltos = {};
-    for (const campo of ["water_interval_h", "ph_target"]) {
-      if (req.body && req.body[campo] !== undefined && req.body[campo] !== null) {
-        const n = Number(req.body[campo]);
-        if (Number.isFinite(n)) soltos[campo] = n;
-      }
-    }
+    // water_interval_h e ph_target também vêm de sanearEntrada (com limite),
+    // mas não estão em CAMPOS_DE_CONFIG: o firmware não usa nenhum dos dois,
+    // então mudá-los não sobe cfg_versao.
 
     /* name, plant e tag.
        Estes NÃO eram aceitos aqui, e o modal de estações sempre os enviou:
@@ -131,7 +125,7 @@ async function update(req, res, next) {
       texto.tag = v === "" ? null : v;
     }
 
-    const novos = { ...valores, ...soltos, ...texto };
+    const novos = { ...valores, ...texto };
     if (!Object.keys(novos).length) {
       await client.query("ROLLBACK");
       return res.status(400).json({ error: "Nenhum campo válido para atualizar", detalhes: erros });

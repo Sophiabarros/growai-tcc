@@ -21,6 +21,16 @@ const { LIMITES } = require("./configDispositivo");
 const TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 25000);
 const MAX_TEXTO = 200;
 const MAX_PCT = 30;
+// Campos que a IA pode propor em suggestion.config.
+const CAMPOS_SUGESTAO = [
+  "humidity_target",
+  "light_hours",
+  "vent_min_por_hora",
+  "temp_max",
+  "nutri_s",
+  "water_interval_h",
+  "ph_target",
+];
 
 function habilitada() {
   return String(process.env.IA_HABILITADA || "true").toLowerCase() !== "false";
@@ -101,11 +111,13 @@ function validarResposta(obj) {
     if (msg) {
       const cfg = {};
       const origem = s.config && typeof s.config === "object" ? s.config : {};
-      for (const campo of ["humidity_target", "light_hours", "vent_min_por_hora", "temp_max", "nutri_s"]) {
+      for (const campo of CAMPOS_SUGESTAO) {
         if (origem[campo] === undefined || origem[campo] === null) continue;
         const v = corta(origem[campo], LIMITES[campo][0], LIMITES[campo][1]);
         if (v === null) continue;
-        cfg[campo] = campo === "vent_min_por_hora" || campo === "nutri_s" ? Math.round(v) : v;
+        if (campo === "vent_min_por_hora" || campo === "nutri_s" || campo === "water_interval_h") cfg[campo] = Math.round(v);
+        else if (campo === "ph_target") cfg[campo] = Math.round(v * 10) / 10;
+        else cfg[campo] = v;
       }
       sugestao = {
         message: msg.length > 300 ? msg.slice(0, 299) + "…" : msg,
@@ -193,6 +205,18 @@ async function chamarGemini({ jpegBuffer, prompt }) {
   };
 
   let r = await postJson(url, { "x-goog-api-key": chave }, base);
+
+  /* 503 "high demand" (e 500/502/504) é sobrecarga momentânea do Gemini, não
+     erro nosso, e não gasta cota. Visto várias vezes no mesmo dia com o
+     gemini-3.6-flash: sem repetir, o aviso de rotina inadequada sumia em
+     silêncio sempre que o Gemini estava cheio. O 503 volta em ~2 s, então
+     duas novas tentativas (após 2 s e 5 s) cabem no tempo de uma chamada
+     normal. 429 (cota) não repete: só pioraria. */
+  for (const espera of [2000, 5000]) {
+    if (r.ok || ![500, 502, 503, 504].includes(r.status)) break;
+    await new Promise((ok) => setTimeout(ok, espera));
+    r = await postJson(url, { "x-goog-api-key": chave }, base);
+  }
 
   /* Se o esquema for recusado (o dialeto aceito pelo Gemini muda entre
      versões), tenta de novo só com responseMimeType: o prompt já descreve o

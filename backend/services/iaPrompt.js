@@ -8,7 +8,8 @@
 //
 // Três regras que os dois carregam, por honestidade do TCC:
 //  - a IA só vê o que mandamos. Não existe sensor de pH nem de luminosidade,
-//    então ela não pode falar de nenhum dos dois;
+//    então ela não pode falar de leitura de nenhum dos dois (o pH ALVO
+//    configurado ela julga, no modo rotina);
 //  - nada sobre concentração de princípio ativo, potência medicinal ou efeito
 //    terapêutico. Isso não se mede por foto nem por umidade — e numa banca é
 //    exatamente o tipo de afirmação que alguém derruba;
@@ -39,6 +40,8 @@ const ESQUEMA_RESPOSTA = {
             vent_min_por_hora: { type: "number" },
             temp_max: { type: "number" },
             nutri_s: { type: "number" },
+            water_interval_h: { type: "number" },
+            ph_target: { type: "number" },
           },
           additionalProperties: false,
         },
@@ -100,12 +103,16 @@ Só existem esses dois sensores. NÃO há sensor de pH, de luminosidade, de
 condutividade nem de nutrientes — não mencione nenhum deles.`;
 }
 
-function blocoLimites() {
-  return `  - humidity_target: ${LIMITES.humidity_target[0]} a ${LIMITES.humidity_target[1]}
+function blocoLimites(comRotinaCompleta) {
+  const base = `  - humidity_target: ${LIMITES.humidity_target[0]} a ${LIMITES.humidity_target[1]}
   - light_hours: ${LIMITES.light_hours[0]} a ${LIMITES.light_hours[1]}
   - vent_min_por_hora: ${LIMITES.vent_min_por_hora[0]} a ${LIMITES.vent_min_por_hora[1]}
   - temp_max: ${LIMITES.temp_max[0]} a ${LIMITES.temp_max[1]}
   - nutri_s: ${LIMITES.nutri_s[0]} a ${LIMITES.nutri_s[1]}`;
+  if (!comRotinaCompleta) return base;
+  return `${base}
+  - water_interval_h: ${LIMITES.water_interval_h[0]} a ${LIMITES.water_interval_h[1]}
+  - ph_target: ${LIMITES.ph_target[0]} a ${LIMITES.ph_target[1]} (use um valor realista para a espécie, com uma casa decimal)`;
 }
 
 // ------------------------------------------------- modo foto (análise visual)
@@ -148,16 +155,27 @@ Responda SOMENTE o JSON, sem texto antes ou depois.`;
 }
 
 // --------------------------------------- modo rotina (sem foto, só os números)
+function num(v) {
+  return v === null || v === undefined || v === "" ? "?" : Number(v);
+}
+
 function montarPromptRotina({ estacao, leitura, config }) {
-  return `Você é especialista em fisiologia vegetal e cultivo semi-hidropônico de plantas medicinais. O usuário acabou de configurar a rotina de cultivo abaixo. Avalie se ela faz sentido para esta espécie e esta finalidade, e responda em JSON.
+  return `Você é especialista em fisiologia vegetal e cultivo semi-hidropônico de plantas medicinais. O usuário acabou de configurar a rotina de cultivo abaixo. Avalie se ela faz sentido para esta espécie e esta finalidade e, se não fizer, devolva a rotina corrigida. Responda em JSON.
 
 Você NÃO recebeu foto nesta avaliação. Julgue apenas os números da rotina.
 
 ${blocoPlanta(estacao)}
 
 ${blocoConfig(config || {})}
+- Luz diária: ${num(estacao.light_hours)} h · umidade alvo: ${num(estacao.humidity_target)}%
+- Intervalo de rega desejado: a cada ${num(estacao.water_interval_h)} h
+- pH alvo da solução nutritiva: ${num(estacao.ph_target)}
 
 ${blocoLeitura(leitura)}
+
+O pH alvo é a meta que o usuário segue ao preparar a solução. NÃO existe
+leitura de pH: você pode julgar se o VALOR configurado é adequado para a
+espécie, mas não diga nada sobre pH medido.
 
 ## O que avaliar
 A rotina serve para esta espécie, considerando a finalidade declarada?
@@ -166,32 +184,39 @@ Pense em:
 - **Fotoperíodo** — as horas de luz batem com o que a espécie precisa para o
   estágio que interessa? Camomila e outras que se usam pela flor precisam de dia
   longo para florescer; folhosas como hortelã rendem mais folha com dia mais curto.
-- **Faixa de umidade** — está encharcando ou secando demais para esta espécie?
+- **Umidade e rega** — está encharcando ou secando demais para esta espécie?
   Aromáticas mediterrâneas não gostam de substrato sempre úmido.
+- **pH alvo** — está na faixa em que a espécie absorve nutrientes?
 - **Temperatura máxima** antes de ligar a ventilação — está alta demais para a
   espécie aguentar sem estresse?
 - **Ventilação** — pouca favorece fungo em ambiente úmido; muita resseca.
 - **Nutriente** — a dose diária é compatível com o porte da planta?
 
 Regras:
-1. Não invente medição que não recebeu, e não cite pH nem luminosidade.
+1. Não invente medição que não recebeu, e não cite leitura de pH nem de luminosidade.
 2. Se a rotina está adequada, diga isso e devolva suggestion: null. Não invente
-   problema para parecer útil.
+   problema para parecer útil — pequenas diferenças de gosto não contam.
 3. Se a espécie declarada não for uma planta reconhecível, ou a finalidade não
    fizer sentido para ela, diga isso em analysis_text com health_status
    "atencao" e devolva suggestion: null — não adivinhe uma rotina.
-4. Aponte **o problema mais importante**, não todos. Um ajuste por vez.
+4. Se a rotina está inadequada, CORRIJA TUDO DE UMA VEZ: em suggestion.config,
+   devolva TODOS os parâmetros que estão errados, cada um já com o valor ideal
+   para esta espécie e esta finalidade. O app aplica a correção inteira na hora,
+   então uma rotina com três valores absurdos precisa sair com os três
+   corrigidos. Não inclua os parâmetros que já estão bons.
 
 ## Resposta
 - health_status: "saudavel" se a rotina está adequada; "atencao" se há algo a corrigir.
-- analysis_text: até 200 caracteres, em português do Brasil. Se houver problema,
-  diga QUAL parâmetro está errado e por quê, ligando à espécie ou à finalidade.
-  Ex.: "12 h de luz é pouco para a camomila florescer; ela precisa de dia longo."
+- analysis_text: até 200 caracteres, em português do Brasil, falando com quem
+  cultiva. Se houver problema, diga o que está errado e por quê, ligando à
+  espécie ou à finalidade. Ex.: "4 h de luz é pouco para a camomila florescer, e
+  pH 3 trava a absorção de nutrientes."
 - suggestion: null se a rotina está boa. Se não está:
-  - message: a justificativa, em uma frase, citando a espécie ou a finalidade.
+  - message: uma frase dizendo como a rotina corrigida favorece esta espécie e
+    esta finalidade.
   - growth_pct e health_pct: ganho esperado, de 0 a 30. Seja conservador.
-  - config: só os campos que precisam mudar, dentro destes limites:
-${blocoLimites()}
+  - config: os campos que precisam mudar, dentro destes limites:
+${blocoLimites(true)}
 
 Responda SOMENTE o JSON, sem texto antes ou depois.`;
 }

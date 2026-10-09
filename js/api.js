@@ -259,7 +259,10 @@
     undoSuggestion: (id) => request(`/suggestions/${id}/undo`, { method: "PATCH" }),
     // Pede a IA para avaliar a rotina contra a especie e a finalidade da
     // estacao. Nao manda foto. Chamado depois de salvar a rotina.
-    evaluateRoutine: (id) => request(`/stations/${id}/avaliar-rotina`, { method: "POST" }),
+    // forcar = true pula a carência de 2 min do backend: o modal só pede de
+    // novo quando a rotina realmente mudou.
+    evaluateRoutine: (id, forcar) =>
+      request(`/stations/${id}/avaliar-rotina${forcar ? "?forcar=1" : ""}`, { method: "POST" }),
 
     // ---- settings ----
     getNotificationSettings: () => request("/settings/notifications"),

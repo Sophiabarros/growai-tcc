@@ -6,7 +6,8 @@
 //
 // Três travas, nesta ordem:
 //   1. estação com ia_autoajuste = false -> só sugere, não aplica;
-//   2. cooldown -> a IA não mexe na mesma estação duas vezes em poucas horas;
+//   2. cooldown -> a IA não mexe na mesma estação duas vezes em poucas horas
+//      (só para a análise de FOTO; ver abaixo);
 //   3. nada para mudar -> a sugestão é só um recado, não há o que aplicar.
 // Quando uma trava impede o auto-ajuste, a sugestão AINDA é gravada, só com
 // auto_aplicada = false: o usuário continua podendo aplicar no botão.
@@ -58,7 +59,11 @@ async function registrar({ stationId, sugestao, origem }) {
     let motivo = null;
     if (!temOqueAplicar) motivo = "a IA não propôs mudança de parâmetro";
     else if (!estacao.ia_autoajuste) motivo = "ajuste automático desligado nesta estação";
-    else {
+    /* O cooldown existe para a foto, que chega sozinha a cada 30 min. A
+       avaliação de rotina só acontece quando o usuário SALVA uma rotina nova:
+       é uma pessoa pedindo para a IA olhar o que acabou de digitar. Barrar por
+       um ajuste de horas atrás deixaria uma rotina absurda passar sem correção. */
+    else if (origem !== "ia_rotina") {
       const recente = await autoAjusteNoCooldown(stationId, client);
       if (recente) {
         const horas = ((Date.now() - new Date(recente.created_at).getTime()) / 3600000).toFixed(1);
