@@ -9,7 +9,10 @@ const { requireDevice } = require("../middleware/deviceAuth");
    A telemetria usa o express.json() global (Content-Type application/json).
    A foto é binária e precisa de tratamento próprio — só nesta rota. */
 
-const LIMITE_FOTO = "2mb";
+/* SVGA com qualidade 12 dá ~60-120 kB; o limite fica bem acima para uma
+   mudança de resolução na CAM (UXGA passa de 1 MB) não virar 413. */
+const LIMITE_FOTO_MB = Number(process.env.FOTO_LIMITE_MB) || 4;
+const LIMITE_FOTO = `${LIMITE_FOTO_MB}mb`;
 
 /* Lê o corpo binário que ainda não foi consumido. Existe por causa da Vercel:
    o runtime Node de lá às vezes já leu o corpo antes do Express, e nesse caso
@@ -39,7 +42,7 @@ function corpoBruto(req, res, next) {
   if (req.readable) {
     const partes = [];
     let total = 0;
-    const max = 2 * 1024 * 1024;
+    const max = LIMITE_FOTO_MB * 1024 * 1024;
     req.on("data", (c) => {
       total += c.length;
       if (total > max) {

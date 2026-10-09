@@ -1,9 +1,9 @@
 (function () {
   "use strict";
 
-  // Aponta para a API do GrowAI (ver pasta backend/), hospedada como um
-  // SEGUNDO projeto na Vercel (projeto "growai-backend", Root Directory =
-  // backend/, repo growai-tcc), com domínio HTTPS próprio.
+  // Aponta para a API do GrowAI (ver pasta backend/), hospedada no Render
+  // (serviço "growai-backend", ver render.yaml), com domínio HTTPS próprio.
+  // O site continua na Vercel. ÚNICO lugar com o endereço do backend.
   //
   // Era: em localhost/rede local, tentava um backend Express rodando na
   // porta 3000 DA MÁQUINA (http://<host>:3000/api) — só funcionava se você
@@ -13,7 +13,7 @@
   // e cada card/seção caía no estado de erro/vazio ("Não foi possível
   // conectar ao servidor"). Agora sempre usa o backend de produção, local
   // ou publicado — os mesmos dados reais em qualquer lugar.
-  var API_PRODUCAO = "https://growai-backend.vercel.app/api";
+  var API_PRODUCAO = "https://growai-backend.onrender.com/api";
 
   /* ...COM UMA SAÍDA para desenvolvimento.
      O Live Server serve só as PÁGINAS; os dados continuam vindo do endereço
@@ -48,6 +48,9 @@
   } catch (e) {
     /* localStorage bloqueado (modo anônimo, cookies desligados): segue em produção */
   }
+
+  // WebSocket do mesmo backend: https://host/api -> wss://host/ws
+  var WS_URL = API_BASE.replace(/^http/, "ws").replace(/\/api$/, "/ws");
 
   var TOKEN_KEY = "growai_token";
   var USER_KEY = "growai_user";
@@ -206,6 +209,7 @@
     // Endereco da API em uso agora (producao ou o override local). A tela
     // Conexao ESP32 mostra este valor para o usuario colar no portal da placa.
     apiBase: function () { return API_BASE; },
+    wsUrl: function () { return WS_URL; },
     isAuthenticated: isAuthenticated,
     async getMe() {
       var user = await request("/auth/me");

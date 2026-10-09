@@ -1,4 +1,5 @@
 require("dotenv").config();
+const http = require("http");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
@@ -12,6 +13,7 @@ const settingsRoutes = require("./routes/settings");
 const contactRoutes = require("./routes/contact");
 const deviceRoutes = require("./routes/device");
 const { requireAuth } = require("./middleware/auth");
+const realtime = require("./services/realtime");
 
 // Evita que uma falha assíncrona não capturada (ex.: pool do Postgres
 // indisponível) derrube o processo inteiro - loga e mantém a API no ar.
@@ -44,11 +46,20 @@ app.use(
       if (configuredOrigins.includes(origin) || isLocalDevOrigin(origin)) return callback(null, true);
       callback(new Error("Não permitido pelo CORS: " + origin));
     },
+    // O aviso de POST /stations/:id/commands vem em header; sem isto o
+    // navegador não deixa o JS ler, agora que o site e a API têm domínios
+    // diferentes.
+    exposedHeaders: ["X-Aviso"],
   })
 );
-app.use(express.json());
+// Telemetria e formulários são pequenos; a foto da ESP32-CAM NÃO passa por
+// aqui (é image/jpeg, tratada em routes/device.js com limite próprio).
+app.use(express.json({ limit: process.env.JSON_LIMITE || "1mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// /health é o que o Render consulta (healthCheckPath); /api/health continua
+// existindo para quem já usava.
+app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 // As placas ESP32 se autenticam com X-Device-Key (middleware/deviceAuth), nao
@@ -78,11 +89,26 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-// Em ambiente serverless (Vercel) este arquivo é apenas importado como
-// handler HTTP - quem "escuta" a porta é a plataforma. Rodando direto
-// (node server.js / nodemon) sobe o servidor normalmente.
+// Rodando direto (node server.js / npm start, que é o que o Render faz) sobe
+// um servidor HTTP de longa duração com o WebSocket em /ws na MESMA porta.
+// Importado (backend/api/index.js, deploy antigo da Vercel) exporta só o app.
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`GrowAI API rodando em http://localhost:${PORT}`));
+  const server = http.createServer(app);
+  realtime.anexar(server);
+  server.listen(PORT, () => {
+    console.log(`GrowAI API rodando em http://localhost:${PORT} (WebSocket em ${realtime.CAMINHO})`);
+  });
+
+  // O Render manda SIGTERM antes de trocar a instância num deploy.
+  const desligar = () => {
+    realtime.fechar();
+    server.close(() => {
+      require("./config/db").pool.end().finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(0), 10000).unref();
+  };
+  process.on("SIGTERM", desligar);
+  process.on("SIGINT", desligar);
 }
 
 module.exports = app;
