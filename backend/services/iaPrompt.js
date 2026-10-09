@@ -54,6 +54,24 @@ const ESQUEMA_RESPOSTA = {
   additionalProperties: false,
 };
 
+/* Esquema do modo ROTINA: igual ao de cima, mas a config é a rotina INTEIRA,
+   com os 7 campos obrigatórios. Deixando a IA escolher quais campos mandar,
+   ela escrevia "corrigimos pH, umidade e temperatura" e esquecia a umidade
+   no config. Obrigando todos, cada parâmetro sai avaliado; o servidor
+   (services/autoAjuste.js) compara com a estação e aplica só o que mudou. */
+const CAMPOS_ROTINA = [
+  "light_hours",
+  "humidity_target",
+  "water_interval_h",
+  "ph_target",
+  "temp_max",
+  "vent_min_por_hora",
+  "nutri_s",
+];
+const ESQUEMA_ROTINA = JSON.parse(JSON.stringify(ESQUEMA_RESPOSTA));
+ESQUEMA_ROTINA.properties.suggestion.required = ["message", "growth_pct", "health_pct", "config"];
+ESQUEMA_ROTINA.properties.suggestion.properties.config.required = CAMPOS_ROTINA;
+
 function ou(valor, alternativa) {
   return valor === null || valor === undefined || valor === "" ? alternativa : valor;
 }
@@ -199,11 +217,15 @@ Regras:
 3. Se a espécie declarada não for uma planta reconhecível, ou a finalidade não
    fizer sentido para ela, diga isso em analysis_text com health_status
    "atencao" e devolva suggestion: null — não adivinhe uma rotina.
-4. Se a rotina está inadequada, CORRIJA TUDO DE UMA VEZ: em suggestion.config,
-   devolva TODOS os parâmetros que estão errados, cada um já com o valor ideal
-   para esta espécie e esta finalidade. O app aplica a correção inteira na hora,
-   então uma rotina com três valores absurdos precisa sair com os três
-   corrigidos. Não inclua os parâmetros que já estão bons.
+4. Se a rotina está inadequada, CORRIJA TUDO DE UMA VEZ: suggestion.config é
+   a ROTINA COMPLETA recomendada, com os 7 campos (light_hours,
+   humidity_target, water_interval_h, ph_target, temp_max, vent_min_por_hora,
+   nutri_s). Para cada um: se o valor atual já é bom para esta espécie e
+   finalidade, repita o valor atual; se não é, ponha o valor ideal. O app
+   compara e aplica só o que mudou.
+5. Coerência: todo parâmetro que você citar como errado em analysis_text ou em
+   message PRECISA estar com valor diferente do atual em config. Se escreveu
+   "a umidade está alta", humidity_target tem que mudar.
 
 ## Resposta
 - health_status: "saudavel" se a rotina está adequada; "atencao" se há algo a corrigir.
@@ -215,7 +237,7 @@ Regras:
   - message: uma frase dizendo como a rotina corrigida favorece esta espécie e
     esta finalidade.
   - growth_pct e health_pct: ganho esperado, de 0 a 30. Seja conservador.
-  - config: os campos que precisam mudar, dentro destes limites:
+  - config: a rotina completa (os 7 campos), dentro destes limites:
 ${blocoLimites(true)}
 
 Responda SOMENTE o JSON, sem texto antes ou depois.`;
@@ -227,4 +249,6 @@ module.exports = {
   // nome antigo, mantido para não quebrar quem já importava
   montarPrompt: montarPromptFoto,
   ESQUEMA_RESPOSTA,
+  ESQUEMA_ROTINA,
+  CAMPOS_ROTINA,
 };

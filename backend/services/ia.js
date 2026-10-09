@@ -15,10 +15,14 @@
 // 'indefinido' e responde 200 de qualquer jeito. A placa não reenvia foto, e
 // perder o diagnóstico é melhor que perder a imagem.
 
-const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA } = require("./iaPrompt");
+const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA } = require("./iaPrompt");
 const { LIMITES } = require("./configDispositivo");
 
 const TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 25000);
+/* A avaliação de rotina devolve a rotina inteira (7 campos) e leva mais que a
+   foto: medido em ~24 s, colado no limite de 25. Quem espera é o usuário com
+   o app aberto, e o Render não corta a requisição, então ela tem folga própria. */
+const TIMEOUT_ROTINA_MS = Number(process.env.IA_TIMEOUT_ROTINA_MS || 45000);
 const MAX_TEXTO = 200;
 const MAX_PCT = 30;
 // Campos que a IA pode propor em suggestion.config.
@@ -154,9 +158,9 @@ function extrairJson(texto) {
   }
 }
 
-async function postJson(url, headers, corpo) {
+async function postJson(url, headers, corpo, timeoutMs = TIMEOUT_MS) {
   const controle = new AbortController();
-  const t = setTimeout(() => controle.abort(), TIMEOUT_MS);
+  const t = setTimeout(() => controle.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -178,7 +182,7 @@ async function postJson(url, headers, corpo) {
 }
 
 // ------------------------------------------------------------------- Gemini
-async function chamarGemini({ jpegBuffer, prompt }) {
+async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
   const chave = process.env.GEMINI_API_KEY;
   if (!chave) return { erro: "GEMINI_API_KEY não configurada" };
   const modelo = process.env.GEMINI_MODEL || "gemini-3.6-flash";
@@ -193,7 +197,7 @@ async function chamarGemini({ jpegBuffer, prompt }) {
     contents: [{ parts }],
     generationConfig: {
       responseMimeType: "application/json",
-      responseSchema: paraGemini(ESQUEMA_RESPOSTA),
+      responseSchema: paraGemini(esquema || ESQUEMA_RESPOSTA),
       temperature: 0.2,
       /* 4096 para um JSON de ~150 caracteres parece exagero, mas os modelos
          Gemini 3.x gastam orçamento de SAÍDA com raciocínio interno antes de
@@ -204,7 +208,7 @@ async function chamarGemini({ jpegBuffer, prompt }) {
     },
   };
 
-  let r = await postJson(url, { "x-goog-api-key": chave }, base);
+  let r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
 
   /* 503 "high demand" (e 500/502/504) é sobrecarga momentânea do Gemini, não
      erro nosso, e não gasta cota. Visto várias vezes no mesmo dia com o
@@ -215,7 +219,7 @@ async function chamarGemini({ jpegBuffer, prompt }) {
   for (const espera of [2000, 5000]) {
     if (r.ok || ![500, 502, 503, 504].includes(r.status)) break;
     await new Promise((ok) => setTimeout(ok, espera));
-    r = await postJson(url, { "x-goog-api-key": chave }, base);
+    r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
   }
 
   /* Se o esquema for recusado (o dialeto aceito pelo Gemini muda entre
@@ -225,7 +229,7 @@ async function chamarGemini({ jpegBuffer, prompt }) {
   if (!r.ok && r.status === 400) {
     const semEsquema = { ...base, generationConfig: { ...base.generationConfig } };
     delete semEsquema.generationConfig.responseSchema;
-    const r2 = await postJson(url, { "x-goog-api-key": chave }, semEsquema);
+    const r2 = await postJson(url, { "x-goog-api-key": chave }, semEsquema, timeoutMs);
     if (r2.ok) r = r2;
     else return { erro: `Gemini ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, raw: r.json || r.texto };
   }
@@ -244,7 +248,7 @@ async function chamarGemini({ jpegBuffer, prompt }) {
 }
 
 // ------------------------------------------------------------------- Claude
-async function chamarClaude({ jpegBuffer, prompt }) {
+async function chamarClaude({ jpegBuffer, prompt, esquema, timeoutMs }) {
   const chave = process.env.ANTHROPIC_API_KEY;
   if (!chave) return { erro: "ANTHROPIC_API_KEY não configurada" };
   const modelo = process.env.CLAUDE_MODEL || "claude-opus-5";
@@ -267,12 +271,13 @@ async function chamarClaude({ jpegBuffer, prompt }) {
       max_tokens: 2000,
       messages: [{ role: "user", content: conteudoClaude }],
       output_config: {
-        format: { type: "json_schema", schema: paraClaude(ESQUEMA_RESPOSTA) },
+        format: { type: "json_schema", schema: paraClaude(esquema || ESQUEMA_RESPOSTA) },
         // Classificar sinais visuais numa foto não precisa de raciocínio
-        // longo, e o timeout aqui é de 25 s.
+        // longo, e o timeout aqui é curto (TIMEOUT_MS / TIMEOUT_ROTINA_MS).
         effort: "low",
       },
-    }
+    },
+    timeoutMs
   );
 
   if (!r.ok) {
@@ -310,13 +315,16 @@ async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config })
       ? montarPromptRotina({ estacao, leitura, config })
       : montarPromptFoto({ estacao, leitura, config });
 
+  const timeoutMs = modo === "rotina" ? TIMEOUT_ROTINA_MS : TIMEOUT_MS;
   let r;
   try {
-    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, prompt });
-    else if (nome === "gemini") r = await chamarGemini({ jpegBuffer: imagem, prompt });
+    // A rotina usa um esquema que obriga a config completa (ver iaPrompt.js).
+    const esquema = modo === "rotina" ? ESQUEMA_ROTINA : ESQUEMA_RESPOSTA;
+    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+    else if (nome === "gemini") r = await chamarGemini({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
     else return { ok: false, motivo: `IA_PROVIDER desconhecido: ${nome}`, raw: null, provider: nome, model: null };
   } catch (err) {
-    const motivo = err.name === "AbortError" ? `IA não respondeu em ${TIMEOUT_MS} ms` : `falha de rede: ${err.message}`;
+    const motivo = err.name === "AbortError" ? `IA não respondeu em ${timeoutMs} ms` : `falha de rede: ${err.message}`;
     return { ok: false, motivo, raw: null, provider: nome, model: null };
   }
 

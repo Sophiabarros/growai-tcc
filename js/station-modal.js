@@ -259,8 +259,12 @@
     if (!r || !r.avaliado) {
       semAvaliacao[saved.id] = true;
       var cheia = r && /(503|500|502|504)|high demand|não respondeu/i.test(r.motivo || "");
+      // 429 = acabou a cota gratuita do Gemini (20 por dia): só volta amanhã.
+      var semCota = r && /429|quota/i.test(r.motivo || "");
       toast(
-        cheia
+        semCota
+          ? "A IA atingiu o limite de avaliações de hoje. A rotina foi salva; salve de novo amanhã para ela conferir."
+          : cheia
           ? "A IA está sobrecarregada agora e não conferiu a rotina. Salve de novo em alguns minutos."
           : "Não foi possível conferir a rotina agora. Salve de novo em alguns minutos.",
         "error"
