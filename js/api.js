@@ -13,7 +13,7 @@
   // e cada card/seção caía no estado de erro/vazio ("Não foi possível
   // conectar ao servidor"). Agora sempre usa o backend de produção, local
   // ou publicado — os mesmos dados reais em qualquer lugar.
-  var API_PRODUCAO = "https://growai-backend.onrender.com/api";
+  var API_PRODUCAO = "https://growai-backend-ssca.onrender.com/api";
 
   /* ...COM UMA SAÍDA para desenvolvimento.
      O Live Server serve só as PÁGINAS; os dados continuam vindo do endereço
