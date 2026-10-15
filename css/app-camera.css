@@ -674,3 +674,43 @@
 @media (prefers-reduced-motion: reduce) {
   .cam-viewer__live-badge::before { animation: none; }
 }
+
+/* ============ VISOR: ANALISAR SAÚDE AGORA ============ */
+.cam-viewer__acoes {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.cam-viewer__acoes[hidden] {
+  display: none;
+}
+.cam-viewer__analisar {
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+  font: 600 14px/1 var(--font-body);
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.cam-viewer__analisar:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.cam-viewer__analisar:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.cam-viewer__dica {
+  flex: 1 1 220px;
+  margin: 0;
+  color: var(--app-muted);
+  font: 400 12px/1.45 var(--font-body);
+}
+
+.cam-viewer__stale[hidden] {
+  display: none;
+}

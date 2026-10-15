@@ -20,5 +20,6 @@ router.delete("/:id/devices/:deviceId", cmds.removeDevice);
 
 // A IA avalia a rotina contra a especie e a finalidade (sem foto)
 router.post("/:id/avaliar-rotina", ctrl.avaliarRotina);
+router.post("/:id/analisar-foto", ctrl.analisarFotoAgora);
 
 module.exports = router;

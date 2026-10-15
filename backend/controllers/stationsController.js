@@ -385,4 +385,65 @@ async function avaliarRotina(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, create, update, remove, getLatestReading, getLatestPhoto, avaliarRotina };
+/* POST /stations/:id/analisar-foto — botão "Analisar saúde agora" do visor.
+
+   Analisa a foto MAIS RECENTE da câmera, não a imagem ao vivo: a foto é
+   tirada às :00 e :30 com a luz de cultivo apagada e flash (cores reais),
+   enquanto o ao vivo sai roxo e enganaria a IA. A análise automática segue
+   no ritmo dela (IA_FOTO_INTERVALO_MIN); isto só não espera a próxima.
+
+   1 por minuto por estação: cada clique é uma chamada paga/contada da IA. */
+const ANALISE_MANUAL_INTERVALO_MS = 60 * 1000;
+const ultimaAnaliseManual = new Map();
+
+async function analisarFotoAgora(req, res, next) {
+  try {
+    const { rows } = await db.query("SELECT * FROM stations WHERE id = $1 AND user_id = $2", [
+      req.params.id,
+      req.user.id,
+    ]);
+    const station = rows[0];
+    if (!station) return res.status(404).json({ error: "Estação não encontrada" });
+
+    const espera = ANALISE_MANUAL_INTERVALO_MS - (Date.now() - (ultimaAnaliseManual.get(station.id) || 0));
+    if (espera > 0) {
+      return res.status(429).json({ error: `Aguarde ${Math.ceil(espera / 1000)} s para analisar de novo.` });
+    }
+
+    const { rows: fotos } = await db.query(
+      "SELECT id, image_url, captured_at FROM station_photos WHERE station_id = $1 ORDER BY captured_at DESC, id DESC LIMIT 1",
+      [station.id]
+    );
+    const foto = fotos[0];
+    if (!foto) return res.status(404).json({ error: "A câmera ainda não mandou nenhuma foto." });
+    const base64 = String(foto.image_url || "").split(",")[1];
+    const jpeg = base64 ? Buffer.from(base64, "base64") : null;
+    if (!jpeg || jpeg.length < 100) return res.status(422).json({ error: "A última foto está vazia ou corrompida." });
+
+    ultimaAnaliseManual.set(station.id, Date.now());
+    const { rows: leituras } = await db.query(
+      "SELECT * FROM sensor_readings WHERE station_id = $1 ORDER BY recorded_at DESC LIMIT 1",
+      [station.id]
+    );
+
+    // require aqui: deviceController importa serviços que importam este arquivo indiretamente.
+    const { analisarFoto } = require("./deviceController");
+    const r = await analisarFoto({
+      fotoId: foto.id,
+      jpeg,
+      station,
+      leitura: leituras[0] || null,
+      config: montarConfig(station),
+    });
+
+    const { rows: atual } = await db.query(
+      "SELECT id, health_status, analysis_text, captured_at, ia_raw->>'model' AS modelo FROM station_photos WHERE id = $1",
+      [foto.id]
+    );
+    res.json({ ok: !!r.ok, motivo: r.ok ? null : r.motivo, foto: atual[0] || null });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, getOne, create, update, remove, getLatestReading, getLatestPhoto, avaliarRotina, analisarFotoAgora };

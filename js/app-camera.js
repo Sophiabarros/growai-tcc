@@ -308,6 +308,12 @@
       viewerAnalysis.textContent = photo.analysis_text || "";
     }
 
+    // "Analisar saúde agora": só faz sentido se já existe foto.
+    visorIdx = idx;
+    acoes.hidden = !(photo && photo.image_url);
+    btnAnalisar.disabled = false;
+    btnAnalisar.textContent = "Analisar saúde agora";
+
     // Com câmera cadastrada, tenta o ao vivo por cima da última foto.
     pararAoVivo();
     if (temPlaca) iniciarAoVivo(station);
@@ -322,6 +328,55 @@
     });
     document.getElementById("camViewerClose").focus();
   }
+
+  /* ---- "Analisar saúde agora" ----
+     A IA analisa a foto mais recente na hora (POST /stations/:id/analisar-foto),
+     sem esperar o ciclo automático. Leva de 5 a 30 s. */
+  var acoes = document.getElementById("camViewerAcoes");
+  var btnAnalisar = document.getElementById("camViewerAnalisar");
+  var visorIdx = null;
+  var analisouNoVisor = false;
+
+  function mostrarAnalise(photo, station) {
+    var st = photo.health_status;
+    viewerHealth.innerHTML =
+      '<img alt="" src="' + (st === "atencao" ? AVISO_ICON : CHECK_ICON) + '" />' + (HEALTH_LABEL[st] || st);
+    viewerHealth.classList.toggle("cam-viewer__health--warn", st === "atencao");
+    viewerAnalysis.textContent = photo.analysis_text || "";
+    viewerMeta.textContent = "Análise da IA · foto de " + timeAgo(photo.captured_at) + " · analisada agora";
+  }
+
+  btnAnalisar.addEventListener("click", async function () {
+    var idx = visorIdx;
+    var station = atual.stations[idx];
+    if (!station) return;
+    btnAnalisar.disabled = true;
+    btnAnalisar.textContent = "Analisando… (até 30 s)";
+    try {
+      var r = await GrowAI.analyzePhotoNow(station.id);
+      if (visorIdx !== idx) return; // fechou ou trocou de câmera no meio
+      if (r.ok && r.foto) {
+        atual.photos[idx] = Object.assign({}, atual.photos[idx], r.foto);
+        mostrarAnalise(atual.photos[idx], station);
+        analisouNoVisor = true;
+        if (typeof window.showToast === "function") window.showToast("Análise atualizada.");
+      } else {
+        var cota = /429|quota/i.test((r && r.motivo) || "");
+        if (typeof window.showToast === "function") {
+          window.showToast(cota
+            ? "A IA atingiu o limite de análises de hoje. Tente amanhã."
+            : "A IA não conseguiu analisar agora. Tente de novo em alguns minutos.", "error");
+        }
+      }
+    } catch (e) {
+      if (typeof window.showToast === "function") window.showToast(e.message || "Não foi possível analisar.", "error");
+    } finally {
+      if (visorIdx === idx) {
+        btnAnalisar.disabled = false;
+        btnAnalisar.textContent = "Analisar saúde agora";
+      }
+    }
+  });
 
   /* ---- ao vivo (cam-2.0.0 em diante) ----
      A câmera fica conectada ao backend e, enquanto este visor está aberto,
@@ -341,13 +396,20 @@
     }
     el.textContent = texto || "";
     el.hidden = !texto;
+    // Uma mensagem por vez: com aviso do ao vivo, some o "câmera não conectada".
+    var velho = viewerStage.querySelector(".cam-viewer__stale");
+    if (velho) velho.hidden = !!texto;
   }
 
   function iniciarAoVivo(station) {
     avisoAoVivo("Conectando à câmera ao vivo…");
     pararCam = GrowAI.assistirCamera(station.id, {
       onStatus: function (m) {
-        if (!m.cam_online) avisoAoVivo("Câmera desconectada — esta é a última imagem recebida.");
+        /* Desconectada: se o palco já diz "não conectada (há X)", ele basta;
+           senão (o cadastro dizia online e o ao vivo não achou), avisa. */
+        if (!m.cam_online) {
+          avisoAoVivo(viewerStage.querySelector(".cam-viewer__stale") ? "" : "Câmera desconectada — esta é a última imagem recebida.");
+        }
         else if (!urlQuadro) avisoAoVivo("Câmera conectada, esperando a imagem…");
         else avisoAoVivo("");
       },
@@ -388,6 +450,12 @@
   function fecharVisor() {
     if (viewer.hidden) return;
     pararAoVivo();
+    visorIdx = null;
+    // Houve análise nova: a grade de cards atualiza ao fechar.
+    if (analisouNoVisor) {
+      analisouNoVisor = false;
+      load();
+    }
     viewer.classList.remove("cam-viewer--open");
     viewer.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";

@@ -254,6 +254,8 @@
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),
     // Um dia hora a hora (padrão: hoje). dia = "YYYY-MM-DD".
+    // IA analisa agora a foto mais recente da câmera (botão do visor).
+    analyzePhotoNow: (id) => request(`/stations/${id}/analisar-foto`, { method: "POST" }),
     getDailyReport: (stationId, dia) =>
       request("/reports/daily?station_id=" + encodeURIComponent(stationId) + (dia ? "&dia=" + encodeURIComponent(dia) : "")),
     getSuggestions: () => request("/suggestions"),

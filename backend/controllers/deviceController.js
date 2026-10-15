@@ -291,7 +291,9 @@ async function foto(req, res, next) {
   }
 }
 
-// Roda depois de a placa já ter recebido o 200.
+/* Roda depois de a placa já ter recebido o 200, e também quando o usuário
+   aperta "Analisar saúde agora" no app (stationsController.analisarFotoAgora).
+   Devolve o resultado da IA. */
 async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
   const r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
   if (!r.ok) console.warn(`[foto] estação ${station.id}: IA não analisou — ${r.motivo}`);
@@ -341,6 +343,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
         (r.ok && r.suggestion ? " (+sugestão)" : "")
     );
   }
+  return r;
 }
 
-module.exports = { telemetria, foto };
+// analisarFoto também atende o botão "Analisar saúde agora" do app.
+module.exports = { telemetria, foto, analisarFoto };
