@@ -411,7 +411,9 @@ async function analisarFotoAgora(req, res, next) {
     }
 
     const { rows: fotos } = await db.query(
-      "SELECT id, image_url, captured_at FROM station_photos WHERE station_id = $1 ORDER BY captured_at DESC, id DESC LIMIT 1",
+      // A mais recente que é uma imagem de verdade (> 1 kB): um registro
+      // vazio ou corrompido não pode travar o botão.
+      "SELECT id, image_url, captured_at FROM station_photos WHERE station_id = $1 AND length(image_url) > 1000 ORDER BY captured_at DESC, id DESC LIMIT 1",
       [station.id]
     );
     const foto = fotos[0];
