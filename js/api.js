@@ -283,11 +283,54 @@
         ouvintes = ouvintes.filter(function (h) { return h !== handler; });
       };
     },
+
+    /* Câmera ao vivo de uma estação (cam-2.0.0 em diante).
+         var parar = GrowAI.assistirCamera(stationId, {
+           onQuadro: function (blobJpeg) { ... },     // ~2 por segundo
+           onStatus: function (msg) { msg.cam_online }
+         });
+         parar();   // ao fechar o visor
+       O pedido é renovado a cada 15 s; sem renovação o backend e a câmera
+       param sozinhos em ~30 s. Uma câmera por vez por aba. */
+    assistirCamera: function (stationId, h) {
+      h = h || {};
+      if (pararAssistir) pararAssistir();
+      var ativo = true;
+      var cancelar = GrowAI.aoVivo(function (msg) {
+        if (msg.tipo === "ao_vivo_status" && Number(msg.station_id) === Number(stationId) && h.onStatus) h.onStatus(msg);
+      });
+      assistindo = stationId;
+      quadroOuvinte = h.onQuadro || null;
+      pedirAoVivo();
+      var renova = setInterval(pedirAoVivo, 15000);
+      pararAssistir = function () {
+        if (!ativo) return;
+        ativo = false;
+        clearInterval(renova);
+        cancelar();
+        enviarWs({ tipo: "ao_vivo", station_id: stationId, ligar: false });
+        assistindo = null;
+        quadroOuvinte = null;
+        pararAssistir = null;
+      };
+      return pararAssistir;
+    },
   };
 
   var ouvintes = [];
   var ws = null;
   var esperaReconexao = 1000;
+  var assistindo = null;      // estação cuja câmera esta aba está vendo
+  var quadroOuvinte = null;
+  var pararAssistir = null;
+
+  function enviarWs(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+  }
+
+  function pedirAoVivo() {
+    if (assistindo != null) enviarWs({ tipo: "ao_vivo", station_id: assistindo, ligar: true });
+  }
 
   function conectarAoVivo() {
     if (ws || !getToken() || typeof WebSocket === "undefined") return;
@@ -297,8 +340,17 @@
       ws = null;
       return;
     }
-    ws.onopen = function () { esperaReconexao = 1000; };
+    ws.binaryType = "blob";
+    ws.onopen = function () {
+      esperaReconexao = 1000;
+      pedirAoVivo(); // reconectou no meio do ao vivo: pede de novo
+    };
     ws.onmessage = function (ev) {
+      // Binário = quadro JPEG da câmera ao vivo.
+      if (typeof ev.data !== "string") {
+        if (quadroOuvinte) quadroOuvinte(ev.data);
+        return;
+      }
       var msg;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }
       ouvintes.slice().forEach(function (h) {

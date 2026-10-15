@@ -232,11 +232,9 @@
   /* ================= VISOR DA CÂMERA =================
      Abre ao clicar num card e mostra a foto grande.
 
-     IMPORTANTE: não é vídeo ao vivo, e não dá para ser com este hardware. A
-     ESP32-CAM tira UMA foto, manda e volta para o deep sleep — ela fica
-     dormindo ~29 dos 30 minutos de cada ciclo. Não existe stream para abrir.
-     Por isso o visor sempre mostra a hora da captura: o usuário precisa saber
-     que está vendo a última foto, não a horta neste instante. */
+     Mostra primeiro a última foto analisada pela IA e, se a estação tem
+     câmera, liga o ao vivo por cima dela (ver iniciarAoVivo). A hora da foto
+     continua embaixo: a análise da IA é daquela foto, não da imagem ao vivo. */
 
   var viewer = document.getElementById("camViewer");
   var viewerStage = document.getElementById("camViewerStage");
@@ -305,10 +303,14 @@
       viewerHealth.classList.toggle("cam-viewer__health--warn", st === "atencao");
 
       viewerMeta.textContent =
-        "Foto de " + timeAgo(photo.captured_at) +
+        (temPlaca ? "Análise da IA · foto de " : "Foto de ") + timeAgo(photo.captured_at) +
         (conectada ? " · câmera conectada" : " · câmera não conectada");
       viewerAnalysis.textContent = photo.analysis_text || "";
     }
+
+    // Com câmera cadastrada, tenta o ao vivo por cima da última foto.
+    pararAoVivo();
+    if (temPlaca) iniciarAoVivo(station);
 
     ultimoFoco = document.activeElement;
     viewer.hidden = false;
@@ -321,8 +323,71 @@
     document.getElementById("camViewerClose").focus();
   }
 
+  /* ---- ao vivo (cam-2.0.0 em diante) ----
+     A câmera fica conectada ao backend e, enquanto este visor está aberto,
+     manda ~2 quadros por segundo (GrowAI.assistirCamera). O primeiro quadro
+     substitui a última foto; até lá ela continua na tela, com um aviso. A
+     imagem ao vivo sai roxa por causa da luz de cultivo — a foto da IA é
+     tirada com a luz apagada e continua descrita embaixo. */
+  var pararCam = null;
+  var urlQuadro = null;
+
+  function avisoAoVivo(texto) {
+    var el = viewerStage.querySelector(".cam-viewer__live-status");
+    if (!el) {
+      el = document.createElement("p");
+      el.className = "cam-viewer__live-status";
+      viewerStage.appendChild(el);
+    }
+    el.textContent = texto || "";
+    el.hidden = !texto;
+  }
+
+  function iniciarAoVivo(station) {
+    avisoAoVivo("Conectando à câmera ao vivo…");
+    pararCam = GrowAI.assistirCamera(station.id, {
+      onStatus: function (m) {
+        if (!m.cam_online) avisoAoVivo("Câmera desconectada — esta é a última imagem recebida.");
+        else if (!urlQuadro) avisoAoVivo("Câmera conectada, esperando a imagem…");
+        else avisoAoVivo("");
+      },
+      onQuadro: function (blob) {
+        var img = viewerStage.querySelector(".cam-viewer__live-img");
+        if (!img) {
+          viewerStage.innerHTML =
+            '<img class="cam-viewer__live-img" alt="Câmera de ' + escapeHtml(station.name) + ' ao vivo" />' +
+            '<span class="cam-viewer__live-badge" title="A luz de cultivo deixa a imagem ao vivo roxa; a foto da IA é tirada com a luz apagada">AO VIVO</span>';
+          img = viewerStage.querySelector(".cam-viewer__live-img");
+        }
+        /* Carrega o quadro novo fora da tela e só então troca: trocar o src
+           direto deixa a imagem em branco (ou "quebrada") até o JPEG
+           decodificar, e o ao vivo piscaria a cada quadro. */
+        var novo = URL.createObjectURL(new Blob([blob], { type: "image/jpeg" }));
+        var pre = new Image();
+        pre.onload = function () {
+          if (!pararCam) { URL.revokeObjectURL(novo); return; } // visor já fechou
+          var anterior = urlQuadro;
+          urlQuadro = novo;
+          img.src = novo;
+          if (anterior) URL.revokeObjectURL(anterior);
+          avisoAoVivo("");
+        };
+        pre.onerror = function () { URL.revokeObjectURL(novo); };
+        pre.src = novo;
+      },
+    });
+  }
+
+  function pararAoVivo() {
+    if (pararCam) pararCam();
+    pararCam = null;
+    if (urlQuadro) URL.revokeObjectURL(urlQuadro);
+    urlQuadro = null;
+  }
+
   function fecharVisor() {
     if (viewer.hidden) return;
+    pararAoVivo();
     viewer.classList.remove("cam-viewer--open");
     viewer.setAttribute("aria-hidden", "true");
     document.body.style.overflow = "";

@@ -627,3 +627,50 @@
     opacity: 1;
   }
 }
+
+/* ============ VISOR: AO VIVO ============ */
+/* Ver js/app-camera.js (iniciarAoVivo). */
+.cam-viewer__live-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(10, 15, 13, 0.75);
+  color: #fff;
+  font: 700 12px/1 var(--font-body);
+  letter-spacing: 0.06em;
+}
+.cam-viewer__live-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: cam-live-pulso 1.4s ease-in-out infinite;
+}
+@keyframes cam-live-pulso {
+  50% { opacity: 0.35; }
+}
+.cam-viewer__live-status {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(10, 15, 13, 0.75);
+  color: #fff;
+  font: 500 13px/1.4 var(--font-body);
+  text-align: center;
+}
+.cam-viewer__live-status[hidden] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cam-viewer__live-badge::before { animation: none; }
+}

@@ -22,7 +22,10 @@ const BOMBA_MAX_S = 50;
    de 60 s ela apareceria como offline em ~97% do tempo, mesmo funcionando
    perfeitamente. O prazo dela é de ~3 ciclos perdidos. */
 const ONLINE_S = 60;              // placa main
-const ONLINE_CAM_S = 95 * 60;     // placa cam: ~3 ciclos de foto de 30 min
+/* Desde a cam-2.0.0 a câmera fica acordada e conectada pelo WebSocket, que
+   renova last_seen a cada 60 s (services/realtime.js). Antes ela vivia em
+   deep sleep e o prazo era de 95 min. */
+const ONLINE_CAM_S = 180;         // placa cam
 
 // Confirma que a estação é do usuário do token antes de qualquer coisa.
 async function estacaoDoUsuario(stationId, userId) {

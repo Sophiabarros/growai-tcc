@@ -1,11 +1,19 @@
 /* GrowAI - ESP32-CAM (AI-Thinker)
-   Uma foto a cada FOTO_INTERVALO_MIN minutos, dentro da janela em que o
-   ESP32 principal apaga o LED Grow. Fora dessa janela a luz roxa falseia as
-   cores e a analise de amarelamento pela IA vai por agua abaixo.
 
-   O ciclo inteiro roda no setup(): acorda -> camera -> Wi-Fi -> NTP ->
-   espera a janela -> flash -> captura -> envia -> deep sleep. loop() fica
-   vazio, porque o deep sleep reinicia a placa do zero a cada ciclo.
+   Desde a cam-2.0.0 a placa fica ACORDADA e ligada na tomada. Ela faz duas
+   coisas ao mesmo tempo:
+
+   1. Ao vivo: fica conectada ao backend por WebSocket (/ws, com a chave dela)
+      e, enquanto alguem estiver com o visor da tela Camera aberto, manda
+      ~2 quadros JPEG por segundo. Ninguem olhando = nenhum quadro.
+   2. Foto da IA: a cada FOTO_INTERVALO_MIN minutos (:00 e :30), dentro da
+      janela em que o ESP32 principal apaga o LED Grow, tira uma foto com
+      flash e manda para POST /device/foto, onde a IA analisa. Fora dessa
+      janela a luz roxa falseia as cores -- por isso o ao vivo aparece roxo e
+      a foto da IA nao.
+
+   Antes (ate a cam-1.2.1) ela dormia 29 de cada 30 minutos em deep sleep, e
+   nao havia como ver a horta "agora".
 
    Esta placa nunca fala com a IA e nao guarda nenhuma chave de IA. */
 
@@ -14,7 +22,6 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <esp_camera.h>
-#include <esp_sleep.h>
 #include <time.h>
 /* Preferences vem incluido aqui, e nao so dentro de shared/provisao.h, porque
    o resolvedor de bibliotecas do PlatformIO varre apenas src/ e include/ do
@@ -22,13 +29,15 @@
    core ser encontrada, e o build falha com "Preferences.h: No such file". */
 #include <Preferences.h>
 
+#include <ArduinoJson.h>
+#include <WebSocketsClient.h>
 #include <WiFiManager.h>
 
 #include "protocolo.h"
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-1.2.1"
+#define FW "cam-2.0.0"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -48,39 +57,46 @@
 #define HREF_GPIO_NUM  23
 #define PCLK_GPIO_NUM  22
 
-const uint8_t PIN_FLASH = 4;      // LED branco da placa; forte, so na captura
-/* LED vermelho pequeno no verso da AI-Thinker, aceso em LOW. E o unico jeito
-   de a CAM dizer o que esta fazendo sem o monitor serial:
-     3 piscadas rapidas  -> conectou no Wi-Fi
-     1 piscada longa     -> foto entregue ao backend
-     aceso fixo          -> portal de configuracao aberto (rede GrowAI-setup) */
+const uint8_t PIN_FLASH = 4;      // LED branco da placa; forte, so na foto da IA
+/* LED vermelho pequeno no verso da AI-Thinker, aceso em LOW:
+     piscando devagar (10 s) -> acabou de ligar: aperte o RST de novo para
+                                abrir o portal (reset duplo)
+     3 piscadas rapidas      -> conectou no Wi-Fi
+     1 piscada longa         -> foto da IA entregue ao backend
+     aceso fixo              -> portal de configuracao aberto (GrowAI-setup)
+   Durante o ao vivo ele fica APAGADO: apareceria na imagem. */
 const uint8_t PIN_LED   = 33;
 
-const unsigned long WIFI_TIMEOUT_MS = 20000;
-// Rede reserva do secrets.h: tentada so depois que a gravada falhar.
-const unsigned long WIFI_RESERVA_TIMEOUT_MS = 15000;
-const unsigned long NTP_TIMEOUT_MS  = 8000;
-const unsigned long FLASH_MAX_MS    = 2000;
+const unsigned long WIFI_TIMEOUT_MS         = 20000;
+const unsigned long WIFI_RESERVA_TIMEOUT_MS = 15000;  // rede reserva do secrets.h
+const unsigned long WIFI_SEM_REDE_MAX_MS    = 5UL * 60 * 1000; // sem Wi-Fi: reinicia
+const unsigned long FLASH_MAX_MS            = 2000;
 
-/* Sobrevive ao deep sleep (nao ao reset/queda de energia). Conta as falhas
-   seguidas de esp_camera_init para nao entrar em loop de restart. */
-RTC_DATA_ATTR int falhasCam = 0;
+// Ao vivo: intervalo entre quadros e quanto tempo segue sem ouvir o backend.
+const unsigned long QUADRO_MS       = 500;    // ~2 quadros por segundo
+const unsigned long AO_VIVO_PRAZO_MS = 25000; // o backend renova a cada 10 s
 
-/* Falhas seguidas de Wi-Fi, tambem no RTC. A CAM nao tem botao acessivel para
-   pedir o portal (o GPIO 0 e o XCLK da camera), entao o gatilho dela e este:
-   depois de FALHAS_ATE_PORTAL ciclos sem conseguir conectar, ela assume que a
-   rede mudou e abre o portal sozinha. */
-RTC_DATA_ATTR int falhasWifi = 0;
+/* Falhas seguidas de Wi-Fi no boot. RTC_NOINIT sobrevive ao ESP.restart()
+   (mas nao a falta de energia). Depois de FALHAS_ATE_PORTAL reinicios sem
+   conseguir conectar, a placa assume que a rede mudou e abre o portal. */
+RTC_NOINIT_ATTR int falhasWifi;
 static const int FALHAS_ATE_PORTAL = 3;
 
 struct tm tmAgora;
 
 WiFiClient       clienteHttp;
 WiFiClientSecure clienteHttps;
+WebSocketsClient ws;
+String cabecalhoChave;   // "X-Device-Key: ..." -- precisa viver enquanto o ws existir
 
 /* Wi-Fi, API_BASE e DEVICE_KEY vem da NVS (ver provisao.h); o secrets.h entra
    so como valor de fabrica. */
 Credenciais cred;
+
+bool aoVivo = false;
+unsigned long aoVivoAte = 0;
+unsigned long tUltimoQuadro = 0;
+long ultimoCicloFoto = -1;     // qual janela de foto ja foi atendida
 
 bool ehHttps() { return cred.apiBase.startsWith("https"); }
 
@@ -96,26 +112,22 @@ void pisca(int vezes, int ms) {
 
 /* ------------------------------------------------------------ reset duplo
    Gatilho do portal nesta placa: apertar o RST duas vezes seguidas (ou tirar
-   e pôr a energia duas vezes). Sem isso, uma CAM que conectou numa rede so
-   reabria o portal depois de 3 ciclos sem Wi-Fi (~1h30), e a rede antiga
-   continuando no ar significava nunca.
-   O contador fica na NVS porque o RST zera a memoria RTC. Acordar do deep
-   sleep nao conta, nem reinicio por software ou brownout. Ele zera quando a
-   placa vai dormir, entao o segundo aperto tem que vir antes disso (a placa
-   fica acordada pelo menos uns segundos, conectando). */
+   e por a energia duas vezes). O contador fica na NVS porque o RST zera a
+   memoria RTC; reinicio por software ou brownout nao conta. Ele zera depois
+   de RESET_JANELA_MS acordada: e a janela do segundo aperto, marcada pelo
+   LED piscando devagar. */
 static const char *NVS_CAM = "growai-cam";
-
-/* Ligou na tomada ou apertaram o RST (nao foi o despertador do deep sleep).
-   Nesse caso a placa espera RESET_JANELA_MS acordada antes de dormir, com o
-   LED piscando devagar: e a janela do segundo aperto. Antes ela conectava e
-   dormia em 3-5 s, e o reset duplo quase nunca pegava. */
 bool bootManual = false;
+bool janelaResetAberta = false;
 const unsigned long RESET_JANELA_MS = 10000;
 
 bool resetDuplo() {
   esp_reset_reason_t motivo = esp_reset_reason();
   if (motivo != ESP_RST_POWERON && motivo != ESP_RST_EXT) return false;
   bootManual = true;
+  janelaResetAberta = true;
+  // Ligou na tomada: o RTC_NOINIT vem com lixo, entao o contador recomeca.
+  falhasWifi = 0;
   Preferences nvs;
   nvs.begin(NVS_CAM, false);
   int n = nvs.getInt("rst", 0) + 1;
@@ -131,61 +143,27 @@ void zeraResetDuplo() {
   nvs.end();
 }
 
-// ------------------------------------------------------------- deep sleep
-void dorme(long segundos) {
-  if (segundos < 5) segundos = 5;
-  if (bootManual) {
-    // Janela do reset duplo: pisca devagar ate completar RESET_JANELA_MS.
-    while (millis() < RESET_JANELA_MS) {
-      led(true);  delay(250);
-      led(false); delay(250);
-    }
-  }
-  zeraResetDuplo();
-  led(false);
-  digitalWrite(PIN_FLASH, LOW);
-  Serial.printf("[sono] dormindo %ld s\n", segundos);
-  Serial.flush();
-  esp_sleep_enable_timer_wakeup((uint64_t)segundos * 1000000ULL);
-  esp_deep_sleep_start();
-}
-
-// Segundos daqui ate o inicio da proxima janela de foto (precisa de hora valida).
-long segAteProximaJanela() {
-  return (long)FOTO_INTERVALO_MIN * 60 - segNoCicloFoto(tmAgora.tm_min, tmAgora.tm_sec);
-}
-
-void dormeAteProximaJanela() {
-  if (!getLocalTime(&tmAgora, 0)) {           // sem hora: ritmo cego
-    dorme((long)FOTO_INTERVALO_MIN * 60);
+// Pisca devagar ate fechar a janela do segundo aperto. Nao bloqueia.
+void cuidaJanelaReset() {
+  if (!janelaResetAberta) return;
+  if (millis() >= RESET_JANELA_MS) {
+    janelaResetAberta = false;
+    led(false);
+    zeraResetDuplo();
     return;
   }
-  long s = segAteProximaJanela() - CAM_PRE_S;
-  // Perto demais? Acordar agora nao daria tempo de conectar: pula uma janela.
-  if (s < 10) s += (long)FOTO_INTERVALO_MIN * 60;
-  dorme(s);
+  led((millis() / 250) % 2 == 0);
 }
 
-// Trava de seguranca: passou do orcamento de tempo acordada, dorme de qualquer jeito.
-void checaOrcamento(const char* onde) {
-  if (millis() < (unsigned long)CAM_MAX_ACORDADA_S * 1000UL) return;
-  Serial.printf("[trava] %ld s acordada em '%s', desistindo deste ciclo\n",
-                (long)(millis() / 1000), onde);
-  dormeAteProximaJanela();
-  return;                        // dorme() nao volta; explicito para nao confiar nisso
-}
-
-/* Portal de configuracao.
-   Aqui ele PODE bloquear, ao contrario do que acontece na placa principal: a
-   CAM nao controla bomba nem luz, entao nao ha nada rodando que o portal possa
-   atrapalhar. O timeout evita que ela fique acordada para sempre esperando
-   alguem que nunca vai conectar. */
+/* Portal de configuracao. Aqui ele PODE bloquear: a CAM nao controla bomba
+   nem luz. O timeout evita que ela fique presa esperando para sempre. */
 void abrePortal(const char *motivo) {
   Serial.printf("\n[portal] %s\n", motivo);
   Serial.printf("[portal] conecte-se a rede \"%s\" (senha %s)\n", PORTAL_SSID, PORTAL_SENHA);
 
-  digitalWrite(PIN_FLASH, LOW);  // garante o flash apagado durante a espera
+  digitalWrite(PIN_FLASH, LOW);
   zeraResetDuplo();
+  janelaResetAberta = false;
   led(true);                     // aceso fixo enquanto o portal estiver no ar
 
   WiFiManager wm;
@@ -198,9 +176,10 @@ void abrePortal(const char *motivo) {
 
   bool ok = wm.startConfigPortal(PORTAL_SSID, PORTAL_SENHA);
   if (!ok) {
-    Serial.println("[portal] ninguem configurou dentro do tempo; dormindo");
-    dorme((long)FOTO_INTERVALO_MIN * 60);
-    return;
+    Serial.println("[portal] ninguem configurou dentro do tempo; reiniciando");
+    falhasWifi = 0;
+    delay(200);
+    ESP.restart();
   }
 
   cred.ssid      = WiFi.SSID();
@@ -211,6 +190,7 @@ void abrePortal(const char *motivo) {
   provisaoSalvar(cred);
   Serial.println("[portal] credenciais salvas na NVS, reiniciando...");
   provisaoMostrar(cred);
+  falhasWifi = 0;
   delay(400);
   ESP.restart();
 }
@@ -219,11 +199,17 @@ void abrePortal(const char *motivo) {
 bool conectaWifi(const String &ssid, const String &senha, unsigned long timeoutMs) {
   WiFi.begin(ssid.c_str(), senha.c_str());
   unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs) delay(200);
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs) {
+    delay(200);
+    cuidaJanelaReset();
+  }
   return WiFi.status() == WL_CONNECTED;
 }
 
 // ---------------------------------------------------------------- camera
+/* O sensor comeca configurado para a foto da IA (SVGA, qualidade 12). O ao
+   vivo usa VGA com mais compressao: ~15-30 kB por quadro em vez de 40-90 kB,
+   o que faz diferenca no 4G. modoFoto()/modoAoVivo() trocam na hora. */
 bool iniciaCamera() {
   camera_config_t c = {};
   c.ledc_channel = LEDC_CHANNEL_0;
@@ -261,7 +247,7 @@ bool iniciaCamera() {
 
   sensor_t *s = esp_camera_sensor_get();
   if (s) {
-    s->set_whitebal(s, 1);   // AWB e AEC automaticos: a luz da janela varia
+    s->set_whitebal(s, 1);   // AWB e AEC automaticos: a luz varia
     s->set_awb_gain(s, 1);
     s->set_exposure_ctrl(s, 1);
     s->set_gain_ctrl(s, 1);
@@ -271,7 +257,41 @@ bool iniciaCamera() {
   return true;
 }
 
-// ------------------------------------------------------------- envio
+void modoFoto() {
+  sensor_t *s = esp_camera_sensor_get();
+  if (!s) return;
+  s->set_framesize(s, psramFound() ? FRAMESIZE_SVGA : FRAMESIZE_VGA);
+  s->set_quality(s, 12);
+}
+
+void modoAoVivo() {
+  sensor_t *s = esp_camera_sensor_get();
+  if (!s) return;
+  s->set_framesize(s, FRAMESIZE_VGA);
+  s->set_quality(s, 18);
+}
+
+// Descarta os quadros que ja estavam no buffer (velhos ou da resolucao antiga).
+void descartaQuadros(int n) {
+  for (int i = 0; i < n; i++) {
+    camera_fb_t *lixo = esp_camera_fb_get();
+    if (lixo) esp_camera_fb_return(lixo);
+  }
+}
+
+camera_fb_t* capturaComFlash() {
+  digitalWrite(PIN_FLASH, HIGH);
+  unsigned long tFlash = millis();
+  // Os primeiros saem escuros, antes do AWB/AEC reagirem ao flash.
+  descartaQuadros(2);
+  camera_fb_t *fb = esp_camera_fb_get();
+  digitalWrite(PIN_FLASH, LOW);
+  unsigned long dur = millis() - tFlash;
+  if (dur > FLASH_MAX_MS) Serial.printf("[cam] AVISO: flash ficou %lu ms aceso\n", dur);
+  return fb;
+}
+
+// ------------------------------------------------------- foto para a IA
 bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
   HTTPClient http;
   String url = cred.apiBase + "/device/foto";
@@ -295,37 +315,118 @@ bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
 
   int code = http.POST(fb->buf, fb->len);
   Serial.printf("[http] POST /device/foto -> %d (%u bytes)\n", code, fb->len);
-  if (code != 200) Serial.println("[http] sem reenvio: a proxima foto vem em minutos");
-  else             pisca(1, 800);
+  if (code == 401) Serial.println("[http] 401: chave recusada. Gere outra em Configuracoes > Placas e grave pelo portal");
+  else if (code != 200) Serial.println("[http] sem reenvio: a proxima foto vem em 30 min");
   http.end();
   return code == 200;
 }
 
-// ------------------------------------------------------------- captura
-camera_fb_t* capturaComFlash() {
-  digitalWrite(PIN_FLASH, HIGH);
-  unsigned long tFlash = millis();
+/* Na janela combinada (:00 e :30, FOTO_OFFSET_S segundos depois do inicio,
+   quando o ESP32 principal ja apagou a luz roxa), uma foto com flash. Cada
+   janela e atendida uma vez so (ultimoCicloFoto). */
+void cuidaFotoAgendada() {
+  if (!getLocalTime(&tmAgora, 0)) return;
+  int seg = segNoCicloFoto(tmAgora.tm_min, tmAgora.tm_sec);
+  if (seg < FOTO_OFFSET_S || seg > FOTO_JANELA_S - 5) return;
 
-  // Descarta 2 frames: os primeiros saem escuros, antes do AWB/AEC reagirem ao flash.
-  for (int i = 0; i < 2; i++) {
-    camera_fb_t *lixo = esp_camera_fb_get();
-    if (lixo) esp_camera_fb_return(lixo);
+  long ciclo = ((long)tmAgora.tm_yday * 24 * 60 + tmAgora.tm_hour * 60 + tmAgora.tm_min) / FOTO_INTERVALO_MIN;
+  if (ciclo == ultimoCicloFoto) return;
+  ultimoCicloFoto = ciclo;
+
+  Serial.printf("[foto] janela %02d:%02d, foto para a IA\n", tmAgora.tm_hour, tmAgora.tm_min);
+  modoFoto();
+  descartaQuadros(2);
+  time_t capturadaEm;
+  time(&capturadaEm);                 // epoch UTC
+  camera_fb_t *fb = capturaComFlash();
+  if (!fb) {
+    Serial.println("[cam] captura falhou");
+  } else {
+    Serial.printf("[cam] %u bytes\n", fb->len);
+    bool ok = enviaFoto(fb, capturadaEm);
+    esp_camera_fb_return(fb);
+    if (ok && !aoVivo) pisca(1, 800);
   }
-  camera_fb_t *fb = esp_camera_fb_get();
+  modoAoVivo();
+  descartaQuadros(2);
+}
 
-  digitalWrite(PIN_FLASH, LOW);
-  unsigned long dur = millis() - tFlash;
-  if (dur > FLASH_MAX_MS) Serial.printf("[cam] AVISO: flash ficou %lu ms aceso\n", dur);
-  return fb;
+// ------------------------------------------------------------- ao vivo
+void eventoWs(WStype_t tipo, uint8_t *dados, size_t tam) {
+  switch (tipo) {
+    case WStype_CONNECTED:
+      Serial.println("[ws] conectado ao backend, esperando pedido de ao vivo");
+      break;
+    case WStype_DISCONNECTED:
+      if (aoVivo) Serial.println("[ws] caiu: ao vivo parado");
+      aoVivo = false;
+      break;
+    case WStype_TEXT: {
+      JsonDocument doc;
+      if (deserializeJson(doc, dados, tam)) return;
+      if (doc["tipo"] == "ao_vivo") {
+        bool ligar = doc["ligar"] | false;
+        if (ligar != aoVivo) Serial.printf("[ao vivo] %s\n", ligar ? "alguem esta assistindo" : "ninguem assistindo");
+        aoVivo = ligar;
+        if (ligar) {
+          aoVivoAte = millis() + AO_VIVO_PRAZO_MS;
+          led(false);
+        }
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+/* https://host[:porta]/api -> conecta em wss://host[:porta]/ws, com a chave
+   no cabecalho (o mesmo X-Device-Key do HTTP). */
+void iniciaWs() {
+  String u = cred.apiBase;
+  bool ssl = u.startsWith("https://");
+  u.remove(0, ssl ? 8 : 7);
+  int barra = u.indexOf('/');
+  String hostPorta = barra >= 0 ? u.substring(0, barra) : u;
+  uint16_t porta = ssl ? 443 : 80;
+  String host = hostPorta;
+  int doisPontos = hostPorta.indexOf(':');
+  if (doisPontos >= 0) {
+    host = hostPorta.substring(0, doisPontos);
+    porta = hostPorta.substring(doisPontos + 1).toInt();
+  }
+
+  cabecalhoChave = "X-Device-Key: " + cred.deviceKey;
+  ws.setExtraHeaders(cabecalhoChave.c_str());
+  ws.onEvent(eventoWs);
+  ws.setReconnectInterval(5000);
+  ws.enableHeartbeat(15000, 5000, 2);
+  if (ssl) ws.beginSSL(host.c_str(), porta, "/ws");
+  else     ws.begin(host.c_str(), porta, "/ws");
+  Serial.printf("[ws] %s://%s:%u/ws\n", ssl ? "wss" : "ws", host.c_str(), porta);
+}
+
+void cuidaAoVivo() {
+  if (aoVivo && (long)(millis() - aoVivoAte) >= 0) {
+    // O backend parou de renovar (reiniciou, caiu): para por conta propria.
+    Serial.println("[ao vivo] sem renovacao do backend, parando");
+    aoVivo = false;
+  }
+  if (!aoVivo || !ws.isConnected()) return;
+  if (millis() - tUltimoQuadro < QUADRO_MS) return;
+  tUltimoQuadro = millis();
+
+  camera_fb_t *fb = esp_camera_fb_get();
+  if (!fb) return;
+  ws.sendBIN(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
 }
 
 // ------------------------------------------------------------- setup
 void setup() {
   /* O detector de brownout fica LIGADO de proposito. Se a placa reiniciar com
      "Brownout detector was triggered", o problema e alimentacao (fonte fraca,
-     fio fino, USB do PC) e se resolve no hardware, nao desligando o aviso.
-     Ver README, secao Problemas comuns. */
-
+     fio fino, USB do PC). Ver README, secao Problemas comuns. */
   pinMode(PIN_FLASH, OUTPUT);
   digitalWrite(PIN_FLASH, LOW);
   pinMode(PIN_LED, OUTPUT);
@@ -335,24 +436,21 @@ void setup() {
   delay(200);
   Serial.println("\n== GrowAI " FW " ==");
 
-  /* Lido antes da camera: o esp_camera_init leva ~1 s, e o reset duplo
-     precisa contar a partir de quando a placa liga. */
+  // Lido antes da camera: o reset duplo conta a partir de quando a placa liga.
   bool pediuPortal = resetDuplo();
+  if (falhasWifi < 0 || falhasWifi > FALHAS_ATE_PORTAL) falhasWifi = 0;
 
   // ---- camera ----
-  if (!iniciaCamera()) {
-    falhasCam++;
-    if (falhasCam >= 3) {
-      Serial.println("[cam] 3 falhas seguidas: desistindo deste ciclo");
-      falhasCam = 0;
-      dorme((long)FOTO_INTERVALO_MIN * 60);
-      return;
+  int tentativas = 0;
+  while (!iniciaCamera()) {
+    if (++tentativas >= 3) {
+      Serial.println("[cam] 3 falhas seguidas: reiniciando em 60 s (confira o cabo flat)");
+      delay(60000);
+      ESP.restart();
     }
-    Serial.printf("[cam] falha %d/3, reiniciando em 5 s\n", falhasCam);
-    delay(5000);
-    ESP.restart();
+    delay(2000);
   }
-  falhasCam = 0;
+  modoAoVivo();
 
   // ---- credenciais ----
   provisaoCarregar(cred, WIFI_SSID, WIFI_PASS, API_BASE, DEVICE_KEY);
@@ -361,15 +459,12 @@ void setup() {
   if (pediuPortal) {
     // Os campos ja vem preenchidos com o que esta gravado: so trocar a rede.
     abrePortal("reset duplo: trocar de rede");
-    return;
   }
-  if (!provisaoCompleta(cred)) {
-    abrePortal("sem credenciais gravadas");
-    return;  // abrePortal() sempre termina em restart ou deep sleep
-  }
+  if (!provisaoCompleta(cred)) abrePortal("sem credenciais gravadas");
 
   // ---- Wi-Fi ----
   WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);          // sleep do radio derruba a taxa do ao vivo
   bool conectou = conectaWifi(cred.ssid, cred.senha, WIFI_TIMEOUT_MS);
 
   /* Rede reserva: a do secrets.h (ex.: o roteador do celular), se for outra.
@@ -382,7 +477,6 @@ void setup() {
     WiFi.mode(WIFI_STA);
     conectou = conectaWifi(reserva, WIFI_PASS, WIFI_RESERVA_TIMEOUT_MS);
   }
-  unsigned long t0;
 
   if (!conectou) {
     falhasWifi++;
@@ -391,80 +485,40 @@ void setup() {
        Abre o portal para dar como consertar sem cabo nem computador. */
     if (falhasWifi >= FALHAS_ATE_PORTAL) {
       falhasWifi = 0;
-      abrePortal("3 ciclos sem conseguir conectar");
-      return;
+      abrePortal("3 tentativas sem conseguir conectar");
     }
-    dormeAteProximaJanela();
-    return;
+    delay(30000);
+    ESP.restart();
   }
   falhasWifi = 0;
+  WiFi.setAutoReconnect(true);
   Serial.printf("[wifi] %s em \"%s\"  rssi %d\n", WiFi.localIP().toString().c_str(),
                 WiFi.SSID().c_str(), WiFi.RSSI());
-  pisca(3, 150);
+  if (!janelaResetAberta) pisca(3, 150);
 
-  // ---- NTP ----
   configTzTime(TZ_SP, NTP1, NTP2);
-  bool horaValida = false;
-  t0 = millis();
-  while (millis() - t0 < NTP_TIMEOUT_MS) {
-    if (getLocalTime(&tmAgora, 200)) { horaValida = true; break; }
-  }
-
-  camera_fb_t *fb = nullptr;
-  time_t capturadaEm = 0;
-
-  if (!horaValida) {
-    // Sem hora nao da para saber se a luz roxa esta apagada. Fotografa mesmo
-    // assim e deixa o backend decidir o que fazer com uma foto sem timestamp.
-    Serial.println("[ntp] falhou: foto agora, X-Captured-At: 0");
-    fb = capturaComFlash();
-  } else {
-    Serial.printf("[ntp] %04d-%02d-%02d %02d:%02d:%02d\n",
-                  tmAgora.tm_year + 1900, tmAgora.tm_mon + 1, tmAgora.tm_mday,
-                  tmAgora.tm_hour, tmAgora.tm_min, tmAgora.tm_sec);
-
-    int seg = segNoCicloFoto(tmAgora.tm_min, tmAgora.tm_sec);
-    const int CICLO_S = FOTO_INTERVALO_MIN * 60;
-    long espera;
-    if (seg <= FOTO_JANELA_S) {
-      espera = (long)FOTO_OFFSET_S - seg;          // dentro da janela
-    } else if (CICLO_S - seg <= CAM_PRE_S + 15) {
-      /* ADIANTADA, que e o caso normal: dormeAteProximaJanela() acorda a placa
-         CAM_PRE_S antes da janela, para dar tempo de conectar. Antes este caso
-         caia no "perdida" de baixo -- seg = 1765 parece "depois" da janela,
-         mas e 35 s ANTES da proxima -- e a CAM dormia de novo, acordava
-         adiantada de novo, e nunca tirava foto no horario. */
-      espera = (long)(CICLO_S - seg) + FOTO_OFFSET_S;
-    } else {
-      // Chegamos depois da janela: a luz roxa ja voltou. Foto agora sairia com
-      // a cor errada, entao e melhor esperar a proxima.
-      Serial.printf("[janela] perdida (%d s no ciclo), esperando a proxima\n", seg);
-      dormeAteProximaJanela();
-      return;
-    }
-    if (espera > 0) {
-      Serial.printf("[janela] esperando %ld s para a luz apagar\n", espera);
-      unsigned long alvo = millis() + (unsigned long)espera * 1000UL;
-      while ((long)(millis() - alvo) < 0) { delay(100); checaOrcamento("espera da janela"); }
-    }
-
-    checaOrcamento("antes da captura");
-    time(&capturadaEm);                 // epoch UTC
-    fb = capturaComFlash();
-  }
-
-  if (!fb) {
-    Serial.println("[cam] captura falhou");
-    dormeAteProximaJanela();
-    return;                      // sem isto, o fb->len abaixo seria deref de null
-  }
-
-  Serial.printf("[cam] %u bytes\n", fb->len);
-  enviaFoto(fb, capturadaEm);
-  esp_camera_fb_return(fb);
-
-  if (horaValida) dormeAteProximaJanela();
-  else            dorme((long)FOTO_INTERVALO_MIN * 60);
+  iniciaWs();
 }
 
-void loop() { /* nunca chega aqui: o setup() sempre termina em deep sleep */ }
+// ------------------------------------------------------------- loop
+void loop() {
+  cuidaJanelaReset();
+
+  // Sem Wi-Fi por muito tempo: reinicia, e o boot decide se abre o portal.
+  static unsigned long semRedeDesde = 0;
+  if (WiFi.status() != WL_CONNECTED) {
+    if (!semRedeDesde) semRedeDesde = millis();
+    else if (millis() - semRedeDesde > WIFI_SEM_REDE_MAX_MS) {
+      Serial.println("[wifi] 5 min sem rede, reiniciando");
+      delay(200);
+      ESP.restart();
+    }
+  } else {
+    semRedeDesde = 0;
+  }
+
+  ws.loop();
+  cuidaFotoAgendada();
+  cuidaAoVivo();
+  delay(5);
+}
