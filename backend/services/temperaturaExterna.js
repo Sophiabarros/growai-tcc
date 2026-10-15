@@ -3,7 +3,7 @@
 // Usada só quando o sensor da placa (DS18B20) não tem leitura: o app mostra
 // esta temperatura no lugar, marcada como "São Paulo (internet)", e o aviso de
 // sensor com defeito continua aparecendo. É a temperatura do ar da cidade,
-// não a de dentro da estufa — serve de referência, não de medição.
+// não a medida na horta — serve de referência, não de medição.
 //
 // Cache de 15 min: o Open-Meteo atualiza a cada 15 min, e o painel do app
 // pede a leitura a cada poucos segundos.

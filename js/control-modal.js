@@ -223,7 +223,7 @@
         avisos.push({
           erro: true,
           texto: "Sensor: " + leitura.erro +
-            (leitura.temperatura_fonte === "sao_paulo" ? ". Enquanto isso, a temperatura mostrada é a de São Paulo (internet), não a da estufa." : ""),
+            (leitura.temperatura_fonte === "sao_paulo" ? ". Enquanto isso, a temperatura mostrada é a de São Paulo (internet), não a da horta." : ""),
         });
       }
       if (leitura.erro_cfg) avisos.push({ erro: true, texto: "A placa recusou a rotina: " + leitura.erro_cfg });

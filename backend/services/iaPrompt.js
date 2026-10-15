@@ -112,13 +112,13 @@ function blocoConfig(c) {
 function blocoLeitura(l) {
   const umidade =
     !l || l.humidity === null || l.humidity === undefined ? "sem leitura" : `${Math.round(Number(l.humidity))}%`;
-  /* Sem o sensor da estufa, vai a temperatura do ar de São Paulo (internet),
-     dita como tal: é referência do clima, não medição de dentro da estufa. */
+  /* Sem o sensor da horta, vai a temperatura do ar de São Paulo (internet),
+     dita como tal: é referência do clima, não medição da horta. */
   const temp =
     l && l.temperature !== null && l.temperature !== undefined
       ? `${Number(l.temperature).toFixed(1)} °C`
       : l && Number.isFinite(Number(l.temperatura_externa)) && l.temperatura_externa !== null
-        ? `sensor da estufa sem leitura; em São Paulo agora faz ${Number(l.temperatura_externa).toFixed(1)} °C (internet, ar externo)`
+        ? `sensor da horta sem leitura; em São Paulo agora faz ${Number(l.temperatura_externa).toFixed(1)} °C (internet, ar externo)`
         : "sem leitura";
   return `## Leitura dos sensores
 - Umidade do substrato: ${umidade}
