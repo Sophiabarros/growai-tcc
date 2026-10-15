@@ -48,6 +48,15 @@
       PRAGAS_TEXTO[photo.pragas] + "</span>";
   }
 
+  // Iluminação avaliada pela IA (cam-2.1.0): etiqueta ao lado das pragas.
+  var LUZ_TEXTO = { pouca: "Pouca luz", boa: "Luz boa", muita: "Muita luz" };
+  function luzHtml(photo) {
+    if (!photo || !LUZ_TEXTO[photo.luz_nivel]) return "";
+    return '<span class="cam-pragas cam-luz--' + photo.luz_nivel + '"' +
+      (photo.luz_descricao ? ' title="' + escapeHtml(photo.luz_descricao) + '"' : "") + ">" +
+      LUZ_TEXTO[photo.luz_nivel] + "</span>";
+  }
+
   function cardHtml(station, photo, checkIcon, avisoIcon, hasBullet) {
     var titleRow = hasBullet
       ? '<div class="cam-card__title-row-left"><p class="cam-card__name">' +
@@ -85,7 +94,7 @@
         '<div class="cam-card__title-row">' + titleRow +
         '<div class="cam-card__health cam-card__' + healthClass + '"><img alt="" src="' + healthIcon + '" />' + healthLabel + "</div>" +
         "</div>" +
-        '<div class="cam-card__analysis"><div class="cam-analysis-head"><p class="cam-card__analysis-label">Análise visual</p>' + pragasHtml(photo) + '</div><p class="cam-card__analysis-text">' +
+        '<div class="cam-card__analysis"><div class="cam-analysis-head"><p class="cam-card__analysis-label">Análise visual</p><span class="cam-tags">' + luzHtml(photo) + pragasHtml(photo) + '</span></div><p class="cam-card__analysis-text">' +
         escapeHtml(photo.analysis_text) +
         "</p></div>" +
         '<button type="button" class="cam-card__btn">Ver histórico de imagens</button>' +
@@ -99,7 +108,7 @@
       '<div class="cam-m-card__body">' +
       titleRow +
       '<div class="cam-m-card__health cam-m-card__' + healthClass + '"><img alt="" src="' + healthIcon + '" />' + healthLabel + "</div>" +
-      '<div class="cam-m-card__analysis"><div class="cam-analysis-head"><p class="cam-m-card__analysis-label">Análise visual</p>' + pragasHtml(photo) + '</div><p class="cam-m-card__analysis-text">' +
+      '<div class="cam-m-card__analysis"><div class="cam-analysis-head"><p class="cam-m-card__analysis-label">Análise visual</p><span class="cam-tags">' + luzHtml(photo) + pragasHtml(photo) + '</span></div><p class="cam-m-card__analysis-text">' +
       escapeHtml(photo.analysis_text) +
       "</p></div>" +
       '<button type="button" class="cam-m-card__btn">Ver histórico de imagens</button>' +
@@ -362,14 +371,29 @@
 
   // Linha "Pragas" do visor: o que a IA viu, com a descrição quando há praga.
   var viewerPragas = document.getElementById("camViewerPragas");
+  // Linha "Iluminação" do visor (quadro sem flash, luz de cultivo acesa).
+  var viewerLuz = document.getElementById("camViewerLuz");
+  function mostrarLuz(photo) {
+    if (!viewerLuz) return;
+    var n = photo && photo.luz_nivel;
+    viewerLuz.hidden = !n;
+    if (!n) return;
+    viewerLuz.className = "cam-viewer__luz cam-viewer__luz--" + n;
+    viewerLuz.textContent =
+      (n === "incerto" ? "Iluminação: não deu para avaliar" : "Iluminação: " + (n === "boa" ? "boa" : n === "pouca" ? "pouca luz" : "luz demais")) +
+      (photo.luz_descricao ? " — " + photo.luz_descricao : "");
+    if (!/[.!?…]$/.test(viewerLuz.textContent)) viewerLuz.textContent += ".";
+  }
+
   function mostrarPragas(photo) {
+    mostrarLuz(photo);
     if (!viewerPragas) return;
     var p = photo && photo.pragas;
     viewerPragas.hidden = !p;
     if (!p) return;
     viewerPragas.className = "cam-viewer__pragas cam-viewer__pragas--" + p;
     viewerPragas.textContent =
-      p === "sim" ? "Praga detectada" + (photo.pragas_descricao ? ": " + photo.pragas_descricao : "") + "."
+      p === "sim" ? ("Praga detectada" + (photo.pragas_descricao ? ": " + photo.pragas_descricao : "")).replace(/[.!?…]*$/, ".")
       : p === "nao" ? "Anti-pragas: nenhuma praga visível nesta foto."
       : "Anti-pragas: a foto não permitiu avaliar (escura, desfocada ou planta fora do quadro).";
   }

@@ -78,4 +78,13 @@ router.post(
   ctrl.foto
 );
 
+// Quadro da iluminação (cam-2.1.0): mesmo tratamento binário da foto.
+router.post(
+  "/luz",
+  express.raw({ type: "image/jpeg", limit: LIMITE_FOTO }),
+  corpoBruto,
+  requireDevice("cam"),
+  ctrl.luz
+);
+
 module.exports = router;

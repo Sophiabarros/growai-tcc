@@ -280,7 +280,7 @@ async function foto(req, res, next) {
     res.json({ ok: true });
 
     if (analisarAgora) {
-      analisarFoto({ fotoId: fotoRows[0].id, jpeg, station, leitura, config }).catch((e) =>
+      analisarFoto({ fotoId: fotoRows[0].id, jpeg, station, leitura, config, capturedAt }).catch((e) =>
         console.error(`[foto] estação ${station.id}: falha na análise em segundo plano -`, e.message)
       );
     } else if (process.env.DEVICE_LOG === "1") {
@@ -294,8 +294,17 @@ async function foto(req, res, next) {
 /* Roda depois de a placa já ter recebido o 200, e também quando o usuário
    aperta "Analisar saúde agora" no app (stationsController.analisarFotoAgora).
    Devolve o resultado da IA. */
-async function analisarFoto({ fotoId, jpeg, station, leitura, config, manterSeFalhar = false }) {
-  const r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
+async function analisarFoto({ fotoId, jpeg, station, leitura, config, capturedAt = new Date(), manterSeFalhar = false }) {
+  // O quadro da iluminação vai junto, na mesma chamada da IA (se houver).
+  const luzBuffer = await quadroDeLuzPara(station, capturedAt).catch(() => null);
+  let r = await analisar({ jpegBuffer: jpeg, luzBuffer, estacao: station, leitura, config });
+  /* O quadro de luz é extra: se a análise com ele falhar (imagem recusada,
+     por exemplo), a foto é analisada de novo sem ele. Saúde e pragas nunca
+     se perdem por causa da luz. */
+  if (!r.ok && luzBuffer) {
+    console.warn(`[foto] estação ${station.id}: análise com o quadro de luz falhou (${r.motivo}); repetindo sem ele`);
+    r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
+  }
   if (!r.ok) console.warn(`[foto] estação ${station.id}: IA não analisou — ${r.motivo}`);
   /* Reanálise manual que falhou: a análise que a foto já tinha continua
      valendo. Sem isto, um timeout da IA trocava um diagnóstico bom por
@@ -311,7 +320,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, manterSeFa
   };
   await db.query(
     `UPDATE station_photos
-        SET health_status = $2, analysis_text = $3, ia_raw = $4, pragas = $5, pragas_descricao = $6
+        SET health_status = $2, analysis_text = $3, ia_raw = $4, pragas = $5, pragas_descricao = $6,
+            luz_nivel = $7, luz_descricao = $8
       WHERE id = $1`,
     [
       fotoId,
@@ -320,6 +330,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, manterSeFa
       JSON.stringify(iaRaw),
       r.ok ? r.pragas : null,
       r.ok ? r.pragas_descricao : null,
+      r.ok ? r.luz_nivel : null,
+      r.ok ? r.luz_descricao : null,
     ]
   );
   // O resumo do dia ganha esta foto já (o gráfico de saúde não espera 10 min).
@@ -354,5 +366,62 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, manterSeFa
   return r;
 }
 
+
+// ------------------------------------------------------------- luz
+/* POST /api/device/luz — quadro da ILUMINAÇÃO (cam-2.1.0).
+   A CAM o tira ~20 s antes da foto da IA, sem flash, com a luz de cultivo
+   acesa e exposição travada. Só guarda o último por estação; a análise da
+   foto seguinte o manda junto para a IA, que diz pouca/boa/muita luz. */
+async function luz(req, res, next) {
+  try {
+    const jpeg = req.corpoBruto;
+    if (!jpeg || jpeg.length < 100 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) {
+      return res.status(400).json({ error: "O corpo não é um JPEG" });
+    }
+    const epoch = Number(req.headers["x-captured-at"] || 0);
+    const capturedAt = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch * 1000) : new Date();
+    await db.query(
+      `INSERT INTO luz_frames (station_id, image_url, captured_at) VALUES ($1, $2, $3)
+       ON CONFLICT (station_id) DO UPDATE SET image_url = EXCLUDED.image_url, captured_at = EXCLUDED.captured_at`,
+      [req.station.id, `data:image/jpeg;base64,${jpeg.toString("base64")}`, capturedAt]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Minutos desde a meia-noite em São Paulo.
+function minutosSP(data) {
+  const p = new Date(data).toLocaleTimeString("en-GB", { timeZone: "America/Sao_Paulo", hour12: false }).split(":");
+  return Number(p[0]) * 60 + Number(p[1]);
+}
+
+// A luz de cultivo deveria estar acesa neste horário, pela rotina?
+function dentroDoFotoperiodo(station, data) {
+  const horas = Number(station.light_hours);
+  if (!Number.isFinite(horas) || horas <= 0) return false;
+  if (horas >= 24) return true;
+  const m = String(station.luz_inicio || "06:00").match(/^(\d{1,2}):(\d{2})/);
+  const inicio = m ? Number(m[1]) * 60 + Number(m[2]) : 360;
+  const fim = (inicio + Math.round(horas * 60)) % 1440;
+  const agora = minutosSP(data);
+  return inicio < fim ? agora >= inicio && agora < fim : agora >= inicio || agora < fim;
+}
+
+/* O quadro de luz que combina com uma foto: tirado até 5 min antes dela e
+   dentro do fotoperíodo. Fora do horário de luz a planta está no escuro de
+   propósito, e "pouca luz" seria um falso alarme: aí não vai quadro. */
+async function quadroDeLuzPara(station, fotoCapturadaEm) {
+  const { rows } = await db.query("SELECT image_url, captured_at FROM luz_frames WHERE station_id = $1", [station.id]);
+  const q = rows[0];
+  if (!q) return null;
+  const dif = new Date(fotoCapturadaEm).getTime() - new Date(q.captured_at).getTime();
+  if (dif < -60 * 1000 || dif > 5 * 60 * 1000) return null;
+  if (!dentroDoFotoperiodo(station, q.captured_at)) return null;
+  const b64 = String(q.image_url).split(",")[1];
+  return b64 ? Buffer.from(b64, "base64") : null;
+}
+
 // analisarFoto também atende o botão "Analisar saúde agora" do app.
-module.exports = { telemetria, foto, analisarFoto };
+module.exports = { telemetria, foto, luz, analisarFoto };

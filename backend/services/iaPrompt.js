@@ -78,6 +78,12 @@ ESQUEMA_FOTO.properties.pragas = { type: "string", enum: ["sim", "nao", "incerto
 ESQUEMA_FOTO.properties.pragas_descricao = { type: ["string", "null"] };
 ESQUEMA_FOTO.required = ESQUEMA_RESPOSTA.required.concat(["pragas", "pragas_descricao"]);
 
+/* Com o quadro da iluminação (IMAGEM 2) a resposta traz também o nível de luz. */
+const ESQUEMA_FOTO_LUZ = JSON.parse(JSON.stringify(ESQUEMA_FOTO));
+ESQUEMA_FOTO_LUZ.properties.luz_nivel = { type: "string", enum: ["pouca", "boa", "muita", "incerto"] };
+ESQUEMA_FOTO_LUZ.properties.luz_descricao = { type: "string" };
+ESQUEMA_FOTO_LUZ.required = ESQUEMA_FOTO.required.concat(["luz_nivel", "luz_descricao"]);
+
 function ou(valor, alternativa) {
   return valor === null || valor === undefined || valor === "" ? alternativa : valor;
 }
@@ -148,7 +154,24 @@ function blocoLimites(comRotinaCompleta) {
 }
 
 // ------------------------------------------------- modo foto (análise visual)
-function montarPromptFoto({ estacao, leitura, config }) {
+const RESPOSTA_LUZ = "\n- luz_nivel: \"pouca\", \"boa\", \"muita\" ou \"incerto\", pela IMAGEM 2.\n- luz_descricao: uma frase de até 100 caracteres explicando o nível de luz\n  (ex.: \"Planta bem iluminada, sem sombras fortes nem áreas estouradas\").";
+
+function blocoLuz() {
+  return `
+## IMAGEM 2: iluminação
+Você recebeu DUAS imagens. A primeira é a foto de saúde (flash, LED apagado).
+A SEGUNDA foi tirada ~20 s antes, SEM flash, com o LED de cultivo (roxo)
+ACESO e com a exposição da câmera TRAVADA (sem correção automática de
+brilho). Use a segunda só para julgar QUANTA LUZ a planta está recebendo:
+- muito escura, planta mal visível => pouca luz;
+- planta bem iluminada, detalhes visíveis, sem áreas estouradas => boa luz;
+- muito clara, áreas brancas estouradas, folhas lavadas => muita luz.
+Considere a espécie: ervas de sol pleno pedem mais luz que folhosas de sombra.
+O tom roxo é normal (LED de cultivo) e não indica problema. Se a imagem 2
+não permitir julgar (lente tampada, planta fora do quadro), use "incerto".
+Não use a imagem 2 para avaliar saúde nem pragas: isso é da imagem 1.`;
+}
+function montarPromptFoto({ estacao, leitura, config, comLuz = false }) {
   return `Você é especialista em fisiologia vegetal e cultivo semi-hidropônico de plantas medicinais. Avalie a foto desta planta e responda em JSON.
 
 ${blocoPlanta(estacao)}
@@ -159,7 +182,7 @@ ${blocoConfig(config || {})}
 
 ## Sobre a foto
 Foi tirada com o LED de cultivo (roxo) APAGADO e flash branco da câmera. As
-cores são reais: pode confiar em tons de verde, amarelo e marrom.
+cores são reais: pode confiar em tons de verde, amarelo e marrom.${comLuz ? blocoLuz() : ""}
 
 ## O que avaliar
 Apenas SINAIS VISUAIS: cor das folhas, murcha, manchas, bordas secas, pragas
@@ -194,7 +217,7 @@ Doença por fungo (oídio, manchas) não é praga; vale citar em analysis_text.
   planta pequena demais ou fora do quadro). Na dúvida entre "sim" e "nao", use
   "incerto" — não invente praga.
 - pragas_descricao: com "sim", qual praga e onde, em até 100 caracteres (ex.:
-  "Pulgões verdes no verso das folhas novas"); com "nao" ou "incerto", null.
+  "Pulgões verdes no verso das folhas novas"); com "nao" ou "incerto", null.${comLuz ? RESPOSTA_LUZ : ""}
 - suggestion: quase sempre null. Só proponha algo se um sinal VISUAL indicar que
   vale mudar o ambiente, e só UM ajuste por vez:
   - message: a justificativa, em uma frase, dizendo o que você viu.
@@ -286,5 +309,6 @@ module.exports = {
   ESQUEMA_RESPOSTA,
   ESQUEMA_ROTINA,
   ESQUEMA_FOTO,
+  ESQUEMA_FOTO_LUZ,
   CAMPOS_ROTINA,
 };

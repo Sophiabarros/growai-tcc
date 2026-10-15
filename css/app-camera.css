@@ -774,3 +774,46 @@
   font: 600 14px/1 var(--font-body);
   cursor: pointer;
 }
+
+/* ============ ILUMINAÇÃO (cam-2.1.0) ============ */
+.cam-tags {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.cam-luz--boa {
+  background: rgba(136, 211, 207, 0.12);
+  color: var(--app-info);
+}
+.cam-luz--pouca,
+.cam-luz--muita {
+  background: rgba(192, 231, 157, 0.14);
+  color: var(--app-accent);
+}
+.cam-luz--incerto {
+  background: rgba(252, 252, 253, 0.06);
+  color: var(--app-muted-alt);
+}
+.cam-viewer__luz {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font: 500 14px/1.45 var(--font-body);
+}
+.cam-viewer__luz[hidden] {
+  display: none;
+}
+.cam-viewer__luz--boa {
+  background: rgba(136, 211, 207, 0.1);
+  color: var(--app-info);
+}
+.cam-viewer__luz--pouca,
+.cam-viewer__luz--muita {
+  background: rgba(192, 231, 157, 0.12);
+  color: var(--app-accent);
+  font-weight: 600;
+}
+.cam-viewer__luz--incerto {
+  background: rgba(252, 252, 253, 0.05);
+  color: var(--app-muted-alt);
+}

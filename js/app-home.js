@@ -305,9 +305,19 @@
       : "Sem leituras ainda";
   }
 
-  function renderSensors(reading) {
+  /* Nível de luz que a IA avaliou no quadro de iluminação da câmera
+     (cam-2.1.0), da última foto analisada. Sem avaliação, fica o que era:
+     as horas de luz da rotina. */
+  var LUZ_NIVEL = { pouca: "Pouca", boa: "Boa", muita: "Muita" };
+  var LUZ_BARRA = { pouca: 0.3, boa: 0.7, muita: 1 };
+
+  function renderSensors(reading, photo) {
     renderSensorsUpdated(reading);
-    var light = fmtSensor(reading, "light_h", "h");
+    var horasLuz = fmtSensor(reading, "light_h", "h");
+    var nivel = photo && LUZ_NIVEL[photo.luz_nivel] ? photo.luz_nivel : null;
+    var light = nivel ? LUZ_NIVEL[nivel] : horasLuz;
+    var lightLabel = document.getElementById("appSensorLightLabel");
+    if (lightLabel) lightLabel.textContent = nivel && horasLuz !== "—" ? "Luz · " + horasLuz + "/dia" : "Luz";
     var humidity = fmtSensor(reading, "humidity", "%");
     var temp = fmtSensor(reading, "temperature", "°C");
     /* Sensor de temperatura sem leitura: o backend manda a de São Paulo
@@ -326,12 +336,12 @@
     var tempLabel = document.getElementById("appSensorTempLabel");
     if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · São Paulo" : "Temp";
 
-    document.getElementById("mSensorLight").textContent = light;
+    document.getElementById("mSensorLight").textContent = nivel ? horasLuz + " · " + LUZ_NIVEL[nivel] : horasLuz;
     document.getElementById("mSensorUv").textContent = uvMin === null ? "—" : "UV " + uvMin + " min";
     document.getElementById("mSensorHumidity").textContent = humidity;
     document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP)" : temp;
 
-    setSensorBar("appSensorLightBar", razaoSensor(reading, "light_h", SENSOR_MAX.light));
+    setSensorBar("appSensorLightBar", nivel ? LUZ_BARRA[nivel] : razaoSensor(reading, "light_h", SENSOR_MAX.light));
     setSensorBar("appSensorHumidityBar", razaoSensor(reading, "humidity", SENSOR_MAX.humidity));
     setSensorBar("appSensorUvBar", uvMin === null ? 0 : uvMin / Math.max(1, uvLimite));
     setSensorBar("appSensorTempBar", razaoSensor(reading, "temperature", SENSOR_MAX.temperature));
@@ -500,7 +510,7 @@
     limited.forEach(function (s, i) { s.__photo = details[i][1]; s.__reading = details[i][0]; });
 
     destaque = { station: limited[0], photo: details[0][1] };
-    renderSensors(details[0][0]);
+    renderSensors(details[0][0], details[0][1]);
     renderPlantsList(limited);
     renderFeatured(limited[0], details[0][0], details[0][1]);
     renderCameraThumb(limited[0], details[0][1]);
@@ -537,7 +547,7 @@
   function aplicarAoVivo(leitura) {
     if (!destaque || !leitura) return;
     var l = Object.assign({ light_h: destaque.station.light_hours }, leitura);
-    renderSensors(l);
+    renderSensors(l, destaque.photo);
     renderFeatured(destaque.station, l, destaque.photo);
     if (l.online) renderSystemStatus("ok");
   }

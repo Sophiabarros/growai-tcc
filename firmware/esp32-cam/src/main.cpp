@@ -37,7 +37,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-2.0.0"
+#define FW "cam-2.1.0"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -292,9 +292,10 @@ camera_fb_t* capturaComFlash() {
 }
 
 // ------------------------------------------------------- foto para a IA
-bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
+// POST de um JPEG para uma rota de /api/device (foto da IA ou quadro de luz).
+bool enviaJpeg(const char *rota, camera_fb_t *fb, time_t capturadaEm) {
   HTTPClient http;
-  String url = cred.apiBase + "/device/foto";
+  String url = cred.apiBase + rota;
   bool aberto;
   if (ehHttps()) {
     /* setInsecure(): nao valida o certificado. Mesma decisao (e mesmo risco
@@ -314,11 +315,71 @@ bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
   http.addHeader("X-Fw", FW);
 
   int code = http.POST(fb->buf, fb->len);
-  Serial.printf("[http] POST /device/foto -> %d (%u bytes)\n", code, fb->len);
+  Serial.printf("[http] POST %s -> %d (%u bytes)\n", rota, code, fb->len);
   if (code == 401) Serial.println("[http] 401: chave recusada. Gere outra em Configuracoes > Placas e grave pelo portal");
-  else if (code != 200) Serial.println("[http] sem reenvio: a proxima foto vem em 30 min");
+  else if (code != 200) Serial.println("[http] sem reenvio: a proxima vem em 30 min");
   http.end();
   return code == 200;
+}
+
+bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
+  return enviaJpeg("/device/foto", fb, capturadaEm);
+}
+
+/* ------------------------------------------------------ quadro de luz
+   cam-2.1.0. LUZ_ANTES_S antes de cada janela de foto (:59:40 e :29:40), a
+   luz de cultivo AINDA esta acesa: o ESP32 principal so a apaga no inicio da
+   janela. Um quadro SEM flash e com a exposicao TRAVADA vai para
+   POST /device/luz. Travada porque, no automatico, o sensor clareia uma cena
+   escura sozinho e esconderia a falta de luz; travada, quadro escuro = pouca
+   luz de verdade. A IA recebe esse quadro junto com a foto seguinte e diz
+   pouca/boa/muita luz -- na MESMA chamada, sem gastar IA a mais.
+   Ao vivo, foto da IA e WebSocket nao mudam: o sensor volta ao automatico
+   logo depois. */
+const int LUZ_ANTES_S = 20;
+const int LUZ_AEC     = 300;   // exposicao fixa do quadro de luz (0-1200)
+long ultimoCicloLuz = -1;      // qual janela ja teve o seu quadro de luz
+
+void cuidaQuadroLuz() {
+  if (!getLocalTime(&tmAgora, 0)) return;
+  const int CICLO_S = FOTO_INTERVALO_MIN * 60;
+  int seg = segNoCicloFoto(tmAgora.tm_min, tmAgora.tm_sec);
+  if (seg < CICLO_S - LUZ_ANTES_S || seg > CICLO_S - 8) return;
+
+  // O quadro e da PROXIMA janela (a que comeca em segundos).
+  long proxima = ((long)tmAgora.tm_yday * 24 * 60 + tmAgora.tm_hour * 60 + tmAgora.tm_min) / FOTO_INTERVALO_MIN + 1;
+  if (proxima == ultimoCicloLuz) return;
+  ultimoCicloLuz = proxima;
+
+  Serial.println("[luz] quadro de iluminacao (sem flash, exposicao travada)");
+  sensor_t *s = esp_camera_sensor_get();
+  modoFoto();
+  if (s) {
+    s->set_exposure_ctrl(s, 0);
+    s->set_aec2(s, 0);
+    s->set_aec_value(s, LUZ_AEC);
+    s->set_gain_ctrl(s, 0);
+    s->set_agc_gain(s, 0);
+  }
+  delay(200);
+  descartaQuadros(3);            // os que ainda vieram com a exposicao antiga
+  time_t capturadoEm;
+  time(&capturadoEm);
+  camera_fb_t *fb = esp_camera_fb_get();
+
+  // De volta ao automatico antes de qualquer outra coisa (ao vivo, foto).
+  if (s) {
+    s->set_exposure_ctrl(s, 1);
+    s->set_gain_ctrl(s, 1);
+  }
+  if (!fb) {
+    Serial.println("[luz] captura falhou");
+  } else {
+    enviaJpeg("/device/luz", fb, capturadoEm);
+    esp_camera_fb_return(fb);
+  }
+  modoAoVivo();
+  descartaQuadros(2);
 }
 
 /* Na janela combinada (:00 e :30, FOTO_OFFSET_S segundos depois do inicio,
@@ -518,6 +579,7 @@ void loop() {
   }
 
   ws.loop();
+  cuidaQuadroLuz();       // ~20 s antes da foto, com a luz de cultivo acesa
   cuidaFotoAgendada();
   cuidaAoVivo();
   delay(5);

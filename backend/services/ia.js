@@ -15,7 +15,7 @@
 // 'indefinido' e responde 200 de qualquer jeito. A placa não reenvia foto, e
 // perder o diagnóstico é melhor que perder a imagem.
 
-const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA, ESQUEMA_FOTO } = require("./iaPrompt");
+const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA, ESQUEMA_FOTO, ESQUEMA_FOTO_LUZ } = require("./iaPrompt");
 const { LIMITES } = require("./configDispositivo");
 const { temperaturaSaoPaulo } = require("./temperaturaExterna");
 
@@ -143,7 +143,18 @@ function validarResposta(obj) {
   if (pragas !== "sim" || !pragasDescricao) pragasDescricao = null;
   else if (pragasDescricao.length > 120) pragasDescricao = pragasDescricao.slice(0, 119) + "…";
 
-  return { health_status: status, analysis_text: texto, suggestion: sugestao, pragas, pragas_descricao: pragasDescricao };
+  // Iluminação (só quando foi mandado o quadro da luz).
+  let luzNivel = String(obj.luz_nivel || "").toLowerCase();
+  if (!["pouca", "boa", "muita", "incerto"].includes(luzNivel)) luzNivel = null;
+  let luzDescricao = typeof obj.luz_descricao === "string" ? obj.luz_descricao.trim() : "";
+  if (!luzNivel || !luzDescricao) luzDescricao = null;
+  else if (luzDescricao.length > 120) luzDescricao = luzDescricao.slice(0, 119) + "…";
+
+  return {
+    health_status: status, analysis_text: texto, suggestion: sugestao,
+    pragas, pragas_descricao: pragasDescricao,
+    luz_nivel: luzNivel, luz_descricao: luzDescricao,
+  };
 }
 
 // Tira o JSON de um texto que pode vir embrulhado em ```json ... ```
@@ -211,7 +222,7 @@ function falhaPassageira(r) {
   return r.timeout || [429, 500, 502, 503, 504].includes(r.status);
 }
 
-async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
+async function chamarGemini({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
   const chave = process.env.GEMINI_API_KEY;
   if (!chave) return { erro: "GEMINI_API_KEY não configurada" };
 
@@ -229,7 +240,7 @@ async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
     if (erros.length && restante < timeoutMs / 2) break;
     let r;
     try {
-      r = await chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, timeoutMs: Math.min(timeoutMs, restante) });
+      r = await chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs: Math.min(timeoutMs, restante) });
     } catch (err) {
       if (err.name !== "AbortError") throw err;
       r = { erro: `Gemini ${modelo} não respondeu a tempo`, timeout: true };
@@ -245,11 +256,13 @@ async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
   return { erro: erros.join(" | "), raw: ultimo && ultimo.raw, modelo: ultimo && ultimo.modelo, passageira: falhaPassageira(ultimo) };
 }
 
-async function chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, timeoutMs }) {
+async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`;
   // Sem jpegBuffer (modo rotina) vai só o texto.
   const parts = [];
   if (jpegBuffer) parts.push({ inline_data: { mime_type: "image/jpeg", data: jpegBuffer.toString("base64") } });
+  // IMAGEM 2: o quadro da iluminação (sem flash, luz de cultivo acesa).
+  if (luzBuffer) parts.push({ inline_data: { mime_type: "image/jpeg", data: luzBuffer.toString("base64") } });
   parts.push({ text: prompt });
 
   /* esquema === false: resposta em TEXTO livre (chat da Vera), sem JSON. */
@@ -307,7 +320,7 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, 
 }
 
 // ------------------------------------------------------------------- Claude
-async function chamarClaude({ jpegBuffer, prompt, esquema, timeoutMs }) {
+async function chamarClaude({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
   const chave = process.env.ANTHROPIC_API_KEY;
   if (!chave) return { erro: "ANTHROPIC_API_KEY não configurada" };
   const modelo = process.env.CLAUDE_MODEL || "claude-opus-5";
@@ -318,6 +331,12 @@ async function chamarClaude({ jpegBuffer, prompt, esquema, timeoutMs }) {
     conteudoClaude.push({
       type: "image",
       source: { type: "base64", media_type: "image/jpeg", data: jpegBuffer.toString("base64") },
+    });
+  }
+  if (luzBuffer) {
+    conteudoClaude.push({
+      type: "image",
+      source: { type: "base64", media_type: "image/jpeg", data: luzBuffer.toString("base64") },
     });
   }
   conteudoClaude.push({ type: "text", text: prompt });
@@ -354,7 +373,10 @@ async function chamarClaude({ jpegBuffer, prompt, esquema, timeoutMs }) {
 }
 
 // -------------------------------------------------------------------- fachada
-async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config }) {
+/* luzBuffer (opcional, só modo foto): quadro da iluminação, tirado ~20 s
+   antes da foto, sem flash, com a luz de cultivo acesa e exposição travada.
+   Com ele, a resposta traz luz_nivel/luz_descricao na mesma chamada. */
+async function analisar({ modo = "foto", jpegBuffer, luzBuffer = null, estacao, leitura, config }) {
   let nome = provedor();
 
   if (!habilitada()) {
@@ -375,23 +397,24 @@ async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config })
   }
 
   const imagem = modo === "foto" ? jpegBuffer : null;
+  const luz = modo === "foto" && luzBuffer && luzBuffer.length ? luzBuffer : null;
   const prompt =
     modo === "rotina"
       ? montarPromptRotina({ estacao, leitura, config })
-      : montarPromptFoto({ estacao, leitura, config });
+      : montarPromptFoto({ estacao, leitura, config, comLuz: !!luz });
 
   const timeoutMs = modo === "rotina" ? TIMEOUT_ROTINA_MS : TIMEOUT_MS;
   let r;
   try {
     // A rotina usa um esquema que obriga a config completa (ver iaPrompt.js).
-    const esquema = modo === "rotina" ? ESQUEMA_ROTINA : ESQUEMA_FOTO;
-    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+    const esquema = modo === "rotina" ? ESQUEMA_ROTINA : luz ? ESQUEMA_FOTO_LUZ : ESQUEMA_FOTO;
+    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
     else if (nome === "gemini") {
-      r = await chamarGemini({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+      r = await chamarGemini({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
       /* Todos os Gemini cheios ou sem cota: se houver chave da Anthropic, o
          Claude é a última reserva. Sem a chave, nada muda. */
       if (r.erro && r.passageira && process.env.ANTHROPIC_API_KEY) {
-        const rc = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+        const rc = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
         if (!rc.erro) {
           console.warn(`[ia] Claude respondeu depois de: ${r.erro}`);
           r = rc;
