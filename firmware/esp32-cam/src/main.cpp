@@ -28,7 +28,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-1.1.0"
+#define FW "cam-1.2.0"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -105,9 +105,17 @@ void pisca(int vezes, int ms) {
    fica acordada pelo menos uns segundos, conectando). */
 static const char *NVS_CAM = "growai-cam";
 
+/* Ligou na tomada ou apertaram o RST (nao foi o despertador do deep sleep).
+   Nesse caso a placa espera RESET_JANELA_MS acordada antes de dormir, com o
+   LED piscando devagar: e a janela do segundo aperto. Antes ela conectava e
+   dormia em 3-5 s, e o reset duplo quase nunca pegava. */
+bool bootManual = false;
+const unsigned long RESET_JANELA_MS = 10000;
+
 bool resetDuplo() {
   esp_reset_reason_t motivo = esp_reset_reason();
   if (motivo != ESP_RST_POWERON && motivo != ESP_RST_EXT) return false;
+  bootManual = true;
   Preferences nvs;
   nvs.begin(NVS_CAM, false);
   int n = nvs.getInt("rst", 0) + 1;
@@ -126,6 +134,13 @@ void zeraResetDuplo() {
 // ------------------------------------------------------------- deep sleep
 void dorme(long segundos) {
   if (segundos < 5) segundos = 5;
+  if (bootManual) {
+    // Janela do reset duplo: pisca devagar ate completar RESET_JANELA_MS.
+    while (millis() < RESET_JANELA_MS) {
+      led(true);  delay(250);
+      led(false); delay(250);
+    }
+  }
   zeraResetDuplo();
   led(false);
   digitalWrite(PIN_FLASH, LOW);

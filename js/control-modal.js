@@ -25,7 +25,8 @@
   var ESTADOS = { MONITORANDO: "Monitorando", REGANDO: "Regando", ABSORVENDO: "Absorvendo" };
   var NUTRI_MAX_S = 30;
   // Sem confirmação nesse prazo, o comando provavelmente não chegou. A bomba
-  // tem mais folga: durante a rega a placa não fala com o servidor.
+  // tinha mais folga porque a placa antiga (até main-1.2.0) não falava com o
+  // servidor durante a rega; a main-1.3.0 fala, mas a folga fica para ela.
   var PRAZO_CONFIRMA_MS = { bomba: 90000, nutri: 45000, luz: 45000, vent: 45000 };
 
   var MARKUP = [
@@ -285,11 +286,15 @@
 
       var estado;
       var classe = "ctrl__rele-estado";
-      if (pend) estado = r.id === "bomba" ? "Enviando… a placa confirma ao terminar a rega" : "Enviando comando para a placa…";
+      if (pend) estado = "Enviando comando para a placa…";
       else if (bloqueio && !emManual) estado = bloqueio;
       else if (emManual) { estado = "Ligado manualmente · resta " + mmss(resta); classe += " ctrl__rele-estado--ligado"; }
       else if (!online || !l.reles) estado = "—";
-      else if (ligado) { estado = "Ligado · automático"; classe += " ctrl__rele-estado--ligado"; }
+      else if (ligado) {
+        // A bomba no automático é a rega por umidade: vale dizer o porquê.
+        estado = r.id === "bomba" && l.estado === "REGANDO" ? "Ligado · automático (solo seco)" : "Ligado · automático";
+        classe += " ctrl__rele-estado--ligado";
+      }
       else estado = "Desligado · automático";
 
       var acao = emManual ? "desligar" : "ligar";

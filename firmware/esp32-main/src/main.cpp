@@ -24,7 +24,24 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.2.0"
+#define FW "main-1.3.0"
+
+/* ------------------------------------------------------- dois nucleos
+   O controle da horta (loop, nucleo 1) e a internet (tarefaRede, nucleo 0)
+   rodam ao mesmo tempo. Antes era tudo no loop, e o POST da telemetria
+   congelava o controle por ate 20 s -- por isso a telemetria nao saia com a
+   bomba ligada, o app mostrava a bomba "desligada" enquanto ela regava e os
+   comandos ficavam esperando a rega acabar. Agora a internet pode demorar o
+   quanto for: os cortes de seguranca da bomba nunca param.
+
+   Tudo que os dois lados leem e escrevem (sensores, reles, manuais, acks,
+   config) so e tocado com a `trava` pega. Ela fica presa por milissegundos:
+   o POST em si roda com ela SOLTA. */
+SemaphoreHandle_t trava;
+struct ComTrava {
+  ComTrava()  { xSemaphoreTake(trava, portMAX_DELAY); }
+  ~ComTrava() { xSemaphoreGive(trava); }
+};
 
 // ---------------------------------------------------------------- pinos
 const uint8_t PIN_SENSOR  = 34;  // ADC1: le com o Wi-Fi ligado (ADC2 nao le)
@@ -589,7 +606,8 @@ void trataResposta(const String &corpo) {
   proximaEmS = constrain(p, 5, 300);
 }
 
-void enviaTelemetria() {
+// Monta o corpo da telemetria. Chamar COM a trava pega.
+String montaTelemetria(int &acksEnviados) {
   unsigned long agora = millis();
 
   JsonDocument doc;
@@ -617,12 +635,24 @@ void enviaTelemetria() {
 
   JsonArray a = doc["acks"].to<JsonArray>();
   for (int i = 0; i < nAcks; i++) a.add(acks[i]);
+  acksEnviados = nAcks;
 
   if (erro.length())    doc["erro"]     = erro;    else doc["erro"]     = nullptr;
   if (erroCfg.length()) doc["erro_cfg"] = erroCfg; else doc["erro_cfg"] = nullptr;
 
   String corpo;
   serializeJson(doc, corpo);
+  return corpo;
+}
+
+// Roda na tarefaRede, SEM a trava: o POST pode levar ate 20 s.
+void enviaTelemetria() {
+  int acksEnviados = 0;
+  String corpo;
+  {
+    ComTrava t;
+    corpo = montaTelemetria(acksEnviados);
+  }
 
   HTTPClient http;
   String url = cred.apiBase + "/device/telemetria";
@@ -646,24 +676,23 @@ void enviaTelemetria() {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-Device-Key", cred.deviceKey.c_str());
 
-  /* Alimenta o watchdog agora. O POST bloqueia por ate connect(10 s) +
-     leitura(10 s), e se ele comecar no fim da janela de 30 s do WDT a placa
-     reiniciaria no meio de um envio que ia dar certo. */
-  esp_task_wdt_reset();
-
   int code = http.POST(corpo);
+  String resp = code == 200 ? http.getString() : String();
+  http.end();
+
+  ComTrava t;
   if (code == 200) {
-    String resp = http.getString();
-    http.end();
-    nAcks = 0;                 // confirmados: o servidor recebeu
+    /* Confirmados so os acks que foram NESTE envio. Os que o loop juntou
+       durante o POST ficam para o proximo. */
+    int resto = nAcks - acksEnviados;
+    if (resto > 0) memmove(acks, acks + acksEnviados, sizeof(long) * resto);
+    nAcks = resto > 0 ? resto : 0;
     falhasSeguidas = 0;
     trataResposta(resp);
   } else if (code == 401) {
-    http.end();
     Serial.println("[http] 401 chave invalida, nova tentativa em 60 s");
     proximaEmS = 60;
   } else {
-    http.end();
     falhasSeguidas++;
     proximaEmS = falhasSeguidas >= 3 ? 60 : (falhasSeguidas == 2 ? 30 : 15);
     Serial.printf("[http] falhou (%d), tentando em %d s, controle local segue\n",
@@ -671,20 +700,27 @@ void enviaTelemetria() {
   }
 }
 
+/* Com a bomba ligada a telemetria sai normalmente: o POST roda no outro
+   nucleo e nao trava mais o corte do MAX_BOMBA. */
 void cicloTelemetria(unsigned long agora) {
   if (portalAtivo || !provisaoCompleta(cred)) return;
   if (WiFi.status() != WL_CONNECTED) return;
-  unsigned long intervalo = telemetriaLogo ? 1000UL : (unsigned long)proximaEmS * 1000UL;
-  if ((unsigned long)(agora - tTelemetria) < intervalo) return;
-
-  /* O POST bloqueia por ate HTTP_TIMEOUT_MS. Com a bomba ou a minibomba
-     ligada isso furaria o MAX_BOMBA / o limite diario, entao espera elas
-     desligarem (no maximo 20 s) e manda no ciclo seguinte. */
-  if (ligado[R_BOMBA] || ligado[R_NUTRI]) return;
-
-  tTelemetria = agora;
-  telemetriaLogo = false;
+  {
+    ComTrava t;
+    unsigned long intervalo = telemetriaLogo ? 1000UL : (unsigned long)proximaEmS * 1000UL;
+    if ((unsigned long)(agora - tTelemetria) < intervalo) return;
+    tTelemetria = agora;
+    telemetriaLogo = false;
+  }
   enviaTelemetria();
+}
+
+// Nucleo 0: so internet. Fora do watchdog de proposito (o POST pode demorar).
+void tarefaRede(void *) {
+  for (;;) {
+    cicloTelemetria(millis());
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
 }
 
 // ----------------------------------------------------------- setup/loop
@@ -694,6 +730,8 @@ void setup() {
     pinMode(PINO_RELE[i], OUTPUT);
     rele(PINO_RELE[i], false);
   }
+
+  trava = xSemaphoreCreateMutex();
 
   Serial.begin(115200);
   delay(200);
@@ -740,6 +778,9 @@ void setup() {
   esp_task_wdt_add(NULL);
 
   tEstado = millis();
+
+  // 12 kB: o HTTPS (TLS) sozinho usa uns 6-8 kB de pilha.
+  xTaskCreatePinnedToCore(tarefaRede, "rede", 12288, NULL, 1, NULL, 0);
 }
 
 void loop() {
@@ -773,6 +814,7 @@ void loop() {
     }
   }
 
+  xSemaphoreTake(trava, portMAX_DELAY);   // solta antes do cuidaWifi, la embaixo
   horaValida = getLocalTime(&tmAgora, 0);   // 0 = nao espera; false ate o NTP chegar
   viraDia();
   expiraManuais(agora);
@@ -809,6 +851,13 @@ void loop() {
     atualizaCargas(agora);      // cortes de seguranca rodam em todo loop
   }
 
+  xSemaphoreGive(trava);
+
   cuidaWifi(agora);
-  cicloTelemetria(agora);
+  // A telemetria nao e mais daqui: roda na tarefaRede (nucleo 0).
+
+  /* Sem esta pausa o loop pegaria a trava de novo no mesmo instante e a
+     tarefaRede quase nunca conseguiria montar a telemetria. 2 ms nao mudam
+     nada no controle (os cortes rodam ~500 vezes por segundo). */
+  delay(2);
 }

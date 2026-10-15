@@ -20,6 +20,9 @@ Regras que valem para as duas rotas:
   usuário conectado) ou há comando na fila, **15 s** no resto do tempo. Depois
   de executar um comando, a placa (`main-1.1.0`) manda a telemetria seguinte
   em ~1 s, para o app confirmar na hora.
+  Desde a `main-1.3.0` a internet roda no outro núcleo do ESP32: a
+  telemetria sai também com a bomba ligada (antes ficava presa até a rega
+  acabar, e o app via a bomba "desligada" enquanto ela regava).
 - O app recebe cada telemetria na hora pelo WebSocket `/ws` do backend
   (`{tipo:"telemetria", station_id, leitura, confirmados}`), sem polling.
 - **As duas placas não se falam.** Quem junta a foto com a leitura da mesma
