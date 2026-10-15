@@ -131,6 +131,14 @@ async function registrar({ stationId, sugestao, origem }) {
     }
 
     await client.query("COMMIT");
+    // A rotina mudou sozinha: a pessoa precisa saber (sino do app).
+    if (vaiAplicar && station && station.user_id) {
+      require("./notificacoes").criar({
+        userId: station.user_id, stationId: station.id, tipo: "ajuste", semRepetirMin: 30,
+        titulo: `A IA ajustou a rotina de ${station.name || station.plant}`,
+        mensagem: nova && nova.message,
+      });
+    }
     return { sugestao: nova, aplicada: vaiAplicar, motivo, station };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});

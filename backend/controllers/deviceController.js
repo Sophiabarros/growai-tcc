@@ -4,6 +4,7 @@ const { analisar } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
 const aoVivo = require("../services/aoVivo");
 const relatorios = require("../services/relatorios");
+const notificacoes = require("../services/notificacoes");
 const realtime = require("../services/realtime");
 const { temperaturaSaoPauloJa, completarTemperatura } = require("../services/temperaturaExterna");
 
@@ -142,6 +143,22 @@ async function telemetria(req, res, next) {
       cfg_versao_placa: t.cfg_versao ?? null,
       cfg_versao_servidor: station.cfg_versao,
     };
+    // Avisos no sino: rega começando e sensor com problema.
+    const anterior = aoVivo.obter(station.id);
+    if (t.estado === "REGANDO" && (!anterior || anterior.estado !== "REGANDO")) {
+      notificacoes.criar({
+        userId: station.user_id, stationId: station.id, tipo: "rega", semRepetirMin: 120,
+        titulo: `Regando ${station.name || station.plant}`,
+        mensagem: `O solo chegou a ${t.umidade ?? "?"}% de umidade e a bomba ligou.`,
+      });
+    }
+    if (t.erro) {
+      notificacoes.criar({
+        userId: station.user_id, stationId: station.id, tipo: "sensor", semRepetirMin: 24 * 60,
+        titulo: `Sensor com problema em ${station.name || station.plant}`,
+        mensagem: String(t.erro),
+      });
+    }
     aoVivo.registrar(station.id, vivo);
     realtime.enviarParaUsuario(station.user_id, {
       tipo: "telemetria",
@@ -334,6 +351,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, capturedAt
       r.ok ? r.luz_descricao : null,
     ]
   );
+  // Avisos no sino: atenção, praga, pouca/muita luz.
+  notificacoes.daAnalise(station, r);
   // O resumo do dia ganha esta foto já (o gráfico de saúde não espera 10 min).
   relatorios.atualizarResumo(station.id, relatorios.diaSP(0)).catch((e) =>
     console.error("[foto] resumo do dia:", e.message)

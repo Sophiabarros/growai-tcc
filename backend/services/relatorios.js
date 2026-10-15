@@ -109,6 +109,9 @@ async function rodada() {
     [String(RETENCAO_LEITURAS_DIAS)]
   );
   if (rowCount) console.log(`[relatorios] ${rowCount} leituras com mais de ${RETENCAO_LEITURAS_DIAS} dias apagadas`);
+
+  // Avisos de tempo: placa desconectada, relatório semanal pronto.
+  await require("./notificacoes").rodada();
 }
 
 function iniciar() {

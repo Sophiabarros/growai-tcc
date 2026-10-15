@@ -1,0 +1,162 @@
+/* ============ NOTIFICAÇÕES (o sino) ============ */
+/* js/notificacoes.js. O painel fica fora dos canvases (fixed, px); o
+   contador fica dentro do sino, que já existe no topo de cada tela. */
+
+.notif-sino {
+  cursor: pointer;
+}
+.notif-sino:focus-visible {
+  outline: 2px solid var(--color-green-normal);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.notif-badge {
+  position: absolute;
+  top: -35%;
+  right: -45%;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.35em;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font: 700 1.1rem/1.6em var(--font-body);
+  text-align: center;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+.m-app-header__bell .notif-badge {
+  font-size: 0.9rem;
+}
+.notif-badge[hidden] {
+  display: none;
+}
+
+.notif-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 1140;
+  background: rgba(10, 15, 13, 0.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.notif-fundo[hidden] {
+  display: none;
+}
+
+.notif {
+  position: fixed;
+  top: 96px;
+  right: 24px;
+  z-index: 1150;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 130px);
+  display: flex;
+  flex-direction: column;
+  background: var(--app-card-bg);
+  border: 1px solid rgba(136, 211, 207, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.notif[hidden] {
+  display: none;
+}
+.notif__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(136, 211, 207, 0.12);
+}
+.notif__titulo {
+  margin: 0;
+  color: var(--app-text);
+  font: 700 18px/1.2 var(--font-body);
+}
+.notif__fechar {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-muted-alt);
+  font: 400 24px/1 var(--font-body);
+  cursor: pointer;
+}
+.notif__fechar:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.notif__lista {
+  overflow-y: auto;
+  padding: 8px;
+}
+.notif__vazio {
+  margin: 0;
+  padding: 18px 14px;
+  color: var(--app-muted-alt);
+  font: 400 14px/1.5 var(--font-body);
+}
+.notif__item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+.notif__item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.notif__item.is-nova {
+  background: rgba(136, 211, 207, 0.08);
+}
+.notif__ponto {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--app-info);
+}
+.notif__item--praga .notif__ponto,
+.notif__item--placa .notif__ponto,
+.notif__item--sensor .notif__ponto {
+  background: #e5484d;
+}
+.notif__item--saude .notif__ponto,
+.notif__item--luz .notif__ponto {
+  background: var(--app-accent);
+}
+.notif__corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.notif__meta {
+  color: var(--app-muted-alt);
+  font: 500 12px/1.3 var(--font-body);
+}
+.notif__item-titulo {
+  color: var(--app-text);
+  font: 600 14.5px/1.35 var(--font-body);
+}
+.notif__msg {
+  color: var(--app-info);
+  font: 400 13px/1.45 var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+/* Celular: entre o topo e a tab bar, na largura toda. */
+@media (max-width: 899px) {
+  .notif {
+    top: 88px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 9.4rem - 120px);
+  }
+}

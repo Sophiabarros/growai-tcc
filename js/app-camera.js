@@ -40,9 +40,16 @@
 
   /* Anti-pragas: etiqueta ao lado de "Análise visual". Foto analisada antes
      do anti-pragas (pragas null) ou não analisada não mostra nada. */
-  var PRAGAS_TEXTO = { sim: "Praga detectada", nao: "Sem pragas", incerto: "Pragas: não deu para ver" };
+  var PRAGAS_TEXTO = { sim: "Praga detectada", nao: "Sem pragas", incerto: "Pragas: não deu para ver", pendente: "Pragas: aguardando análise" };
+  /* Foto analisada antes do anti-pragas existir (ou ainda sem análise): o
+     anti-pragas aparece como "aguardando", para ficar claro que existe. */
+  function pragasEstado(photo) {
+    if (!photo) return null;
+    return PRAGAS_TEXTO[photo.pragas] ? photo.pragas : "pendente";
+  }
   function pragasHtml(photo) {
-    if (!photo || !photo.pragas || !PRAGAS_TEXTO[photo.pragas]) return "";
+    if (!photo || !photo.image_url) return "";
+    photo = Object.assign({}, photo, { pragas: pragasEstado(photo) });
     return '<span class="cam-pragas cam-pragas--' + photo.pragas + '"' +
       (photo.pragas_descricao ? ' title="' + escapeHtml(photo.pragas_descricao) + '"' : "") + ">" +
       PRAGAS_TEXTO[photo.pragas] + "</span>";
@@ -339,7 +346,7 @@
     if (temPlaca) iniciarAoVivo(station);
 
     ultimoFoco = document.activeElement;
-    // O visor tem o próprio "Perguntar à Vera": o botão flutuante sai da frente.
+    // O visor tem o próprio "Perguntar à V.E.R.A": o botão flutuante sai da frente.
     document.body.classList.add("visor-aberto");
     viewer.hidden = false;
     viewer.setAttribute("aria-hidden", "false");
@@ -388,17 +395,18 @@
   function mostrarPragas(photo) {
     mostrarLuz(photo);
     if (!viewerPragas) return;
-    var p = photo && photo.pragas;
+    var p = photo && photo.image_url ? pragasEstado(photo) : null;
     viewerPragas.hidden = !p;
     if (!p) return;
     viewerPragas.className = "cam-viewer__pragas cam-viewer__pragas--" + p;
     viewerPragas.textContent =
       p === "sim" ? ("Praga detectada" + (photo.pragas_descricao ? ": " + photo.pragas_descricao : "")).replace(/[.!?…]*$/, ".")
       : p === "nao" ? "Anti-pragas: nenhuma praga visível nesta foto."
+      : p === "pendente" ? "Anti-pragas: esta foto ainda não foi verificada. Toque em \"Analisar saúde agora\" ou aguarde a próxima análise."
       : "Anti-pragas: a foto não permitiu avaliar (escura, desfocada ou planta fora do quadro).";
   }
 
-  // "Perguntar à Vera": abre o chat já com a análise desta foto escrita.
+  // "Perguntar à V.E.R.A": abre o chat já com a análise desta foto escrita.
   document.getElementById("camViewerVera").addEventListener("click", function () {
     var station = atual.stations[visorIdx];
     var photo = atual.photos[visorIdx];

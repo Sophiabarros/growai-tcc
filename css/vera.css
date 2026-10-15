@@ -1,6 +1,19 @@
-/* ============ VERA (chat da IA) ============ */
+/* ============ V.E.R.A (chat da IA) ============ */
 /* js/vera.js. Fica fora dos canvases do app (fixed no body), então usa px e
    não sofre o transform: scale() das telas. */
+
+/* Fundo desfocado atrás do chat: o resto da tela sai de foco. */
+.vera-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 1140;
+  background: rgba(10, 15, 13, 0.45);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.vera-fundo[hidden] {
+  display: none;
+}
 
 .vera-fab {
   position: fixed;
@@ -175,23 +188,38 @@
   cursor: default;
 }
 
-/* Celular: acima da tab bar fixa (9,4rem) e ocupando a largura. */
+/* Botão do topo do app no celular (injetado no .m-app-header por js/vera.js).
+   Fica dentro do canvas mobile, então usa rem como o resto do topo. */
+.m-vera-btn {
+  position: absolute;
+  left: 20.6rem;
+  top: 2.3rem;
+  height: 3rem;
+  padding: 0 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+  font: 700 1.2rem/1 var(--font-body);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+/* Celular: sem botão flutuante (ele colava na tab bar e parecia engrossá-la).
+   O chat abre entre o topo e a tab bar, ocupando a largura. */
 @media (max-width: 899px) {
   .vera-fab {
-    right: 16px;
-    bottom: calc(9.4rem + 14px);
-    height: 44px;
-    font-size: 15px;
+    display: none;
   }
   .vera {
     right: 12px;
     left: 12px;
+    top: 88px;
     width: auto;
     max-width: none;
-    bottom: calc(9.4rem + 68px);
+    bottom: calc(9.4rem + 24px);
     height: auto;
-    max-height: calc(100vh - 9.4rem - 140px);
-    min-height: 320px;
+    max-height: none;
   }
 }
 

@@ -255,7 +255,11 @@
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),
     // Um dia hora a hora (padrão: hoje). dia = "YYYY-MM-DD".
-    // ---- Vera (chat da IA, 3 perguntas por dia) ----
+    // ---- notificações (o sino) ----
+    getNotificacoes: () => request("/notificacoes"),
+    marcarNotificacoesLidas: () => request("/notificacoes/lidas", { method: "PATCH" }),
+
+    // ---- V.E.R.A (chat da IA, 3 perguntas por dia) ----
     getVera: () => request("/vera"),
     askVera: (pergunta) => request("/vera", { method: "POST", body: JSON.stringify({ pergunta: pergunta }) }),
 

@@ -1,9 +1,10 @@
 (function () {
   "use strict";
 
-  // Vera: chat com a IA da horta, 3 perguntas por dia (o limite é do backend,
-  // GET/POST /api/vera). Botão flutuante em todas as telas do app; o painel é
-  // injetado aqui, como os modais, e o visual está em css/vera.css.
+  // V.E.R.A: chat com a IA da horta, 3 perguntas por dia (o limite é do backend,
+  // GET/POST /api/vera). No computador, botão flutuante; no celular, botão no
+  // topo ao lado do sino (flutuando, ele engrossava visualmente a tab bar).
+  // Aberto, o resto da tela fica desfocado atrás. Visual em css/vera.css.
   //
   //   Vera.abrir();                       // abre o chat
   //   Vera.abrir("texto já escrito");     // abre com a pergunta preenchida
@@ -11,13 +12,14 @@
   if (!window.GrowAI || !GrowAI.isAuthenticated()) return;
 
   var MARKUP = [
-    '<button type="button" class="vera-fab" id="veraFab" aria-label="Abrir a Vera, assistente da horta">',
-    '  <span class="vera-fab__icone" aria-hidden="true">✦</span><span class="vera-fab__nome">Vera</span>',
+    '<div class="vera-fundo" id="veraFundo" hidden data-vera="fechar"></div>',
+    '<button type="button" class="vera-fab" id="veraFab" aria-label="Abrir a V.E.R.A, assistente da horta">',
+    '  <span class="vera-fab__icone" aria-hidden="true">✦</span><span class="vera-fab__nome">V.E.R.A</span>',
     "</button>",
     '<div class="vera" id="vera" hidden role="dialog" aria-modal="false" aria-labelledby="veraTitulo">',
     '  <div class="vera__topo">',
     '    <div>',
-    '      <p class="vera__titulo" id="veraTitulo">Vera</p>',
+    '      <p class="vera__titulo" id="veraTitulo">V.E.R.A</p>',
     '      <p class="vera__sub" id="veraSub">Assistente da sua horta</p>',
     "    </div>",
     '    <button type="button" class="vera__fechar" data-vera="fechar" aria-label="Fechar">&times;</button>',
@@ -31,10 +33,10 @@
   ].join("\n");
 
   var BOAS_VINDAS =
-    "Oi! Eu sou a Vera. Sei o que está acontecendo na sua horta: as rotinas, as últimas análises das fotos e as leituras dos sensores. " +
+    "Oi! Eu sou a V.E.R.A. Sei o que está acontecendo na sua horta: as rotinas, as últimas análises das fotos e as leituras dos sensores. " +
     "Pergunte, por exemplo: \"A análise falou em folha amarelada, o que eu faço?\"";
 
-  var painel, conversa, campo, enviar, sub;
+  var painel, conversa, campo, enviar, sub, fundo;
   var estado = null;
   var enviando = false;
 
@@ -53,10 +55,19 @@
     enviar = document.getElementById("veraEnviar");
     sub = document.getElementById("veraSub");
 
-    document.getElementById("veraFab").addEventListener("click", function () {
+    function alternar() {
       if (painel.hidden) abrir();
       else fechar();
-    });
+    }
+    document.getElementById("veraFab").addEventListener("click", alternar);
+    // Celular: botão no topo do app, ao lado do sino.
+    var topo = document.querySelector(".m-app-header");
+    if (topo && !topo.querySelector(".m-vera-btn")) {
+      topo.insertAdjacentHTML("beforeend", '<button type="button" class="m-vera-btn" aria-label="Abrir a V.E.R.A">✦ V.E.R.A</button>');
+      topo.querySelector(".m-vera-btn").addEventListener("click", alternar);
+    }
+    fundo = document.getElementById("veraFundo");
+    fundo.addEventListener("click", fechar);
     painel.addEventListener("click", function (ev) {
       if (ev.target.closest('[data-vera="fechar"]')) fechar();
     });
@@ -103,7 +114,7 @@
     var bloqueado = enviando || (restantes != null && restantes <= 0);
     campo.disabled = bloqueado;
     enviar.disabled = bloqueado;
-    campo.placeholder = restantes === 0 ? "A Vera volta amanhã!" : "Pergunte sobre a sua horta…";
+    campo.placeholder = restantes === 0 ? "A V.E.R.A volta amanhã!" : "Pergunte sobre a sua horta…";
   }
 
   async function carregar() {
@@ -138,7 +149,10 @@
 
   function abrir(textoInicial) {
     montar();
+    if (window.Notificacoes && window.Notificacoes.fechar) window.Notificacoes.fechar();
     painel.hidden = false;
+    fundo.hidden = false;
+    document.body.classList.add("vera-aberta");
     document.getElementById("veraFab").classList.add("is-aberto");
     if (typeof textoInicial === "string" && textoInicial) campo.value = textoInicial;
     carregar().then(function () {
@@ -149,6 +163,8 @@
   function fechar() {
     if (!painel) return;
     painel.hidden = true;
+    fundo.hidden = true;
+    document.body.classList.remove("vera-aberta");
     document.getElementById("veraFab").classList.remove("is-aberto");
   }
 

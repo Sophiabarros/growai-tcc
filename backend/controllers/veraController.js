@@ -1,4 +1,4 @@
-// Vera: o chat da IA do app, com 3 perguntas por dia por usuário.
+// V.E.R.A: o chat da IA do app, com 3 perguntas por dia por usuário.
 //
 // Ela responde sobre a horta DA PESSOA: o prompt leva as estações (planta,
 // finalidade, rotina), a última análise de foto de cada uma (saúde, texto,
@@ -95,9 +95,9 @@ async function contextoDaHorta(userId) {
 function montarPrompt({ pergunta, horta, conversa }) {
   const anteriores = conversa.length
     ? "## O que já foi conversado hoje\n" +
-      conversa.map((c) => `Pessoa: ${c.pergunta}\nVera: ${c.resposta}`).join("\n\n") + "\n\n"
+      conversa.map((c) => `Pessoa: ${c.pergunta}\nV.E.R.A: ${c.resposta}`).join("\n\n") + "\n\n"
     : "";
-  return `Você é a Vera, assistente da horta no app GrowAI: uma horta semi-hidropônica automatizada de plantas medicinais, com irrigação por sensor de umidade, luz de cultivo, ventiladores com luz UV, dosador de nutriente e uma câmera que a IA analisa.
+  return `Você é a V.E.R.A (escreve-se assim, com pontos), assistente da horta no app GrowAI: uma horta semi-hidropônica automatizada de plantas medicinais, com irrigação por sensor de umidade, luz de cultivo, ventiladores com luz UV, dosador de nutriente e uma câmera que a IA analisa.
 
 ## A horta desta pessoa
 ${horta}
@@ -136,7 +136,7 @@ async function perguntar(req, res, next) {
     const rows = await doDia(req.user.id);
     const sit = situacao(rows);
     if (sit.restantes <= 0) {
-      return res.status(429).json({ error: `Você já fez as ${LIMITE_DIARIO} perguntas de hoje. A Vera volta amanhã!`, ...sit });
+      return res.status(429).json({ error: `Você já fez as ${LIMITE_DIARIO} perguntas de hoje. A V.E.R.A volta amanhã!`, ...sit });
     }
 
     const horta = await contextoDaHorta(req.user.id);
@@ -157,7 +157,7 @@ async function perguntar(req, res, next) {
       return res.status(503).json({
         error: cota
           ? "A IA atingiu o limite de hoje. Sua pergunta não foi descontada; tente amanhã."
-          : "A Vera não conseguiu responder agora. Sua pergunta não foi descontada; tente de novo em alguns minutos.",
+          : "A V.E.R.A não conseguiu responder agora. Sua pergunta não foi descontada; tente de novo em alguns minutos.",
         ...situacao(await doDia(req.user.id)),
       });
     }

@@ -817,3 +817,13 @@
   background: rgba(252, 252, 253, 0.05);
   color: var(--app-muted-alt);
 }
+
+/* Anti-pragas ainda não verificado nesta foto. */
+.cam-pragas--pendente {
+  background: rgba(252, 252, 253, 0.06);
+  color: var(--app-muted-alt);
+}
+.cam-viewer__pragas--pendente {
+  background: rgba(252, 252, 253, 0.05);
+  color: var(--app-muted-alt);
+}
