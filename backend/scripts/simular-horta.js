@@ -59,6 +59,11 @@ const placa = {
   manual: {},              // rele -> segundos restantes
   nutri_s_hoje: 0,
   uv_s_hoje: 0,            // luz UV = mesmo relé dos ventiladores
+  hoje_s: { bomba: 0, nutri: 0, luz: 0, vent: 0 },         // como o main-1.4.0
+  manual_hoje_s: { bomba: 0, nutri: 0, luz: 0, vent: 0 },
+  // SIMULAR_RESET=queda_energia finge que a placa acabou de cair de energia.
+  reset: process.env.SIMULAR_RESET || "ligou",
+
   idsVistos: new Set(),
   acks: [],
   erro_cfg: null,
@@ -143,6 +148,10 @@ function passoLocal(segundos) {
   }
   if (quer.nutri) placa.nutri_s_hoje = Math.min(30, placa.nutri_s_hoje + segundos);
   if (quer.vent) placa.uv_s_hoje += segundos;
+  for (const r of Object.keys(quer)) if (quer[r]) {
+    placa.hoje_s[r] += segundos;
+    if (placa.manual[r]) placa.manual_hoje_s[r] += segundos;
+  }
 
   placa.reles = quer;
 }
@@ -197,6 +206,9 @@ async function telemetria() {
     manual: placa.manual,
     nutri_s_hoje: Math.round(placa.nutri_s_hoje),
     uv_s_hoje: Math.round(placa.uv_s_hoje),
+    hoje_s: Object.fromEntries(Object.entries(placa.hoje_s).map(([k, v]) => [k, Math.round(v)])),
+    manual_hoje_s: Object.fromEntries(Object.entries(placa.manual_hoje_s).map(([k, v]) => [k, Math.round(v)])),
+    reset: placa.reset,
     hora_valida: true,
     rssi: -55 - Math.round(Math.random() * 15),
     uptime_s: Math.round((Date.now() - placa.t0) / 1000),

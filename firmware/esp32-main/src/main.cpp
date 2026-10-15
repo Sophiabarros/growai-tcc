@@ -24,7 +24,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.3.0"
+#define FW "main-1.4.0"
 
 /* ------------------------------------------------------- dois nucleos
    O controle da horta (loop, nucleo 1) e a internet (tarefaRede, nucleo 0)
@@ -92,7 +92,8 @@ const unsigned long NUTRI_MAX_MS  = 30000;   // nutriente: 30 s por dia
 const int  DUR_MANUAL_MAX_S = 3600;
 const int  NUTRI_JANELA_MIN = 10;   // atraso tolerado para a dose do dia
 const int  WDT_S = 30;
-const int  PORTAL_BOTAO_S = 10;     // janela para apertar BOOT e abrir o portal
+const int  PORTAL_BOTAO_S = 10;
+const unsigned long ESCALONA_MS = 300;  // intervalo entre ligar um rele e o proximo     // janela para apertar BOOT e abrir o portal
 
 /* Conferidos pelo compilador: mexer nos tempos de rega e quebrar uma destas
    regras FALHA o build, em vez de gerar um firmware que afoga a planta ou que
@@ -291,6 +292,10 @@ void addAck(long id) {
   telemetriaLogo = true;
 }
 
+// Definidos mais abaixo, no bloco "uso do dia e manuais".
+extern uint32_t manualFimEpoch[];
+void salvaManuais();
+
 void executaComando(JsonObjectConst c, unsigned long agora) {
   long id = c["id"] | -1L;
   const char* nome = c["rele"] | "";
@@ -305,6 +310,8 @@ void executaComando(JsonObjectConst c, unsigned long agora) {
     Serial.printf("[cmd %ld] rele '%s' desconhecido\n", id, nome);
   } else if (!strcmp(acao, "desligar")) {
     manual[idx] = false;                        // encerra a sobreposicao: volta ao automatico
+    manualFimEpoch[idx] = 0;
+    salvaManuais();
     Serial.printf("[cmd %ld] %s volta ao automatico\n", id, nome);
   } else if (!strcmp(acao, "ligar")) {
     long dur = c["dur_s"] | 0L;
@@ -320,6 +327,9 @@ void executaComando(JsonObjectConst c, unsigned long agora) {
     } else {
       manual[idx] = true;
       manualFim[idx] = agora + (unsigned long)dur * 1000UL;
+      // Em hora real tambem: e o que sobrevive a um reinicio (restauraDoDia).
+      manualFimEpoch[idx] = horaValida ? (uint32_t)time(nullptr) + (uint32_t)dur : 0;
+      salvaManuais();
       Serial.printf("[cmd %ld] %s ligado por %ld s\n", id, nome, dur);
     }
   } else {
@@ -334,6 +344,7 @@ void expiraManuais(unsigned long agora) {
   for (int i = 0; i < N_RELES; i++)
     if (manual[i] && (long)(agora - manualFim[i]) >= 0) {
       manual[i] = false;
+      manualFimEpoch[i] = 0;
       Serial.printf("[manual] %s expirou, volta ao automatico\n", NOME_RELE[i]);
     }
 }
@@ -382,16 +393,84 @@ void leSensores(unsigned long agora) {
 }
 
 // ----------------------------------------------------------- cargas
-void viraDia() {
+/* ------------------------------------- uso do dia e manuais (sobrevivem a reset)
+   Uma queda de energia (bomba arrancando na mesma fonte, por exemplo) reinicia
+   a placa. Antes ela voltava "zerada": esquecia os comandos manuais (a luz que
+   o app mandou acender apagava) e zerava os contadores do dia -- inclusive o
+   limite de 30 s de nutriente, que podia ser dosado de novo. Agora tudo isso
+   fica na NVS e e restaurado assim que o relogio (NTP) volta. */
+unsigned long msHoje[N_RELES]       = { 0, 0, 0, 0 };  // tempo ligado hoje
+unsigned long msManualHoje[N_RELES] = { 0, 0, 0, 0 };  // parte disso no manual
+uint32_t manualFimEpoch[N_RELES]    = { 0, 0, 0, 0 };  // fim do manual, hora real
+const char *motivoReset = "?";
+
+void salvaManuais() {
+  Preferences p;
+  p.begin("growai-man", false);
+  for (int i = 0; i < N_RELES; i++) {
+    char k[3] = { 'm', (char)('0' + i), 0 };
+    p.putUInt(k, manualFimEpoch[i]);
+  }
+  p.end();
+}
+
+void salvaUso() {
+  Preferences p;
+  p.begin("growai-uso", false);
+  p.putInt("d", diaDoAno);
+  p.putBytes("h", msHoje, sizeof msHoje);
+  p.putBytes("x", msManualHoje, sizeof msManualHoje);
+  p.putULong("n", nutriMsHoje);
+  p.putULong("u", uvMsHoje);
+  p.putBool("nf", nutriFeitoHoje);
+  p.end();
+}
+
+// Primeira hora valida desde o boot: traz de volta o que era de hoje.
+void restauraDoDia(unsigned long agora) {
+  Preferences p;
+  p.begin("growai-uso", true);
+  if (p.getInt("d", -1) == tmAgora.tm_yday) {
+    p.getBytes("h", msHoje, sizeof msHoje);
+    p.getBytes("x", msManualHoje, sizeof msManualHoje);
+    nutriMsHoje    = p.getULong("n", 0);
+    uvMsHoje       = p.getULong("u", 0);
+    nutriFeitoHoje = p.getBool("nf", false);
+    Serial.println("[dia] contadores de hoje restaurados da NVS");
+  }
+  p.end();
+
+  Preferences m;
+  m.begin("growai-man", true);
+  uint32_t agoraEpoch = (uint32_t)time(nullptr);
+  for (int i = 0; i < N_RELES; i++) {
+    char k[3] = { 'm', (char)('0' + i), 0 };
+    uint32_t fim = m.getUInt(k, 0);
+    if (fim > agoraEpoch) {
+      manual[i] = true;
+      manualFim[i] = agora + (unsigned long)(fim - agoraEpoch) * 1000UL;
+      manualFimEpoch[i] = fim;
+      Serial.printf("[manual] %s restaurado: mais %u s\n", NOME_RELE[i], fim - agoraEpoch);
+    }
+  }
+  m.end();
+}
+
+void viraDia(unsigned long agora) {
   if (!horaValida) return;
   if (diaDoAno == tmAgora.tm_yday) return;
   if (diaDoAno >= 0) {
     nutriMsHoje = 0;
     uvMsHoje = 0;
     nutriFeitoHoje = false;
-    Serial.println("[dia] virou: contador de nutriente zerado");
+    for (int i = 0; i < N_RELES; i++) { msHoje[i] = 0; msManualHoje[i] = 0; }
+    Serial.println("[dia] virou: contadores do dia zerados");
+  } else {
+    diaDoAno = tmAgora.tm_yday;     // restauraDoDia/salvaUso usam o dia de hoje
+    restauraDoDia(agora);
   }
   diaDoAno = tmAgora.tm_yday;
+  salvaUso();
 }
 
 /* Minutos de luz por dia, a partir de luz_on/luz_off (que podem cruzar a
@@ -462,11 +541,34 @@ void atualizaCargas(unsigned long agora) {
   if (horaValida && naJanelaFoto(tmAgora.tm_min, tmAgora.tm_sec)) quer[R_VENT] = false;
 
   // ---- escreve so o que mudou ----
+  /* Liga UM rele por vez, com ESCALONA_MS entre eles. Bomba e luz ligando no
+     mesmo instante somam os picos de partida e derrubam a tensao da fonte --
+     o ESP32 reiniciava (brownout). Desligar continua imediato: os cortes de
+     seguranca nunca esperam. */
+  static unsigned long tLigou = 0;
   for (int i = 0; i < N_RELES; i++) {
     if (quer[i] == ligado[i]) continue;
+    if (quer[i] && (unsigned long)(agora - tLigou) < ESCALONA_MS) continue;
     ligado[i] = quer[i];
     rele(PINO_RELE[i], quer[i]);
+    if (quer[i]) tLigou = agora;
     if (i == R_BOMBA && quer[i]) bombaLigadaEm = agora;
+  }
+
+  // tempo ligado hoje, por rele (e quanto disso foi manual)
+  static unsigned long tickUso = 0;
+  if (tickUso) {
+    unsigned long d = agora - tickUso;
+    for (int i = 0; i < N_RELES; i++) if (ligado[i]) {
+      msHoje[i] += d;
+      if (manual[i]) msManualHoje[i] += d;
+    }
+  }
+  tickUso = agora;
+  static unsigned long tSalvou = 0;
+  if (horaValida && diaDoAno >= 0 && (unsigned long)(agora - tSalvou) >= 120000UL) {
+    tSalvou = agora;
+    salvaUso();
   }
 
   // contabiliza o UV de hoje (= tempo com os ventiladores ligados)
@@ -632,6 +734,16 @@ String montaTelemetria(int &acksEnviados) {
   doc["hora_valida"]  = horaValida;
   doc["rssi"]         = WiFi.RSSI();
   doc["uptime_s"]     = (uint32_t)(agora / 1000);
+  doc["reset"]        = motivoReset;   // por que a placa reiniciou da ultima vez
+
+  // Tempo ligado hoje por rele, e quanto disso foi manual (o app compara
+  // com a rotina e avisa quando passa).
+  JsonObject h = doc["hoje_s"].to<JsonObject>();
+  JsonObject x = doc["manual_hoje_s"].to<JsonObject>();
+  for (int i = 0; i < N_RELES; i++) {
+    h[NOME_RELE[i]] = (uint32_t)(msHoje[i] / 1000);
+    x[NOME_RELE[i]] = (uint32_t)(msManualHoje[i] / 1000);
+  }
 
   JsonArray a = doc["acks"].to<JsonArray>();
   for (int i = 0; i < nAcks; i++) a.add(acks[i]);
@@ -733,6 +845,18 @@ void setup() {
 
   trava = xSemaphoreCreateMutex();
 
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  motivoReset = "ligou";          break;
+    case ESP_RST_EXT:      motivoReset = "botao";          break;
+    case ESP_RST_SW:       motivoReset = "software";       break;
+    case ESP_RST_BROWNOUT: motivoReset = "queda_energia";  break;
+    case ESP_RST_PANIC:    motivoReset = "erro";           break;
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      motivoReset = "travou";         break;
+    default:               motivoReset = "outro";          break;
+  }
+
   Serial.begin(115200);
   delay(200);
   Serial.println("\n== GrowAI " FW " ==");
@@ -816,7 +940,7 @@ void loop() {
 
   xSemaphoreTake(trava, portMAX_DELAY);   // solta antes do cuidaWifi, la embaixo
   horaValida = getLocalTime(&tmAgora, 0);   // 0 = nao espera; false ate o NTP chegar
-  viraDia();
+  viraDia(agora);
   expiraManuais(agora);
 
   static unsigned long tLeitura = 0;

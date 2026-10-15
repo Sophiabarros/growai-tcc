@@ -149,3 +149,15 @@
     min-width: 10rem;
   }
 }
+
+/* Tempo ligado hoje (rotina + manual) e o destaque quando passa do recomendado. */
+.ctrl__rele-hoje {
+  color: var(--app-muted-alt);
+  font: 400 1.15rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  margin: 0.2rem 0 0;
+}
+.ctrl__rele-hoje--excesso {
+  color: var(--color-danger);
+  font-weight: 600;
+}

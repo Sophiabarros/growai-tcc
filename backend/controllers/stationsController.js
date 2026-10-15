@@ -261,6 +261,12 @@ async function getLatestReading(req, res, next) {
       erro_cfg: extra.erro_cfg || null,
       hora_valida: extra.hora_valida ?? null,
       fw: extra.fw || null,
+      hoje_s: extra.hoje_s || null,
+      manual_hoje_s: extra.manual_hoje_s || null,
+      reset: extra.reset || null,
+      uptime_s: extra.uptime_s ?? null,
+      nutri_s_hoje: extra.nutri_s_hoje ?? null,
+      uv_s_hoje: extra.uv_s_hoje ?? null,
       online,
       recorded_at: leitura.recorded_at,
     });

@@ -226,12 +226,66 @@
           Number(leitura.cfg_versao_placa) !== Number(leitura.cfg_versao_servidor)) {
         avisos.push({ erro: false, texto: "Enviando a rotina nova para a placa…" });
       }
+      /* Queda de energia: a placa reiniciou porque a tensão caiu (brownout).
+         Quase sempre é a bomba arrancando na mesma fonte do ESP32. */
+      if (leitura.reset === "queda_energia" && Number(leitura.uptime_s) < 6 * 3600) {
+        avisos.push({
+          erro: true,
+          texto: "A placa reiniciou por queda de energia " + haQuanto(Date.now() - Number(leitura.uptime_s) * 1000) +
+            ". Isso costuma ser a bomba puxando corrente demais da mesma fonte do ESP32: alimente a bomba e os relés por uma fonte separada.",
+        });
+      }
+      excessosDoDia().forEach(function (t) { avisos.push({ erro: true, texto: t }); });
     }
     document.getElementById("ctrlAvisos").innerHTML = avisos
       .map(function (a) {
         return '<p class="ctrl__aviso' + (a.erro ? " ctrl__aviso--erro" : "") + '">' + esc(a.texto) + "</p>";
       })
       .join("");
+  }
+
+  // 7380 -> "2h 3min"; 2700 -> "45 min"; 40 -> "40 s"
+  function duracao(seg) {
+    seg = Math.max(0, Math.round(Number(seg) || 0));
+    if (seg < 60) return seg + " s";
+    var min = Math.round(seg / 60);
+    if (min < 60) return min + " min";
+    var h = Math.floor(min / 60);
+    var resto = min % 60;
+    return h + "h" + (resto ? " " + resto + "min" : "");
+  }
+
+  /* O que a rotina recomenda por dia, para comparar com o tempo ligado hoje.
+     A ventilação carrega a luz UV no mesmo relé, então o limite dela é o de UV.
+     Bomba e nutriente não entram: a bomba segue o sensor, e o nutriente já
+     tem o limite de 30 s cortado pela própria placa. */
+  function recomendadoHoje(rele) {
+    var l = leitura || {};
+    if (rele === "luz") {
+      var h = l.light_hours != null ? l.light_hours : station && station.light_hours;
+      return h != null ? Number(h) * 3600 : null;
+    }
+    if (rele === "vent") return uvLimite() * 60;
+    return null;
+  }
+
+  function excessosDoDia() {
+    var l = leitura || {};
+    var hoje = l.hoje_s || {};
+    var man = l.manual_hoje_s || {};
+    var textos = [];
+    [["luz", "Luz"], ["vent", "Ventilação + luz UV"]].forEach(function (par) {
+      var limite = recomendadoHoje(par[0]);
+      var usado = Number(hoje[par[0]]) || 0;
+      // 1 min de folga: o contador corre em segundos e a rotina em minutos.
+      if (limite == null || usado <= limite + 60) return;
+      textos.push(
+        par[1] + " acima do recomendado hoje: " + duracao(usado) + " de " + duracao(limite) +
+          (Number(man[par[0]]) ? " (" + duracao(man[par[0]]) + " no manual)" : "") +
+          (par[0] === "vent" ? ". Excesso de UV pode queimar as folhas." : ".")
+      );
+    });
+    return textos;
   }
 
   function uvLimite() {
@@ -269,6 +323,19 @@
       .join("");
   }
 
+  // Por que a rotina ligou este relé agora (só o que dá para saber com certeza).
+  function porqueLigou(rele, l) {
+    if (rele === "bomba" && l.estado === "REGANDO") return " (solo seco)";
+    if (rele === "luz") return l.hora_valida === false ? " (sem relógio: acesa por segurança)" : " (horário de luz)";
+    if (rele === "vent") {
+      var tmax = station && station.temp_max != null ? Number(station.temp_max) : null;
+      if (tmax != null && l.temperature != null && Number(l.temperature) > tmax) return " (calor acima de " + tmax + " °C)";
+      return " (ciclo de ventilação/UV)";
+    }
+    if (rele === "nutri") return " (dose do dia)";
+    return "";
+  }
+
   function renderReles(online) {
     var l = leitura || {};
     var reles = l.reles || {};
@@ -291,11 +358,22 @@
       else if (emManual) { estado = "Ligado manualmente · resta " + mmss(resta); classe += " ctrl__rele-estado--ligado"; }
       else if (!online || !l.reles) estado = "—";
       else if (ligado) {
-        // A bomba no automático é a rega por umidade: vale dizer o porquê.
-        estado = r.id === "bomba" && l.estado === "REGANDO" ? "Ligado · automático (solo seco)" : "Ligado · automático";
+        estado = "Ligado pela rotina" + porqueLigou(r.id, l);
         classe += " ctrl__rele-estado--ligado";
       }
-      else estado = "Desligado · automático";
+      else estado = "Desligado · rotina no automático";
+
+      // Tempo ligado hoje, separando a rotina do manual.
+      var hoje = l.hoje_s && l.hoje_s[r.id] != null ? Number(l.hoje_s[r.id]) : null;
+      var man = l.manual_hoje_s && l.manual_hoje_s[r.id] != null ? Number(l.manual_hoje_s[r.id]) : 0;
+      var limite = recomendadoHoje(r.id);
+      var linhaHoje = "";
+      if (hoje != null && online) {
+        linhaHoje = "Hoje: " + duracao(hoje) +
+          (man ? " (" + duracao(Math.max(0, hoje - man)) + " rotina · " + duracao(man) + " manual)" : "") +
+          (limite != null ? " · recomendado " + duracao(limite) : "");
+      }
+      var excedeu = limite != null && hoje != null && hoje > limite + 60;
 
       var acao = emManual ? "desligar" : "ligar";
       var rotulo = emManual ? "Automático" : r.ligar;
@@ -304,7 +382,9 @@
       return (
         '<li class="ctrl__rele">' +
         '<div class="ctrl__rele-info"><p class="ctrl__rele-nome">' + r.nome + "</p>" +
-        '<p class="' + classe + '">' + esc(estado) + "</p></div>" +
+        '<p class="' + classe + '">' + esc(estado) + "</p>" +
+        (linhaHoje ? '<p class="ctrl__rele-hoje' + (excedeu ? " ctrl__rele-hoje--excesso" : "") + '">' + esc(linhaHoje) + "</p>" : "") +
+        "</div>" +
         '<button type="button" class="ctrl__btn' + (emManual ? " ctrl__btn--auto" : "") + '" data-ctrl="comando" data-rele="' + r.id +
         '" data-acao="' + acao + '"' + (desabilitado ? " disabled" : "") + ">" + (pend ? "Enviando…" : rotulo) + "</button>" +
         "</li>"

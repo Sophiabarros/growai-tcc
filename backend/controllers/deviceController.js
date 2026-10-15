@@ -49,6 +49,9 @@ async function telemetria(req, res, next) {
       hora_valida: t.hora_valida ?? null,
       nutri_s_hoje: t.nutri_s_hoje ?? null,
       uv_s_hoje: t.uv_s_hoje ?? null,
+      hoje_s: t.hoje_s ?? null,
+      manual_hoje_s: t.manual_hoje_s ?? null,
+      reset: t.reset ?? null,
       manual: t.manual ?? null,
       cfg_versao: t.cfg_versao ?? null,
       erro: t.erro ?? null,
@@ -125,6 +128,13 @@ async function telemetria(req, res, next) {
       nutri_s_hoje: t.nutri_s_hoje ?? null,
       uv_s_hoje: t.uv_s_hoje ?? null,
       uv_min_dia: station.uv_min_dia ?? null,
+      // Tempo ligado hoje por relé (e quanto foi manual) e o motivo do último
+      // reinício da placa: o painel compara com a rotina e avisa.
+      hoje_s: t.hoje_s || null,
+      manual_hoje_s: t.manual_hoje_s || null,
+      reset: t.reset || null,
+      uptime_s: t.uptime_s ?? null,
+      light_hours: station.light_hours != null ? Number(station.light_hours) : null,
       rssi: t.rssi ?? null,
       fw: t.fw || null,
       cfg_versao_placa: t.cfg_versao ?? null,
