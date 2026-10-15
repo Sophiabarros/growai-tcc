@@ -34,7 +34,7 @@ static const int PORTAL_TIMEOUT_S = 180;
 struct Credenciais {
   String ssid;
   String senha;
-  String apiBase;    // sem barra no fim, ex.: https://growai-backend.vercel.app/api
+  String apiBase;    // sem barra no fim, ex.: https://growai-backend-ssca.onrender.com/api
   String deviceKey;  // a chave DESTA placa (main e cam tem chaves diferentes)
 };
 
@@ -50,6 +50,16 @@ inline String provisaoNormalizaUrl(String u) {
 inline bool provisaoCompleta(const Credenciais &c) {
   return c.ssid.length() > 0 && c.apiBase.length() > 0 && c.deviceKey.length() > 0;
 }
+
+/* Endereco atual do backend e os que ja deixaram de ser usados.
+   O que o portal grava na NVS vence o secrets.h, entao uma placa configurada
+   com o endereco antigo continuaria nele para sempre mesmo regravada. Ao
+   carregar, um endereco desta lista e trocado pelo atual e salvo de volta:
+   recompilar e gravar basta, sem abrir o portal. */
+static const char *API_ATUAL = "https://growai-backend-ssca.onrender.com/api";
+static const char *API_ANTIGAS[] = {
+  "https://growai-backend.vercel.app/api",   // Vercel, ate 2026-10
+};
 
 /* Carrega da NVS. O que estiver vazio la cai para o padrao do secrets.h, o que
    permite gravar uma placa ja configurada se voce quiser. */
@@ -67,6 +77,17 @@ inline void provisaoCarregar(Credenciais &c,
   c.apiBase = provisaoNormalizaUrl(c.apiBase);
   c.ssid.trim();
   c.deviceKey.trim();
+
+  for (const char *antiga : API_ANTIGAS) {
+    if (c.apiBase.equalsIgnoreCase(antiga)) {
+      Serial.printf("[cred] api antiga (%s) trocada por %s\n", antiga, API_ATUAL);
+      c.apiBase = API_ATUAL;
+      nvs.begin("growai-net", false);
+      nvs.putString("api", c.apiBase);
+      nvs.end();
+      break;
+    }
+  }
 }
 
 inline void provisaoSalvar(const Credenciais &c) {

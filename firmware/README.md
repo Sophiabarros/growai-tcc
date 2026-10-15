@@ -86,7 +86,7 @@ preenchidos por um portal no celular:
 3. Conecte o celular nessa rede. A página de configuração abre sozinha (como
    em Wi-Fi de hotel). Se não abrir, acesse `http://192.168.4.1`.
 4. Escolha a sua rede, digite a senha e preencha os dois campos:
-   - **Endereço da API** — `https://growai-backend.vercel.app/api` (sem barra no fim)
+   - **Endereço da API** — `https://growai-backend-ssca.onrender.com/api` (sem barra no fim)
    - **Chave desta placa** — a chave gerada por `criar-dispositivo`
 5. Salve. Ela grava e reinicia já conectada.
 
@@ -98,11 +98,24 @@ repetir, sem computador e sem cabo.
 | Placa | Abre quando |
 |---|---|
 | ESP32 principal | nunca foi configurada, **ou** você **aperta o botão BOOT nos 10 primeiros segundos** depois de ligar |
-| ESP32-CAM | nunca foi configurada, **ou** falha 3 ciclos seguidos ao conectar |
+| ESP32-CAM | nunca foi configurada, **ou** você **aperta o RST duas vezes seguidas** (ou tira e põe a energia duas vezes), **ou** falha 3 ciclos seguidos ao conectar |
 
-A CAM não tem botão acessível (o GPIO 0 dela é o clock da câmera), por isso o
-gatilho é a falha repetida: se a rede mudou de nome ou de senha, em ~1h30 ela
-abre o portal sozinha.
+A CAM não tem botão livre (o GPIO 0 dela é o clock da câmera), por isso o
+gatilho é o **reset duplo**: aperte o RST, espere 1–2 s e aperte de novo. O LED
+vermelho do verso fica **aceso fixo** e a rede `GrowAI-setup` aparece. Os campos
+já vêm com o endereço e a chave gravados — é só escolher a rede nova.
+Funciona mesmo com a rede antiga ainda no ar, que era o caso sem saída antes
+(a CAM só reabria o portal depois de ~1h30 sem conseguir conectar).
+
+O LED vermelho do verso da CAM (GPIO 33) também mostra o ciclo, já que ela
+passa quase o tempo todo em deep sleep:
+
+| LED vermelho | Significa |
+|---|---|
+| 3 piscadas rápidas | conectou no Wi-Fi |
+| 1 piscada longa | foto entregue ao backend |
+| aceso fixo | portal de configuração aberto |
+| nada | dormindo, ou não conectou (abra o monitor serial para ver) |
 
 > **Por que "aperte depois de ligar" e não "segure enquanto liga"?** O BOOT é o
 > GPIO 0. Com ele em GND **no reset**, o ESP32 entra em modo de gravação e o
@@ -130,6 +143,10 @@ cp firmware/esp32-cam/include/secrets.example.h  firmware/esp32-cam/include/secr
 ```
 
 Ele está no `.gitignore`, então nada do que você puser ali vai para o repositório.
+
+**Na CAM, o `WIFI_SSID`/`WIFI_PASS` do secrets.h também é a rede reserva:** se
+a rede gravada pelo portal falhar, ela tenta essa antes de desistir do ciclo.
+Ponha ali o roteador do celular e a CAM nunca fica órfã.
 
 #### Apagar a configuração
 
@@ -388,7 +405,7 @@ pondo esse endereço e a chave **daquela** placa:
 | câmera | `http://192.168.18.22:3001/api` | `teste123-cam` |
 
 Terminou de testar? Abra o portal de novo e troque o endereço de volta para
-`https://growai-backend.vercel.app/api` — sem recompilar nada.
+`https://growai-backend-ssca.onrender.com/api` — sem recompilar nada.
 
 O mock separa as chaves igual ao backend, de propósito: se você trocar as duas,
 o erro aparece aqui em casa e não só depois de subir para a Vercel. Para usar as
@@ -473,6 +490,22 @@ termos. Use o roteador do celular, e configure pelo portal da placa na hora.
 
 Confira também: senha com acento ou caractere especial, e SSID escrito com
 maiúscula/minúscula exatamente igual.
+
+### Usar o 4G do celular (roteador do celular)
+
+Funciona sem nada no backend: as placas só fazem conexões de **saída** (HTTPS
+para o Render), então não importa que a operadora não dê IP público. Cuidados:
+
+- **Faixa 2,4 GHz.** Android: *Roteador Wi-Fi → Banda → 2,4 GHz*. iPhone:
+  ligue *Maximizar Compatibilidade*.
+- **WPA2**, não "somente WPA3".
+- **Desligue o "desligar roteador automaticamente quando ninguém estiver
+  conectado".** A CAM dorme entre as fotos e some da rede; com essa opção, o
+  celular desliga o roteador e ela não acha nada ao acordar.
+- **Nome e senha fixos.** Mudou, tem que reconfigurar pelo portal.
+- O celular precisa ficar perto e ligado.
+- Consumo: ~48 fotos/dia × ~60 kB ≈ 3 MB/dia da CAM, mais a telemetria da
+  placa principal — cerca de 100–150 MB/mês.
 
 ### Serial mostra `401 chave invalida` a cada ciclo
 

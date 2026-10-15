@@ -28,8 +28,8 @@
 #define WIFI_SSID  ""
 #define WIFI_PASS  ""
 
-/* Sem barra no fim. Ex.: "https://growai-backend.vercel.app/api" */
-#define API_BASE   ""
+/* Sem barra no fim. Ex.: "https://growai-backend-ssca.onrender.com/api" */
+#define API_BASE   "https://growai-backend-ssca.onrender.com/api"
 
 /* A chave DESTA placa. Cada uma tem a sua: a rota POST /api/device/telemetria
    aceita somente a chave do tipo 'main'. Gere com:

@@ -28,7 +28,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-1.0.0"
+#define FW "cam-1.1.0"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -49,8 +49,16 @@
 #define PCLK_GPIO_NUM  22
 
 const uint8_t PIN_FLASH = 4;      // LED branco da placa; forte, so na captura
+/* LED vermelho pequeno no verso da AI-Thinker, aceso em LOW. E o unico jeito
+   de a CAM dizer o que esta fazendo sem o monitor serial:
+     3 piscadas rapidas  -> conectou no Wi-Fi
+     1 piscada longa     -> foto entregue ao backend
+     aceso fixo          -> portal de configuracao aberto (rede GrowAI-setup) */
+const uint8_t PIN_LED   = 33;
 
 const unsigned long WIFI_TIMEOUT_MS = 20000;
+// Rede reserva do secrets.h: tentada so depois que a gravada falhar.
+const unsigned long WIFI_RESERVA_TIMEOUT_MS = 15000;
 const unsigned long NTP_TIMEOUT_MS  = 8000;
 const unsigned long FLASH_MAX_MS    = 2000;
 
@@ -76,9 +84,50 @@ Credenciais cred;
 
 bool ehHttps() { return cred.apiBase.startsWith("https"); }
 
+// ------------------------------------------------------------------ LED
+void led(bool aceso) { digitalWrite(PIN_LED, aceso ? LOW : HIGH); }
+
+void pisca(int vezes, int ms) {
+  for (int i = 0; i < vezes; i++) {
+    led(true);  delay(ms);
+    led(false); delay(ms);
+  }
+}
+
+/* ------------------------------------------------------------ reset duplo
+   Gatilho do portal nesta placa: apertar o RST duas vezes seguidas (ou tirar
+   e pôr a energia duas vezes). Sem isso, uma CAM que conectou numa rede so
+   reabria o portal depois de 3 ciclos sem Wi-Fi (~1h30), e a rede antiga
+   continuando no ar significava nunca.
+   O contador fica na NVS porque o RST zera a memoria RTC. Acordar do deep
+   sleep nao conta, nem reinicio por software ou brownout. Ele zera quando a
+   placa vai dormir, entao o segundo aperto tem que vir antes disso (a placa
+   fica acordada pelo menos uns segundos, conectando). */
+static const char *NVS_CAM = "growai-cam";
+
+bool resetDuplo() {
+  esp_reset_reason_t motivo = esp_reset_reason();
+  if (motivo != ESP_RST_POWERON && motivo != ESP_RST_EXT) return false;
+  Preferences nvs;
+  nvs.begin(NVS_CAM, false);
+  int n = nvs.getInt("rst", 0) + 1;
+  nvs.putInt("rst", n >= 2 ? 0 : n);
+  nvs.end();
+  return n >= 2;
+}
+
+void zeraResetDuplo() {
+  Preferences nvs;
+  nvs.begin(NVS_CAM, false);
+  if (nvs.getInt("rst", 0) != 0) nvs.putInt("rst", 0);
+  nvs.end();
+}
+
 // ------------------------------------------------------------- deep sleep
 void dorme(long segundos) {
   if (segundos < 5) segundos = 5;
+  zeraResetDuplo();
+  led(false);
   digitalWrite(PIN_FLASH, LOW);
   Serial.printf("[sono] dormindo %ld s\n", segundos);
   Serial.flush();
@@ -121,6 +170,8 @@ void abrePortal(const char *motivo) {
   Serial.printf("[portal] conecte-se a rede \"%s\" (senha %s)\n", PORTAL_SSID, PORTAL_SENHA);
 
   digitalWrite(PIN_FLASH, LOW);  // garante o flash apagado durante a espera
+  zeraResetDuplo();
+  led(true);                     // aceso fixo enquanto o portal estiver no ar
 
   WiFiManager wm;
   WiFiManagerParameter pApi("api", "Endereco da API", cred.apiBase.c_str(), 120);
@@ -147,6 +198,14 @@ void abrePortal(const char *motivo) {
   provisaoMostrar(cred);
   delay(400);
   ESP.restart();
+}
+
+// ---------------------------------------------------------------- Wi-Fi
+bool conectaWifi(const String &ssid, const String &senha, unsigned long timeoutMs) {
+  WiFi.begin(ssid.c_str(), senha.c_str());
+  unsigned long t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < timeoutMs) delay(200);
+  return WiFi.status() == WL_CONNECTED;
 }
 
 // ---------------------------------------------------------------- camera
@@ -222,6 +281,7 @@ bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
   int code = http.POST(fb->buf, fb->len);
   Serial.printf("[http] POST /device/foto -> %d (%u bytes)\n", code, fb->len);
   if (code != 200) Serial.println("[http] sem reenvio: a proxima foto vem em minutos");
+  else             pisca(1, 800);
   http.end();
   return code == 200;
 }
@@ -253,10 +313,16 @@ void setup() {
 
   pinMode(PIN_FLASH, OUTPUT);
   digitalWrite(PIN_FLASH, LOW);
+  pinMode(PIN_LED, OUTPUT);
+  led(false);
 
   Serial.begin(115200);
   delay(200);
   Serial.println("\n== GrowAI " FW " ==");
+
+  /* Lido antes da camera: o esp_camera_init leva ~1 s, e o reset duplo
+     precisa contar a partir de quando a placa liga. */
+  bool pediuPortal = resetDuplo();
 
   // ---- camera ----
   if (!iniciaCamera()) {
@@ -277,6 +343,11 @@ void setup() {
   provisaoCarregar(cred, WIFI_SSID, WIFI_PASS, API_BASE, DEVICE_KEY);
   provisaoMostrar(cred);
 
+  if (pediuPortal) {
+    // Os campos ja vem preenchidos com o que esta gravado: so trocar a rede.
+    abrePortal("reset duplo: trocar de rede");
+    return;
+  }
   if (!provisaoCompleta(cred)) {
     abrePortal("sem credenciais gravadas");
     return;  // abrePortal() sempre termina em restart ou deep sleep
@@ -284,10 +355,21 @@ void setup() {
 
   // ---- Wi-Fi ----
   WiFi.mode(WIFI_STA);
-  WiFi.begin(cred.ssid.c_str(), cred.senha.c_str());
-  unsigned long t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < WIFI_TIMEOUT_MS) delay(200);
-  if (WiFi.status() != WL_CONNECTED) {
+  bool conectou = conectaWifi(cred.ssid, cred.senha, WIFI_TIMEOUT_MS);
+
+  /* Rede reserva: a do secrets.h (ex.: o roteador do celular), se for outra.
+     Assim a placa nao fica orfa quando a rede gravada some. */
+  String reserva = WIFI_SSID;
+  if (!conectou && reserva.length() && reserva != cred.ssid) {
+    Serial.printf("[wifi] tentando a rede reserva \"%s\"\n", WIFI_SSID);
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.mode(WIFI_STA);
+    conectou = conectaWifi(reserva, WIFI_PASS, WIFI_RESERVA_TIMEOUT_MS);
+  }
+  unsigned long t0;
+
+  if (!conectou) {
     falhasWifi++;
     Serial.printf("[wifi] nao conectou (%d/%d)\n", falhasWifi, FALHAS_ATE_PORTAL);
     /* Insistiu e nao foi: provavelmente a rede mudou de nome ou de senha.
@@ -301,7 +383,9 @@ void setup() {
     return;
   }
   falhasWifi = 0;
-  Serial.printf("[wifi] %s  rssi %d\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  Serial.printf("[wifi] %s em \"%s\"  rssi %d\n", WiFi.localIP().toString().c_str(),
+                WiFi.SSID().c_str(), WiFi.RSSI());
+  pisca(3, 150);
 
   // ---- NTP ----
   configTzTime(TZ_SP, NTP1, NTP2);
