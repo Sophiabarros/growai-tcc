@@ -76,6 +76,8 @@ app.use("/api/stations", requireAuth, stationsRoutes);
 app.use("/api/reports", requireAuth, reportsRoutes);
 app.use("/api/suggestions", requireAuth, suggestionsRoutes);
 app.use("/api/settings", requireAuth, settingsRoutes);
+// Vera, o chat da IA (3 perguntas por dia por usuário).
+app.use("/api/vera", requireAuth, require("./routes/vera"));
 
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

@@ -294,9 +294,13 @@ async function foto(req, res, next) {
 /* Roda depois de a placa já ter recebido o 200, e também quando o usuário
    aperta "Analisar saúde agora" no app (stationsController.analisarFotoAgora).
    Devolve o resultado da IA. */
-async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
+async function analisarFoto({ fotoId, jpeg, station, leitura, config, manterSeFalhar = false }) {
   const r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
   if (!r.ok) console.warn(`[foto] estação ${station.id}: IA não analisou — ${r.motivo}`);
+  /* Reanálise manual que falhou: a análise que a foto já tinha continua
+     valendo. Sem isto, um timeout da IA trocava um diagnóstico bom por
+     "Análise indisponível". */
+  if (!r.ok && manterSeFalhar) return r;
 
   const iaRaw = {
     provider: r.provider,
@@ -306,12 +310,16 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
     resposta: r.raw || null,
   };
   await db.query(
-    `UPDATE station_photos SET health_status = $2, analysis_text = $3, ia_raw = $4 WHERE id = $1`,
+    `UPDATE station_photos
+        SET health_status = $2, analysis_text = $3, ia_raw = $4, pragas = $5, pragas_descricao = $6
+      WHERE id = $1`,
     [
       fotoId,
       r.ok ? r.health_status : "indefinido",
       r.ok ? r.analysis_text : "Análise indisponível no momento.",
       JSON.stringify(iaRaw),
+      r.ok ? r.pragas : null,
+      r.ok ? r.pragas_descricao : null,
     ]
   );
   // O resumo do dia ganha esta foto já (o gráfico de saúde não espera 10 min).

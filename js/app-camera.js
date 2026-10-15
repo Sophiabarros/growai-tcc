@@ -38,6 +38,16 @@
     el.classList.toggle("m-app-camera__status--error", !!isError);
   }
 
+  /* Anti-pragas: etiqueta ao lado de "Análise visual". Foto analisada antes
+     do anti-pragas (pragas null) ou não analisada não mostra nada. */
+  var PRAGAS_TEXTO = { sim: "Praga detectada", nao: "Sem pragas", incerto: "Pragas: não deu para ver" };
+  function pragasHtml(photo) {
+    if (!photo || !photo.pragas || !PRAGAS_TEXTO[photo.pragas]) return "";
+    return '<span class="cam-pragas cam-pragas--' + photo.pragas + '"' +
+      (photo.pragas_descricao ? ' title="' + escapeHtml(photo.pragas_descricao) + '"' : "") + ">" +
+      PRAGAS_TEXTO[photo.pragas] + "</span>";
+  }
+
   function cardHtml(station, photo, checkIcon, avisoIcon, hasBullet) {
     var titleRow = hasBullet
       ? '<div class="cam-card__title-row-left"><p class="cam-card__name">' +
@@ -75,7 +85,7 @@
         '<div class="cam-card__title-row">' + titleRow +
         '<div class="cam-card__health cam-card__' + healthClass + '"><img alt="" src="' + healthIcon + '" />' + healthLabel + "</div>" +
         "</div>" +
-        '<div class="cam-card__analysis"><p class="cam-card__analysis-label">Análise visual</p><p class="cam-card__analysis-text">' +
+        '<div class="cam-card__analysis"><div class="cam-analysis-head"><p class="cam-card__analysis-label">Análise visual</p>' + pragasHtml(photo) + '</div><p class="cam-card__analysis-text">' +
         escapeHtml(photo.analysis_text) +
         "</p></div>" +
         '<button type="button" class="cam-card__btn">Ver histórico de imagens</button>' +
@@ -89,7 +99,7 @@
       '<div class="cam-m-card__body">' +
       titleRow +
       '<div class="cam-m-card__health cam-m-card__' + healthClass + '"><img alt="" src="' + healthIcon + '" />' + healthLabel + "</div>" +
-      '<div class="cam-m-card__analysis"><p class="cam-m-card__analysis-label">Análise visual</p><p class="cam-m-card__analysis-text">' +
+      '<div class="cam-m-card__analysis"><div class="cam-analysis-head"><p class="cam-m-card__analysis-label">Análise visual</p>' + pragasHtml(photo) + '</div><p class="cam-m-card__analysis-text">' +
       escapeHtml(photo.analysis_text) +
       "</p></div>" +
       '<button type="button" class="cam-m-card__btn">Ver histórico de imagens</button>' +
@@ -307,6 +317,7 @@
         (conectada ? " · câmera conectada" : " · câmera não conectada");
       viewerAnalysis.textContent = photo.analysis_text || "";
     }
+    mostrarPragas(photo);
 
     // "Analisar saúde agora": só faz sentido se já existe foto.
     visorIdx = idx;
@@ -319,6 +330,8 @@
     if (temPlaca) iniciarAoVivo(station);
 
     ultimoFoco = document.activeElement;
+    // O visor tem o próprio "Perguntar à Vera": o botão flutuante sai da frente.
+    document.body.classList.add("visor-aberto");
     viewer.hidden = false;
     viewer.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";
@@ -344,14 +357,38 @@
     viewerHealth.classList.toggle("cam-viewer__health--warn", st === "atencao");
     viewerAnalysis.textContent = photo.analysis_text || "";
     viewerMeta.textContent = "Análise da IA · foto de " + timeAgo(photo.captured_at) + " · analisada agora";
+    mostrarPragas(photo);
   }
+
+  // Linha "Pragas" do visor: o que a IA viu, com a descrição quando há praga.
+  var viewerPragas = document.getElementById("camViewerPragas");
+  function mostrarPragas(photo) {
+    if (!viewerPragas) return;
+    var p = photo && photo.pragas;
+    viewerPragas.hidden = !p;
+    if (!p) return;
+    viewerPragas.className = "cam-viewer__pragas cam-viewer__pragas--" + p;
+    viewerPragas.textContent =
+      p === "sim" ? "Praga detectada" + (photo.pragas_descricao ? ": " + photo.pragas_descricao : "") + "."
+      : p === "nao" ? "Anti-pragas: nenhuma praga visível nesta foto."
+      : "Anti-pragas: a foto não permitiu avaliar (escura, desfocada ou planta fora do quadro).";
+  }
+
+  // "Perguntar à Vera": abre o chat já com a análise desta foto escrita.
+  document.getElementById("camViewerVera").addEventListener("click", function () {
+    var station = atual.stations[visorIdx];
+    var photo = atual.photos[visorIdx];
+    if (!window.Vera || !station) return;
+    var sobre = photo && photo.analysis_text ? ' A análise da foto disse: "' + photo.analysis_text + '"' : "";
+    window.Vera.abrir("Sobre a minha " + station.plant + " (" + station.name + ")." + sobre + " O que eu posso fazer?");
+  });
 
   btnAnalisar.addEventListener("click", async function () {
     var idx = visorIdx;
     var station = atual.stations[idx];
     if (!station) return;
     btnAnalisar.disabled = true;
-    btnAnalisar.textContent = "Analisando… (até 30 s)";
+    btnAnalisar.textContent = "Analisando… (até 1 min)";
     try {
       var r = await GrowAI.analyzePhotoNow(station.id);
       if (visorIdx !== idx) return; // fechou ou trocou de câmera no meio
@@ -449,6 +486,7 @@
 
   function fecharVisor() {
     if (viewer.hidden) return;
+    document.body.classList.remove("visor-aberto");
     pararAoVivo();
     visorIdx = null;
     // Houve análise nova: a grade de cards atualiza ao fechar.

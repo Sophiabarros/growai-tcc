@@ -180,6 +180,13 @@
         });
       }
       var photo = s.__photo;
+      // Anti-pragas: praga vista na última foto analisada vira alerta próprio.
+      if (photo && photo.pragas === "sim") {
+        alerts.push({
+          title: "Praga detectada" + (photo.pragas_descricao ? ": " + photo.pragas_descricao : ""),
+          meta: s.plant + " · " + timeAgo(photo.captured_at),
+        });
+      }
       if (photo && photo.health_status === "atencao") {
         alerts.push({
           title: photo.analysis_text || "Planta precisa de atenção",

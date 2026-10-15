@@ -71,6 +71,13 @@ const ESQUEMA_ROTINA = JSON.parse(JSON.stringify(ESQUEMA_RESPOSTA));
 ESQUEMA_ROTINA.properties.suggestion.required = ["message", "growth_pct", "health_pct", "config"];
 ESQUEMA_ROTINA.properties.suggestion.properties.config.required = CAMPOS_ROTINA;
 
+/* Esquema do modo FOTO: o de cima mais o anti-pragas. Obrigatório aqui (a IA
+   sempre diz algo sobre pragas) e ausente da rotina, que não vê foto. */
+const ESQUEMA_FOTO = JSON.parse(JSON.stringify(ESQUEMA_RESPOSTA));
+ESQUEMA_FOTO.properties.pragas = { type: "string", enum: ["sim", "nao", "incerto"] };
+ESQUEMA_FOTO.properties.pragas_descricao = { type: ["string", "null"] };
+ESQUEMA_FOTO.required = ESQUEMA_RESPOSTA.required.concat(["pragas", "pragas_descricao"]);
+
 function ou(valor, alternativa) {
   return valor === null || valor === undefined || valor === "" ? alternativa : valor;
 }
@@ -171,10 +178,23 @@ Regras:
    NÃO descreva uma planta que você não consegue ver.
 3. Não repita os números dos sensores em analysis_text — o app já os mostra ao lado.
 
+## Anti-pragas
+Procure ativamente sinais de PRAGA: insetos (pulgões, cochonilhas, moscas-
+brancas, tripes, lagartas), ácaros e suas teias finas, ovos, folhas roídas ou
+furadas, trilhas/minas nas folhas, melada pegajosa, fumagina (fuligem preta).
+Doença por fungo (oídio, manchas) não é praga; vale citar em analysis_text.
+
 ## Resposta
 - health_status: "saudavel" se não houver sinal visual preocupante; "atencao" se houver.
+  Praga visível conta como "atencao".
 - analysis_text: até 200 caracteres, em português do Brasil, falando direto com
   quem cultiva. Diga o que você viu e, se for o caso, o que fazer.
+- pragas: "sim" se você VÊ sinal de praga; "nao" se a planta está bem visível e
+  não há sinal; "incerto" se a foto não deixa avaliar (escura, desfocada,
+  planta pequena demais ou fora do quadro). Na dúvida entre "sim" e "nao", use
+  "incerto" — não invente praga.
+- pragas_descricao: com "sim", qual praga e onde, em até 100 caracteres (ex.:
+  "Pulgões verdes no verso das folhas novas"); com "nao" ou "incerto", null.
 - suggestion: quase sempre null. Só proponha algo se um sinal VISUAL indicar que
   vale mudar o ambiente, e só UM ajuste por vez:
   - message: a justificativa, em uma frase, dizendo o que você viu.
@@ -265,5 +285,6 @@ module.exports = {
   montarPrompt: montarPromptFoto,
   ESQUEMA_RESPOSTA,
   ESQUEMA_ROTINA,
+  ESQUEMA_FOTO,
   CAMPOS_ROTINA,
 };

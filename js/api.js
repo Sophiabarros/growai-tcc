@@ -164,6 +164,7 @@
     if (!res.ok) {
       var httpErr = new Error((body && body.error) || "Erro na requisição (" + res.status + ")");
       httpErr.status = res.status;
+      httpErr.data = body; // o corpo inteiro (ex.: a Vera manda as perguntas restantes junto)
       throw httpErr;
     }
     return body;
@@ -254,6 +255,10 @@
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),
     // Um dia hora a hora (padrão: hoje). dia = "YYYY-MM-DD".
+    // ---- Vera (chat da IA, 3 perguntas por dia) ----
+    getVera: () => request("/vera"),
+    askVera: (pergunta) => request("/vera", { method: "POST", body: JSON.stringify({ pergunta: pergunta }) }),
+
     // IA analisa agora a foto mais recente da câmera (botão do visor).
     analyzePhotoNow: (id) => request(`/stations/${id}/analisar-foto`, { method: "POST" }),
     getDailyReport: (stationId, dia) =>

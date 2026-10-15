@@ -15,7 +15,7 @@
 // 'indefinido' e responde 200 de qualquer jeito. A placa não reenvia foto, e
 // perder o diagnóstico é melhor que perder a imagem.
 
-const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA } = require("./iaPrompt");
+const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA, ESQUEMA_FOTO } = require("./iaPrompt");
 const { LIMITES } = require("./configDispositivo");
 const { temperaturaSaoPaulo } = require("./temperaturaExterna");
 
@@ -134,7 +134,16 @@ function validarResposta(obj) {
     }
   }
 
-  return { health_status: status, analysis_text: texto, suggestion: sugestao };
+  /* Anti-pragas (só no modo foto). Valor fora do esperado vira null: não dá
+     para afirmar praga a partir de uma resposta quebrada. */
+  let pragas = String(obj.pragas || "").toLowerCase();
+  if (pragas === "não") pragas = "nao";
+  if (!["sim", "nao", "incerto"].includes(pragas)) pragas = null;
+  let pragasDescricao = typeof obj.pragas_descricao === "string" ? obj.pragas_descricao.trim() : "";
+  if (pragas !== "sim" || !pragasDescricao) pragasDescricao = null;
+  else if (pragasDescricao.length > 120) pragasDescricao = pragasDescricao.slice(0, 119) + "…";
+
+  return { health_status: status, analysis_text: texto, suggestion: sugestao, pragas, pragas_descricao: pragasDescricao };
 }
 
 // Tira o JSON de um texto que pode vir embrulhado em ```json ... ```
@@ -209,7 +218,10 @@ async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
   /* Orçamento total da cadeia: um modelo que estourou o tempo já gastou
      timeoutMs, e quem espera é o usuário com o app aberto. Só passa para o
      próximo modelo se ainda sobra pelo menos metade de uma chamada. */
-  const prazo = Date.now() + timeoutMs * 1.5;
+  /* 2,2x: se o principal estoura o tempo inteiro (visto com o 3.6-flash
+     sob carga), ainda sobra ~1 timeout para o modelo de reserva. Com 1,5x
+     não sobrava e a análise falhava sem tentar a reserva. */
+  const prazo = Date.now() + timeoutMs * 2.2;
   const erros = [];
   let ultimo = null;
   for (const modelo of modelosGemini()) {
@@ -240,12 +252,15 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, 
   if (jpegBuffer) parts.push({ inline_data: { mime_type: "image/jpeg", data: jpegBuffer.toString("base64") } });
   parts.push({ text: prompt });
 
+  /* esquema === false: resposta em TEXTO livre (chat da Vera), sem JSON. */
+  const emTexto = esquema === false;
   const base = {
     contents: [{ parts }],
     generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: paraGemini(esquema || ESQUEMA_RESPOSTA),
-      temperature: 0.2,
+      ...(emTexto
+        ? {}
+        : { responseMimeType: "application/json", responseSchema: paraGemini(esquema || ESQUEMA_RESPOSTA) }),
+      temperature: emTexto ? 0.5 : 0.2,
       /* 4096 para um JSON de ~150 caracteres parece exagero, mas os modelos
          Gemini 3.x gastam orçamento de SAÍDA com raciocínio interno antes de
          escrever a resposta. Com 800 o modelo era cortado no meio e voltava
@@ -369,7 +384,7 @@ async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config })
   let r;
   try {
     // A rotina usa um esquema que obriga a config completa (ver iaPrompt.js).
-    const esquema = modo === "rotina" ? ESQUEMA_ROTINA : ESQUEMA_RESPOSTA;
+    const esquema = modo === "rotina" ? ESQUEMA_ROTINA : ESQUEMA_FOTO;
     if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
     else if (nome === "gemini") {
       r = await chamarGemini({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
@@ -409,4 +424,20 @@ function avaliarRotina({ estacao, leitura, config }) {
   return analisar({ modo: "rotina", estacao, leitura, config });
 }
 
-module.exports = { analisar, avaliarRotina, validarResposta, extrairJson, paraGemini, paraClaude, habilitada, provedor };
+/* Vera: uma pergunta em texto livre, com o contexto da horta já no prompt
+   (montado em controllers/veraController.js). Só Gemini, com os modelos de
+   reserva. Devolve { ok, texto } ou { ok: false, motivo }. */
+async function perguntarTexto(prompt) {
+  if (!habilitada()) return { ok: false, motivo: "IA desligada (IA_HABILITADA=false)" };
+  try {
+    const r = await chamarGemini({ prompt, esquema: false, timeoutMs: TIMEOUT_MS });
+    if (r.erro) return { ok: false, motivo: r.erro, modelo: r.modelo };
+    const texto = String(r.texto || "").trim();
+    if (!texto) return { ok: false, motivo: "resposta vazia" };
+    return { ok: true, texto, modelo: r.modelo };
+  } catch (err) {
+    return { ok: false, motivo: err.name === "AbortError" ? "a IA não respondeu a tempo" : err.message };
+  }
+}
+
+module.exports = { analisar, avaliarRotina, perguntarTexto, validarResposta, extrairJson, paraGemini, paraClaude, habilitada, provedor };

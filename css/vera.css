@@ -1,0 +1,207 @@
+/* ============ VERA (chat da IA) ============ */
+/* js/vera.js. Fica fora dos canvases do app (fixed no body), então usa px e
+   não sofre o transform: scale() das telas. */
+
+.vera-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1150;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 20px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+  font: 700 16px/1 var(--font-body);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.vera-fab:hover {
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+}
+.vera-fab:active {
+  transform: scale(0.96);
+}
+.vera-fab__icone {
+  font-size: 18px;
+}
+
+.vera {
+  position: fixed;
+  right: 24px;
+  bottom: 84px;
+  z-index: 1150;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  height: 520px;
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--app-card-bg);
+  border: 1px solid rgba(136, 211, 207, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.vera[hidden] {
+  display: none;
+}
+
+.vera__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(136, 211, 207, 0.12);
+}
+.vera__titulo {
+  margin: 0;
+  color: var(--app-text);
+  font: 700 18px/1.2 var(--font-body);
+}
+.vera__sub {
+  margin: 2px 0 0;
+  color: var(--app-info);
+  font: 500 12.5px/1.3 var(--font-body);
+}
+.vera__fechar {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--app-muted-alt);
+  font: 400 24px/1 var(--font-body);
+  cursor: pointer;
+}
+.vera__fechar:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vera__conversa {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vera__msg {
+  max-width: 88%;
+}
+.vera__msg p {
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 14px;
+  font: 400 14px/1.5 var(--font-body);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.vera__msg--vera {
+  align-self: flex-start;
+}
+.vera__msg--vera p {
+  background: var(--app-bg);
+  color: var(--app-text);
+  border-bottom-left-radius: 4px;
+}
+.vera__msg--eu {
+  align-self: flex-end;
+}
+.vera__msg--eu p {
+  background: rgba(136, 211, 207, 0.18);
+  color: var(--app-text);
+  border-bottom-right-radius: 4px;
+}
+.vera__msg--pensando p {
+  color: var(--app-muted-alt);
+  font-style: italic;
+}
+.vera__msg--erro {
+  align-self: stretch;
+  max-width: none;
+}
+.vera__msg--erro p {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.vera__form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid rgba(136, 211, 207, 0.12);
+}
+.vera__campo {
+  flex: 1;
+  resize: none;
+  min-height: 42px;
+  max-height: 110px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-muted);
+  border-radius: 12px;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font: 400 14px/1.4 var(--font-body);
+  outline: none;
+  box-sizing: border-box;
+}
+.vera__campo:focus {
+  border-color: var(--color-green-normal);
+}
+.vera__campo:disabled {
+  opacity: 0.6;
+}
+.vera__enviar {
+  height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+  font: 700 14px/1 var(--font-body);
+  cursor: pointer;
+}
+.vera__enviar:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Celular: acima da tab bar fixa (9,4rem) e ocupando a largura. */
+@media (max-width: 899px) {
+  .vera-fab {
+    right: 16px;
+    bottom: calc(9.4rem + 14px);
+    height: 44px;
+    font-size: 15px;
+  }
+  .vera {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+    bottom: calc(9.4rem + 68px);
+    height: auto;
+    max-height: calc(100vh - 9.4rem - 140px);
+    min-height: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vera-fab {
+    transition: none;
+  }
+}
+
+/* Com o visor da câmera aberto, o atalho fica dentro dele (js/app-camera.js). */
+.visor-aberto .vera-fab {
+  display: none;
+}

@@ -348,6 +348,7 @@ async function avaliarRotina(req, res, next) {
       estacao: station,
       leitura: leituras[0] || null,
       config: montarConfig(station),
+      manterSeFalhar: true,
     });
 
     // Marca a tentativa mesmo se a IA falhou, senao um erro de rede faria o app
@@ -439,7 +440,7 @@ async function analisarFotoAgora(req, res, next) {
     });
 
     const { rows: atual } = await db.query(
-      "SELECT id, health_status, analysis_text, captured_at, ia_raw->>'model' AS modelo FROM station_photos WHERE id = $1",
+      "SELECT id, health_status, analysis_text, pragas, pragas_descricao, captured_at, ia_raw->>'model' AS modelo FROM station_photos WHERE id = $1",
       [foto.id]
     );
     res.json({ ok: !!r.ok, motivo: r.ok ? null : r.motivo, foto: atual[0] || null });
