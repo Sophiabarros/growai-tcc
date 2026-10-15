@@ -17,9 +17,10 @@
 
 const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA } = require("./iaPrompt");
 const { LIMITES } = require("./configDispositivo");
+const { temperaturaSaoPaulo } = require("./temperaturaExterna");
 
 const TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 25000);
-/* A avaliação de rotina devolve a rotina inteira (8 campos) e leva mais que a
+/* A avaliação de rotina devolve a rotina inteira (7 campos) e leva mais que a
    foto: medido em ~24 s, colado no limite de 25. Quem espera é o usuário com
    o app aberto, e o Render não corta a requisição, então ela tem folga própria. */
 const TIMEOUT_ROTINA_MS = Number(process.env.IA_TIMEOUT_ROTINA_MS || 45000);
@@ -33,7 +34,6 @@ const CAMPOS_SUGESTAO = [
   "temp_max",
   "nutri_s",
   "water_interval_h",
-  "ph_target",
   "uv_min_dia",
 ];
 
@@ -121,7 +121,6 @@ function validarResposta(obj) {
         const v = corta(origem[campo], LIMITES[campo][0], LIMITES[campo][1]);
         if (v === null) continue;
         if (campo === "vent_min_por_hora" || campo === "nutri_s" || campo === "water_interval_h" || campo === "uv_min_dia") cfg[campo] = Math.round(v);
-        else if (campo === "ph_target") cfg[campo] = Math.round(v * 10) / 10;
         else cfg[campo] = v;
       }
       sugestao = {
@@ -352,6 +351,12 @@ async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config })
   // Só o modo foto precisa de imagem; o modo rotina julga apenas os números.
   if (modo === "foto" && (!jpegBuffer || !jpegBuffer.length)) {
     return { ok: false, motivo: "imagem vazia", raw: null, provider: nome, model: null };
+  }
+
+  // Sensor de temperatura sem leitura: a IA recebe a de São Paulo, marcada.
+  if (!leitura || leitura.temperature === null || leitura.temperature === undefined) {
+    const externa = await temperaturaSaoPaulo();
+    if (externa) leitura = { ...(leitura || {}), temperatura_externa: externa.temperatura };
   }
 
   const imagem = modo === "foto" ? jpegBuffer : null;

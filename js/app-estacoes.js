@@ -68,7 +68,7 @@
       statRow("Rega a cada", s.water_interval_h + "h") +
       statRow("Luz diária", s.light_hours + "h") +
       statRow("Umidade alvo", s.humidity_target + "%") +
-      statRow("pH alvo", s.ph_target) +
+      statRow("Luz UV/dia", (s.uv_min_dia != null ? s.uv_min_dia : 30) + " min") +
       "</div>" +
       '<div class="est-card__actions">' +
       '<button type="button" class="est-card__btn" data-action="edit">Configurar rotina</button>' +
@@ -117,7 +117,7 @@
       mStatRow("Rega a cada", s.water_interval_h + "h") +
       mStatRow("Luz diária", s.light_hours + "h") +
       mStatRow("Umidade alvo", s.humidity_target + "%") +
-      mStatRow("pH alvo", s.ph_target) +
+      mStatRow("Luz UV/dia", (s.uv_min_dia != null ? s.uv_min_dia : 30) + " min") +
       "</div>" +
       '<div class="m-est-card__actions">' +
       '<button type="button" class="m-est-card__btn" data-action="edit">Configurar rotina</button>' +

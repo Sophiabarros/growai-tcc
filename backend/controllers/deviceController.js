@@ -4,6 +4,7 @@ const { analisar } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
 const aoVivo = require("../services/aoVivo");
 const realtime = require("../services/realtime");
+const { temperaturaSaoPauloJa, completarTemperatura } = require("../services/temperaturaExterna");
 
 const MAX_FOTOS_POR_ESTACAO = 300; // retenção: cabe no plano gratuito do Neon
 
@@ -144,7 +145,8 @@ async function telemetria(req, res, next) {
     realtime.enviarParaUsuario(station.user_id, {
       tipo: "telemetria",
       station_id: station.id,
-      leitura: { ...vivo, online: true, recorded_at: new Date().toISOString() },
+      // Sem DS18B20: vai a temperatura de São Paulo, marcada como tal.
+      leitura: completarTemperatura({ ...vivo, online: true, recorded_at: new Date().toISOString() }, temperaturaSaoPauloJa()),
       confirmados: acks,
     });
 

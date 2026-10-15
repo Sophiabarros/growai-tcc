@@ -219,7 +219,13 @@
       avisos.push({ erro: false, texto: "Sem contato com a placa. Ligue-a e confira o Wi-Fi: o controle volta assim que ela falar com o servidor. A irrigação e a luz continuam funcionando sozinhas nela." });
     }
     if (leitura && online) {
-      if (leitura.erro) avisos.push({ erro: true, texto: "Sensor: " + leitura.erro });
+      if (leitura.erro) {
+        avisos.push({
+          erro: true,
+          texto: "Sensor: " + leitura.erro +
+            (leitura.temperatura_fonte === "sao_paulo" ? ". Enquanto isso, a temperatura mostrada é a de São Paulo (internet), não a da estufa." : ""),
+        });
+      }
       if (leitura.erro_cfg) avisos.push({ erro: true, texto: "A placa recusou a rotina: " + leitura.erro_cfg });
       if (leitura.hora_valida === false) avisos.push({ erro: false, texto: "A placa ainda não acertou o relógio pela internet. Até lá a luz fica acesa e o nutriente não é dosado." });
       if (!leitura.erro_cfg && leitura.cfg_versao_placa != null && leitura.cfg_versao_servidor != null &&
@@ -305,7 +311,8 @@
     var temNum = function (v) { return v !== null && v !== undefined && v !== "" && isFinite(Number(v)); };
     var itens = [
       ["Umidade do solo", temNum(l.humidity) ? Math.round(l.humidity) + "%" : "—"],
-      ["Temperatura", temNum(l.temperature) ? String(Math.round(l.temperature * 10) / 10).replace(".", ",") + " °C" : "—"],
+      [l.temperatura_fonte === "sao_paulo" ? "Temperatura (São Paulo)" : "Temperatura",
+        temNum(l.temperature) ? String(Math.round(l.temperature * 10) / 10).replace(".", ",") + " °C" : "—"],
       ["Situação", ESTADOS[l.estado] || "—"],
       ["Nutriente hoje", temNum(l.nutri_s_hoje) ? l.nutri_s_hoje + " de " + NUTRI_MAX_S + " s" : "—"],
       ["Luz UV hoje", temNum(l.uv_s_hoje)

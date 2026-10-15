@@ -200,7 +200,8 @@ async function telemetria() {
     cfg_versao: placa.cfg_versao,
     umidade: Math.round(placa.umidade),
     umidade_bruto: Math.round(3200 - (placa.umidade / 100) * (3200 - 1350)),
-    temp_c: Number(placa.temp.toFixed(1)),
+    // SIMULAR_SEM_TEMP=1 finge o DS18B20 solto (temp_c null + erro), como na placa real.
+    temp_c: process.env.SIMULAR_SEM_TEMP ? null : Number(placa.temp.toFixed(1)),
     estado: placa.estado,
     reles: placa.reles,
     manual: placa.manual,
@@ -213,7 +214,7 @@ async function telemetria() {
     rssi: -55 - Math.round(Math.random() * 15),
     uptime_s: Math.round((Date.now() - placa.t0) / 1000),
     acks: placa.acks.slice(),
-    erro: null,
+    erro: process.env.SIMULAR_SEM_TEMP ? "DS18B20 sem leitura (GPIO 25)" : null,
     erro_cfg: placa.erro_cfg,
   };
 

@@ -167,6 +167,18 @@
   function buildAlerts(stations) {
     var alerts = [];
     stations.forEach(function (s) {
+      // Sensor com defeito (ex.: DS18B20 solto). Só com a placa online: offline
+      // o erro pode ser velho.
+      var r = s.__reading;
+      if (r && r.online && r.erro) {
+        var semTemp = /DS18B20/i.test(r.erro);
+        alerts.push({
+          title: semTemp
+            ? "Sensor de temperatura sem leitura" + (r.temperatura_fonte === "sao_paulo" ? " — mostrando a temperatura de São Paulo" : "")
+            : "Sensor com problema: " + r.erro,
+          meta: s.plant + " · confira a ligação do sensor",
+        });
+      }
       var photo = s.__photo;
       if (photo && photo.health_status === "atencao") {
         alerts.push({
@@ -255,7 +267,7 @@
   }
 
   // ---- desktop: sensor tiles (value + progress bar) ----
-  var SENSOR_MAX = { light: 12, humidity: 100, ph: 14, temperature: 40 };
+  var SENSOR_MAX = { light: 12, humidity: 100, temperature: 40 };
   function setSensorBar(id, ratio) {
     var bar = document.getElementById(id);
     if (!bar) return;
@@ -263,7 +275,7 @@
     bar.style.width = pct + "%";
   }
   // null != 0. Sensor com defeito manda null, e o projeto nao tem sensor de
-  // pH nem de luminosidade - mostrar "0%" ou "NaN" seria inventar leitura.
+  // luminosidade - mostrar "0%" ou "NaN" seria inventar leitura.
   function temValor(v) {
     return v !== null && v !== undefined && isFinite(v);
   }
@@ -289,24 +301,32 @@
   function renderSensors(reading) {
     renderSensorsUpdated(reading);
     var light = fmtSensor(reading, "light_h", "h");
-    // O projeto nao tem sensor de pH: este card fica sempre em "—".
-    var ph = reading && temValor(reading.ph) ? "pH " + reading.ph : "—";
     var humidity = fmtSensor(reading, "humidity", "%");
     var temp = fmtSensor(reading, "temperature", "°C");
+    /* Sensor de temperatura sem leitura: o backend manda a de São Paulo
+       (internet) e marca temperatura_fonte. O rótulo diz de onde veio. */
+    var tempDeSP = !!(reading && reading.temperatura_fonte === "sao_paulo");
+
+    // Luz UV de hoje (= tempo com os ventiladores ligados) contra o limite da rotina.
+    var uvLimite = reading && temValor(reading.uv_min_dia) ? Number(reading.uv_min_dia) : 30;
+    var uvMin = reading && temValor(reading.uv_s_hoje) ? Math.round(Number(reading.uv_s_hoje) / 60) : null;
+    var uv = uvMin === null ? "—" : uvMin + " min";
 
     document.getElementById("appSensorLight").textContent = light;
-    document.getElementById("appSensorPh").textContent = ph;
+    document.getElementById("appSensorUv").textContent = uv;
     document.getElementById("appSensorHumidity").textContent = humidity;
     document.getElementById("appSensorTemp").textContent = temp;
+    var tempLabel = document.getElementById("appSensorTempLabel");
+    if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · São Paulo" : "Temp";
 
     document.getElementById("mSensorLight").textContent = light;
-    document.getElementById("mSensorPh").textContent = ph;
+    document.getElementById("mSensorUv").textContent = uvMin === null ? "—" : "UV " + uvMin + " min";
     document.getElementById("mSensorHumidity").textContent = humidity;
-    document.getElementById("mSensorTemp").textContent = temp;
+    document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP)" : temp;
 
     setSensorBar("appSensorLightBar", razaoSensor(reading, "light_h", SENSOR_MAX.light));
     setSensorBar("appSensorHumidityBar", razaoSensor(reading, "humidity", SENSOR_MAX.humidity));
-    setSensorBar("appSensorPhBar", razaoSensor(reading, "ph", SENSOR_MAX.ph));
+    setSensorBar("appSensorUvBar", uvMin === null ? 0 : uvMin / Math.max(1, uvLimite));
     setSensorBar("appSensorTempBar", razaoSensor(reading, "temperature", SENSOR_MAX.temperature));
   }
 
@@ -470,7 +490,7 @@
         ]);
       })
     );
-    limited.forEach(function (s, i) { s.__photo = details[i][1]; });
+    limited.forEach(function (s, i) { s.__photo = details[i][1]; s.__reading = details[i][0]; });
 
     destaque = { station: limited[0], photo: details[0][1] };
     renderSensors(details[0][0]);

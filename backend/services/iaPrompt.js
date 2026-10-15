@@ -7,9 +7,8 @@
 //                          a finalidade, sem foto nenhuma
 //
 // Três regras que os dois carregam, por honestidade do TCC:
-//  - a IA só vê o que mandamos. Não existe sensor de pH nem de luminosidade,
-//    então ela não pode falar de leitura de nenhum dos dois (o pH ALVO
-//    configurado ela julga, no modo rotina);
+//  - a IA só vê o que mandamos. O projeto não tem pH (nem sensor, nem meta)
+//    e não mede luminosidade, então ela não pode falar de nenhum dos dois;
 //  - nada sobre concentração de princípio ativo, potência medicinal ou efeito
 //    terapêutico. Isso não se mede por foto nem por umidade — e numa banca é
 //    exatamente o tipo de afirmação que alguém derruba;
@@ -41,7 +40,6 @@ const ESQUEMA_RESPOSTA = {
             temp_max: { type: "number" },
             nutri_s: { type: "number" },
             water_interval_h: { type: "number" },
-            ph_target: { type: "number" },
             uv_min_dia: { type: "number" },
           },
           additionalProperties: false,
@@ -56,7 +54,7 @@ const ESQUEMA_RESPOSTA = {
 };
 
 /* Esquema do modo ROTINA: igual ao de cima, mas a config é a rotina INTEIRA,
-   com os 8 campos obrigatórios. Deixando a IA escolher quais campos mandar,
+   com os 7 campos obrigatórios. (O projeto não tem mais pH: o campo saiu.) Deixando a IA escolher quais campos mandar,
    ela escrevia "corrigimos pH, umidade e temperatura" e esquecia a umidade
    no config. Obrigando todos, cada parâmetro sai avaliado; o servidor
    (services/autoAjuste.js) compara com a estação e aplica só o que mudou. */
@@ -64,7 +62,6 @@ const CAMPOS_ROTINA = [
   "light_hours",
   "humidity_target",
   "water_interval_h",
-  "ph_target",
   "temp_max",
   "vent_min_por_hora",
   "nutri_s",
@@ -115,10 +112,14 @@ function blocoConfig(c) {
 function blocoLeitura(l) {
   const umidade =
     !l || l.humidity === null || l.humidity === undefined ? "sem leitura" : `${Math.round(Number(l.humidity))}%`;
+  /* Sem o sensor da estufa, vai a temperatura do ar de São Paulo (internet),
+     dita como tal: é referência do clima, não medição de dentro da estufa. */
   const temp =
-    !l || l.temperature === null || l.temperature === undefined
-      ? "sem leitura"
-      : `${Number(l.temperature).toFixed(1)} °C`;
+    l && l.temperature !== null && l.temperature !== undefined
+      ? `${Number(l.temperature).toFixed(1)} °C`
+      : l && Number.isFinite(Number(l.temperatura_externa)) && l.temperatura_externa !== null
+        ? `sensor da estufa sem leitura; em São Paulo agora faz ${Number(l.temperatura_externa).toFixed(1)} °C (internet, ar externo)`
+        : "sem leitura";
   return `## Leitura dos sensores
 - Umidade do substrato: ${umidade}
 - Temperatura do ar: ${temp}
@@ -136,8 +137,7 @@ function blocoLimites(comRotinaCompleta) {
   - uv_min_dia: ${LIMITES.uv_min_dia[0]} a ${LIMITES.uv_min_dia[1]}`;
   if (!comRotinaCompleta) return base;
   return `${base}
-  - water_interval_h: ${LIMITES.water_interval_h[0]} a ${LIMITES.water_interval_h[1]}
-  - ph_target: ${LIMITES.ph_target[0]} a ${LIMITES.ph_target[1]} (use um valor realista para a espécie, com uma casa decimal)`;
+  - water_interval_h: ${LIMITES.water_interval_h[0]} a ${LIMITES.water_interval_h[1]}`;
 }
 
 // ------------------------------------------------- modo foto (análise visual)
@@ -200,13 +200,8 @@ ${blocoPlanta(estacao)}
 ${blocoConfig(config || {})}
 - Luz diária: ${num(estacao.light_hours)} h · umidade alvo: ${num(estacao.humidity_target)}%
 - Intervalo de rega desejado: a cada ${num(estacao.water_interval_h)} h
-- pH alvo da solução nutritiva: ${num(estacao.ph_target)}
 
 ${blocoLeitura(leitura)}
-
-O pH alvo é a meta que o usuário segue ao preparar a solução. NÃO existe
-leitura de pH: você pode julgar se o VALOR configurado é adequado para a
-espécie, mas não diga nada sobre pH medido.
 
 ## O que avaliar
 A rotina serve para esta espécie, considerando a finalidade declarada?
@@ -217,7 +212,6 @@ Pense em:
   longo para florescer; folhosas como hortelã rendem mais folha com dia mais curto.
 - **Umidade e rega** — está encharcando ou secando demais para esta espécie?
   Aromáticas mediterrâneas não gostam de substrato sempre úmido.
-- **pH alvo** — está na faixa em que a espécie absorve nutrientes?
 - **Temperatura máxima** antes de ligar a ventilação — está alta demais para a
   espécie aguentar sem estresse?
 - **Ventilação** — pouca favorece fungo em ambiente úmido; muita resseca.
@@ -231,16 +225,17 @@ Pense em:
   prefira uma dose baixa a zero.
 
 Regras:
-1. Não invente medição que não recebeu, e não cite leitura de pH nem de luminosidade.
+1. Não invente medição que não recebeu. O projeto NÃO tem pH (nem sensor nem
+   meta): não fale de pH em nenhuma hipótese. Também não cite luminosidade.
 2. Se a rotina está adequada, diga isso e devolva suggestion: null. Não invente
    problema para parecer útil — pequenas diferenças de gosto não contam.
 3. Se a espécie declarada não for uma planta reconhecível, ou a finalidade não
    fizer sentido para ela, diga isso em analysis_text com health_status
    "atencao" e devolva suggestion: null — não adivinhe uma rotina.
 4. Se a rotina está inadequada, CORRIJA TUDO DE UMA VEZ: suggestion.config é
-   a ROTINA COMPLETA recomendada, com os 8 campos (light_hours,
-   humidity_target, water_interval_h, ph_target, temp_max, vent_min_por_hora,
-   nutri_s, uv_min_dia). Para cada um: se o valor atual já é bom para esta espécie e
+   a ROTINA COMPLETA recomendada, com os 7 campos (light_hours,
+   humidity_target, water_interval_h, temp_max, vent_min_por_hora, nutri_s,
+   uv_min_dia). Para cada um: se o valor atual já é bom para esta espécie e
    finalidade, repita o valor atual; se não é, ponha o valor ideal. O app
    compara e aplica só o que mudou.
 5. Coerência: todo parâmetro que você citar como errado em analysis_text ou em
@@ -252,12 +247,12 @@ Regras:
 - analysis_text: até 200 caracteres, em português do Brasil, falando com quem
   cultiva. Se houver problema, diga o que está errado e por quê, ligando à
   espécie ou à finalidade. Ex.: "4 h de luz é pouco para a camomila florescer, e
-  pH 3 trava a absorção de nutrientes."
+  95% de umidade favorece fungo na raiz."
 - suggestion: null se a rotina está boa. Se não está:
   - message: uma frase dizendo como a rotina corrigida favorece esta espécie e
     esta finalidade.
   - growth_pct e health_pct: ganho esperado, de 0 a 30. Seja conservador.
-  - config: a rotina completa (os 8 campos), dentro destes limites:
+  - config: a rotina completa (os 7 campos), dentro destes limites:
 ${blocoLimites(true)}
 
 Responda SOMENTE o JSON, sem texto antes ou depois.`;

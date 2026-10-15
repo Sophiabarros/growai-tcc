@@ -147,7 +147,6 @@ function sanearEntrada(body) {
   num("nutri_s", LIMITES.nutri_s, true);
   num("uv_min_dia", LIMITES.uv_min_dia, true);
   num("water_interval_h", LIMITES.water_interval_h, false);
-  num("ph_target", LIMITES.ph_target, false);
   hora("luz_inicio");
   hora("nutri_hora");
 

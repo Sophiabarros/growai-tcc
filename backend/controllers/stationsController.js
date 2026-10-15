@@ -6,6 +6,7 @@ const { montarConfig } = require("../services/configDispositivo");
 const { avaliarRotina: iaAvaliarRotina } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
 const aoVivo = require("../services/aoVivo");
+const { temperaturaSaoPaulo, completarTemperatura } = require("../services/temperaturaExterna");
 
 async function list(req, res, next) {
   try {
@@ -34,7 +35,7 @@ async function getOne(req, res, next) {
 
 async function create(req, res, next) {
   try {
-    const { name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target } = req.body;
+    const { name, plant, tag, water_interval_h, light_hours, humidity_target } = req.body;
     if (!name || !plant) {
       return res.status(400).json({ error: "Nome e planta são obrigatórios" });
     }
@@ -42,11 +43,11 @@ async function create(req, res, next) {
     const uvMinDia = sanearEntrada({ uv_min_dia: req.body.uv_min_dia }).valores.uv_min_dia ?? null;
 
     const { rows } = await db.query(
-      `INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target, uv_min_dia)
+      `INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, uv_min_dia)
        VALUES ($1, $2, $3, $4,
-               COALESCE($5, 8), COALESCE($6, 12), COALESCE($7, 70), COALESCE($8, 6.5), COALESCE($9, 30))
+               COALESCE($5, 8), COALESCE($6, 12), COALESCE($7, 70), COALESCE($8, 30))
        RETURNING *`,
-      [req.user.id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target, uvMinDia]
+      [req.user.id, name, plant, tag, water_interval_h, light_hours, humidity_target, uvMinDia]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -75,9 +76,9 @@ async function update(req, res, next) {
 
     const { valores, erros } = sanearEntrada(req.body || {});
 
-    // water_interval_h e ph_target também vêm de sanearEntrada (com limite),
-    // mas não estão em CAMPOS_DE_CONFIG: o firmware não usa nenhum dos dois,
-    // então mudá-los não sobe cfg_versao.
+    // water_interval_h também vem de sanearEntrada (com limite), mas não está
+    // em CAMPOS_DE_CONFIG: o firmware não o usa, então mudá-lo não sobe
+    // cfg_versao. (ph_target saiu do projeto: a coluna fica, ninguém lê.)
 
     /* name, plant e tag.
        Estes NÃO eram aceitos aqui, e o modal de estações sempre os enviou:
@@ -192,11 +193,11 @@ async function remove(req, res, next) {
 }
 
 /* Ultima leitura REAL gravada por POST /api/device/telemetria.
-   Mantem o formato antigo (humidity, ph, light_h, temperature, recorded_at) e
-   acrescenta `online` e `reles`.
+   Formato: humidity, light_h, temperature, recorded_at, online, reles...
+   (o projeto nao tem mais pH; o campo saiu da resposta).
 
-   humidity/temperature podem vir null (sensor com defeito) e ph e SEMPRE null:
-   o projeto nao tem sensor de pH. O front mostra "—" nesses casos.
+   humidity pode vir null (sensor com defeito). temperature nula e trocada
+   pela temperatura de Sao Paulo da internet (ver temperaturaExterna).
 
    MOCK_SENSOR=1 volta a gerar leitura simulada, para mexer no layout do app
    sem placa ligada. */
@@ -239,19 +240,19 @@ async function getLatestReading(req, res, next) {
     const n = (v) => (v === null || v === undefined ? null : Number(v));
     const online = !!(vistas[0] && vistas[0].online);
     const usarVivo = vivo && (!leitura || new Date(vivo.recebida_em) >= new Date(leitura.recorded_at));
+    // Sensor de temperatura sem leitura: a de São Paulo entra no lugar.
+    const externa = await temperaturaSaoPaulo();
     if (usarVivo) {
-      return res.json({
+      return res.json(completarTemperatura({
         ...vivo,
-        ph: null,
         light_h: n(station.light_hours),
         online,
         recorded_at: vivo.recebida_em,
-      });
+      }, externa));
     }
     const extra = leitura.extra || {};
-    res.json({
+    res.json(completarTemperatura({
       humidity: n(leitura.humidity),
-      ph: n(leitura.ph),
       light_h: n(leitura.light_h),
       temperature: n(leitura.temperature),
       estado: leitura.estado,
@@ -269,7 +270,7 @@ async function getLatestReading(req, res, next) {
       uv_s_hoje: extra.uv_s_hoje ?? null,
       online,
       recorded_at: leitura.recorded_at,
-    });
+    }, externa));
   } catch (err) {
     next(err);
   }

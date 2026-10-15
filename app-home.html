@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
     <link rel="stylesheet" href="css/app-shell.css?v=42" />
-    <link rel="stylesheet" href="css/app-home.css?v=44" />
+    <link rel="stylesheet" href="css/app-home.css?v=45" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
   </head>
   <body>
@@ -117,10 +117,10 @@
             <span class="app-sensor-card__bar"><span id="appSensorLightBar" style="width: 0%"></span></span>
           </div>
           <div class="app-sensor-card">
-            <span class="app-sensor-card__icon"><img alt="" src="assets/icons/app/icon-app-ph.svg" /></span>
-            <p class="app-sensor-card__label">pH</p>
-            <p class="app-sensor-card__value" id="appSensorPh">—</p>
-            <span class="app-sensor-card__bar"><span id="appSensorPhBar" style="width: 0%"></span></span>
+            <span class="app-sensor-card__icon"><img alt="" src="assets/icons/app/icon-app-uv.svg" /></span>
+            <p class="app-sensor-card__label">Luz UV hoje</p>
+            <p class="app-sensor-card__value" id="appSensorUv">—</p>
+            <span class="app-sensor-card__bar"><span id="appSensorUvBar" style="width: 0%"></span></span>
           </div>
           <div class="app-sensor-card">
             <span class="app-sensor-card__icon"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /></span>
@@ -130,7 +130,7 @@
           </div>
           <div class="app-sensor-card">
             <span class="app-sensor-card__icon"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /></span>
-            <p class="app-sensor-card__label">Temp</p>
+            <p class="app-sensor-card__label" id="appSensorTempLabel">Temp</p>
             <p class="app-sensor-card__value" id="appSensorTemp">—</p>
             <span class="app-sensor-card__bar"><span id="appSensorTempBar" style="width: 0%"></span></span>
           </div>
@@ -197,7 +197,7 @@
           <p class="m-app-sensors__title">Sensores</p>
           <div class="m-app-sensors__grid">
             <span class="m-app-sensors__item"><img alt="" src="assets/icons/app/icon-app-sun.svg" /> <span id="mSensorLight">—</span></span>
-            <span class="m-app-sensors__item"><img alt="" src="assets/icons/app/icon-app-ph.svg" /> <span id="mSensorPh">—</span></span>
+            <span class="m-app-sensors__item"><img alt="" src="assets/icons/app/icon-app-uv.svg" /> <span id="mSensorUv">—</span></span>
             <span class="m-app-sensors__item"><img alt="" src="assets/icons/app/icon-app-humidity.svg" /> <span id="mSensorHumidity">—</span></span>
             <span class="m-app-sensors__item"><img alt="" src="assets/icons/app/icon-app-thermometer.svg" /> <span id="mSensorTemp">—</span></span>
           </div>
@@ -264,6 +264,6 @@
     <script src="js/api.js?v=52"></script>
     <script src="js/toast.js?v=40"></script>
     <script src="js/responsive-canvas.js?v=40"></script>
-    <script src="js/app-home.js?v=47"></script>
+    <script src="js/app-home.js?v=48"></script>
   </body>
 </html>

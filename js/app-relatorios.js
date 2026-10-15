@@ -109,7 +109,6 @@
     light_hours: { nome: "Luz diária", un: " h" },
     humidity_target: { nome: "Umidade alvo", un: "%" },
     water_interval_h: { nome: "Rega a cada", un: " h" },
-    ph_target: { nome: "pH alvo", un: "" },
     temp_max: { nome: "Ventilar acima de", un: " °C" },
     vent_min_por_hora: { nome: "Ventilação", un: " min/h" },
     nutri_s: { nome: "Nutriente", un: " s/dia" },
@@ -132,6 +131,9 @@
     var antes = s.config_anterior || {};
     var itens = Object.keys(s.config)
       .filter(function (k) {
+        // Só campos que o app conhece: sugestões antigas ainda trazem ph_target,
+        // que saiu do projeto.
+        if (!CAMPO[k]) return false;
         var de = antes[k];
         return !(de !== undefined && de !== null && String(Number(de)) === String(Number(s.config[k])) && de !== "");
       })

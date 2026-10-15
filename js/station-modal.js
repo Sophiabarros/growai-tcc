@@ -48,18 +48,15 @@
     '        <label for="stationHumidity">Umidade alvo (%)</label>',
     '        <input type="number" id="stationHumidity" name="humidity_target" min="0" max="100" step="1" required />',
     "      </div>",
+    // A luz UV está no relé dos ventiladores: este número também limita a
+    // ventilação programada (ver firmware, bloco "UV"). Ocupa o lugar do
+    // antigo "pH alvo", que saiu do projeto.
     '      <div class="station-modal__field">',
-    '        <label for="stationPh">pH alvo</label>',
-    '        <input type="number" id="stationPh" name="ph_target" min="0" max="14" step="0.1" required />',
+    '        <label for="stationUv">Luz UV por dia (min)</label>',
+    '        <input type="number" id="stationUv" name="uv_min_dia" min="0" max="240" step="5" required />',
     "      </div>",
     "    </div>",
-    // A luz UV está no relé dos ventiladores: este número também limita a
-    // ventilação programada (ver firmware, bloco "UV").
-    '    <div class="station-modal__field">',
-    '      <label for="stationUv">Luz UV por dia (min)</label>',
-    '      <input type="number" id="stationUv" name="uv_min_dia" min="0" max="240" step="5" required />',
-    '      <p class="station-modal__hint">Liga junto com os ventiladores, só com a luz de cultivo acesa. 15 a 60 min estimulam a planta; acima de 120 min pode queimar folha.</p>',
-    "    </div>",
+    '    <p class="station-modal__hint">Luz UV: liga junto com os ventiladores, só com a luz de cultivo acesa. 15 a 60 min por dia estimulam a planta; acima de 120 min pode queimar folha.</p>',
     '    <p class="station-modal__error" id="stationModalError" hidden></p>',
     '    <div class="station-modal__actions">',
     '      <button type="button" class="station-modal__cancel" data-action="close-modal">Cancelar</button>',
@@ -99,7 +96,6 @@
     light_hours: { nome: "Luz diária", un: " h" },
     humidity_target: { nome: "Umidade alvo", un: "%" },
     water_interval_h: { nome: "Rega a cada", un: " h" },
-    ph_target: { nome: "pH alvo", un: "" },
     uv_min_dia: { nome: "Luz UV", un: " min/dia" },
     temp_max: { nome: "Ventilar acima de", un: " °C" },
     vent_min_por_hora: { nome: "Ventilação", un: " min/h" },
@@ -107,7 +103,7 @@
   };
 
   // Campos que, ao mudar, pedem nova avaliação da IA.
-  var CAMPOS_AVALIADOS = ["plant", "tag", "water_interval_h", "light_hours", "humidity_target", "ph_target", "uv_min_dia"];
+  var CAMPOS_AVALIADOS = ["plant", "tag", "water_interval_h", "light_hours", "humidity_target", "uv_min_dia"];
 
   var modal = null;
   var modalTitle = null;
@@ -155,7 +151,6 @@
       form.water_interval_h.value = station.water_interval_h;
       form.light_hours.value = station.light_hours;
       form.humidity_target.value = station.humidity_target;
-      form.ph_target.value = station.ph_target;
       form.uv_min_dia.value = station.uv_min_dia != null ? station.uv_min_dia : 30;
     } else {
       form.uv_min_dia.value = 30;
@@ -198,7 +193,6 @@
       water_interval_h: Number(form.water_interval_h.value),
       light_hours: Number(form.light_hours.value),
       humidity_target: Number(form.humidity_target.value),
-      ph_target: Number(form.ph_target.value),
       uv_min_dia: Number(form.uv_min_dia.value),
     };
 
