@@ -28,7 +28,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-1.2.0"
+#define FW "cam-1.2.1"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -424,15 +424,24 @@ void setup() {
                   tmAgora.tm_hour, tmAgora.tm_min, tmAgora.tm_sec);
 
     int seg = segNoCicloFoto(tmAgora.tm_min, tmAgora.tm_sec);
-    if (seg > FOTO_JANELA_S) {
+    const int CICLO_S = FOTO_INTERVALO_MIN * 60;
+    long espera;
+    if (seg <= FOTO_JANELA_S) {
+      espera = (long)FOTO_OFFSET_S - seg;          // dentro da janela
+    } else if (CICLO_S - seg <= CAM_PRE_S + 15) {
+      /* ADIANTADA, que e o caso normal: dormeAteProximaJanela() acorda a placa
+         CAM_PRE_S antes da janela, para dar tempo de conectar. Antes este caso
+         caia no "perdida" de baixo -- seg = 1765 parece "depois" da janela,
+         mas e 35 s ANTES da proxima -- e a CAM dormia de novo, acordava
+         adiantada de novo, e nunca tirava foto no horario. */
+      espera = (long)(CICLO_S - seg) + FOTO_OFFSET_S;
+    } else {
       // Chegamos depois da janela: a luz roxa ja voltou. Foto agora sairia com
       // a cor errada, entao e melhor esperar a proxima.
       Serial.printf("[janela] perdida (%d s no ciclo), esperando a proxima\n", seg);
       dormeAteProximaJanela();
       return;
     }
-
-    long espera = (long)FOTO_OFFSET_S - seg;
     if (espera > 0) {
       Serial.printf("[janela] esperando %ld s para a luz apagar\n", espera);
       unsigned long alvo = millis() + (unsigned long)espera * 1000UL;
