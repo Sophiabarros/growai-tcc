@@ -21,7 +21,9 @@
     var minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     if (minutes < 1) return "agora mesmo";
     if (minutes < 60) return minutes + " min atrás";
-    return Math.round(minutes / 60) + "h atrás";
+    var horas = Math.round(minutes / 60);
+    if (horas < 48) return horas + "h atrás";
+    return Math.round(horas / 24) + " dias atrás";
   }
 
   function setStatus(el, message, isError) {

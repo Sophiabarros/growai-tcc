@@ -66,7 +66,9 @@
     var minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     if (minutes < 1) return "agora mesmo";
     if (minutes < 60) return minutes + " min atrás";
-    return Math.round(minutes / 60) + "h atrás";
+    var horas = Math.round(minutes / 60);
+    if (horas < 48) return horas + "h atrás";
+    return Math.round(horas / 24) + " dias atrás";
   }
 
   // ---- desktop: greeting ----
@@ -220,6 +222,8 @@
   // if a station's latest reading couldn't be fetched, the ESP isn't
   // reachable) ----
   function renderSystemStatus(mode) {
+    var titulo = document.getElementById("appSystemStatusTitle");
+    if (titulo) titulo.textContent = mode === "ok" ? "Sistema online" : mode === "offline" ? "Sistema offline" : "Sistema";
     var text = document.getElementById("appSystemStatusText");
     var dot = document.getElementById("appSystemStatusDot");
     if (!text) return;
@@ -272,7 +276,18 @@
     return Number(reading[campo]) / max;
   }
 
+  /* "Última atualização" era texto fixo ("agora"), mesmo com a placa fora do
+     ar há dias. Agora mostra a idade real da leitura. */
+  function renderSensorsUpdated(reading) {
+    var el = document.getElementById("appSensorsUpdated");
+    if (!el || !el.firstChild || el.firstChild.nodeType !== 3) return;
+    el.firstChild.nodeValue = reading && reading.recorded_at
+      ? "Última atualização: " + timeAgo(reading.recorded_at)
+      : "Sem leituras ainda";
+  }
+
   function renderSensors(reading) {
+    renderSensorsUpdated(reading);
     var light = fmtSensor(reading, "light_h", "h");
     // O projeto nao tem sensor de pH: este card fica sempre em "—".
     var ph = reading && temValor(reading.ph) ? "pH " + reading.ph : "—";
