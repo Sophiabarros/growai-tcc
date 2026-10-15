@@ -61,6 +61,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // existindo para quem já usava.
 app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+// Temperatura de São Paulo (fallback do sensor): qual fonte respondeu, ou o erro.
+app.get("/api/health/clima", async (req, res) => {
+  res.json(await require("./services/temperaturaExterna").diagnostico());
+});
 
 // As placas ESP32 se autenticam com X-Device-Key (middleware/deviceAuth), nao
 // com o JWT do usuario, entao esta rota NAO passa por requireAuth.
