@@ -183,6 +183,23 @@
   font: 300 2rem/normal var(--font-body);
 }
 
+/* Os dois botões dividem a linha: o card tem altura fixa (Figma). */
+.est-card__actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+.est-card__actions .est-card__btn {
+  margin-top: 0;
+  flex: 1;
+}
+.est-card__btn--sec,
+.m-est-card__btn--sec {
+  background: transparent;
+  border: 1px solid var(--color-green-normal);
+  color: var(--color-green-normal);
+}
+
 .est-card__btn {
   display: block;
   margin-top: 3rem;
@@ -427,6 +444,16 @@
     margin-top: 0.3rem;
     color: var(--app-text);
     font: 300 1rem/normal var(--font-body);
+  }
+
+  .m-est-card__actions {
+    display: flex;
+    gap: 0.7rem;
+    margin-top: 1.7rem;
+  }
+  .m-est-card__actions .m-est-card__btn {
+    margin-top: 0;
+    flex: 1;
   }
 
   .m-est-card__btn {

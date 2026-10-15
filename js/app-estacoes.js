@@ -70,7 +70,10 @@
       statRow("Umidade alvo", s.humidity_target + "%") +
       statRow("pH alvo", s.ph_target) +
       "</div>" +
+      '<div class="est-card__actions">' +
       '<button type="button" class="est-card__btn" data-action="edit">Configurar rotina</button>' +
+      '<button type="button" class="est-card__btn est-card__btn--sec" data-action="control">Controlar placa</button>' +
+      "</div>" +
       "</div>"
     );
   }
@@ -116,7 +119,10 @@
       mStatRow("Umidade alvo", s.humidity_target + "%") +
       mStatRow("pH alvo", s.ph_target) +
       "</div>" +
+      '<div class="m-est-card__actions">' +
       '<button type="button" class="m-est-card__btn" data-action="edit">Configurar rotina</button>' +
+      '<button type="button" class="m-est-card__btn m-est-card__btn--sec" data-action="control">Controlar</button>' +
+      "</div>" +
       "</div>"
     );
   }
@@ -260,6 +266,13 @@
   document.addEventListener("click", async function (event) {
     var target = event.target.closest("[data-action]");
     if (!target) return;
+
+    if (target.dataset.action === "control") {
+      var cardC = target.closest("[data-station-id]");
+      var alvoC = cardC && stations.find(function (s) { return String(s.id) === cardC.dataset.stationId; });
+      if (alvoC) ControlModal.open(alvoC);
+      return;
+    }
 
     if (target.dataset.action === "edit") {
       var card = target.closest("[data-station-id]");

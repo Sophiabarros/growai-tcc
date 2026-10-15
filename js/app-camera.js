@@ -365,5 +365,10 @@
     mobileWrapperSelector: ".m-app-camera-wrapper",
   });
 
+  // Foto nova analisada (o backend avisa pelo WebSocket): recarrega a tela.
+  GrowAI.aoVivo(function (msg) {
+    if (msg && msg.tipo === "foto") load();
+  });
+
   load();
 })();

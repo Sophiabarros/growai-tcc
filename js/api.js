@@ -235,9 +235,9 @@
     getLatestPhoto: (id) => request(`/stations/${id}/photos/latest`),
 
     // ---- controle manual das placas ----
-    // Ainda nao ha botao em tela ligado nisto (ver backend/README.md).
-    // createCommand enfileira; a placa pega na proxima telemetria (~15 s) e
-    // confirma no ciclo seguinte, entao o efeito nao e instantaneo.
+    // Usado pelo painel "Controlar placa" (js/control-modal.js).
+    // createCommand enfileira; com o app aberto a placa busca a cada 5 s e
+    // confirma em ~1 s depois de executar.
     // Os limites de seguranca (50 s de bomba, 30 s de nutriente por dia) sao
     // do firmware: dur_s maior que isso e aceito e cortado pela placa.
     createCommand: (id, data) =>
@@ -268,5 +268,49 @@
     getNotificationSettings: () => request("/settings/notifications"),
     updateNotificationSettings: (data) =>
       request("/settings/notifications", { method: "PATCH", body: JSON.stringify(data) }),
+
+    /* ---- ao vivo ----
+       GrowAI.aoVivo(function (msg) { ... }) recebe o que o backend avisa pelo
+       WebSocket: { tipo: "telemetria", station_id, leitura, confirmados } a
+       cada fala da placa principal e { tipo: "foto", station_id } quando uma
+       foto termina de ser analisada. Devolve a função que cancela.
+       Uma conexão só por aba, reaberta sozinha se cair. Enquanto ela está
+       aberta, o backend pede à placa para falar a cada 5 s em vez de 15. */
+    aoVivo: function (handler) {
+      ouvintes.push(handler);
+      conectarAoVivo();
+      return function () {
+        ouvintes = ouvintes.filter(function (h) { return h !== handler; });
+      };
+    },
   };
+
+  var ouvintes = [];
+  var ws = null;
+  var esperaReconexao = 1000;
+
+  function conectarAoVivo() {
+    if (ws || !getToken() || typeof WebSocket === "undefined") return;
+    try {
+      ws = new WebSocket(WS_URL + "?token=" + encodeURIComponent(getToken()));
+    } catch (e) {
+      ws = null;
+      return;
+    }
+    ws.onopen = function () { esperaReconexao = 1000; };
+    ws.onmessage = function (ev) {
+      var msg;
+      try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      ouvintes.slice().forEach(function (h) {
+        try { h(msg); } catch (e) { console.error("[GrowAI] ouvinte ao vivo falhou:", e); }
+      });
+    };
+    ws.onclose = function () {
+      ws = null;
+      if (!ouvintes.length || !getToken()) return;
+      // 1 s, 2 s, 4 s ... até 30 s: o Render pode estar reiniciando num deploy.
+      setTimeout(conectarAoVivo, esperaReconexao);
+      esperaReconexao = Math.min(esperaReconexao * 2, 30000);
+    };
+  }
 })();

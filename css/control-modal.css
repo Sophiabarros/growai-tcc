@@ -1,0 +1,147 @@
+/* ============ CONTROLE DA PLACA ============ */
+/* Painel aberto por js/control-modal.js. Usa o mesmo overlay e o mesmo painel
+   do modal de estação (css/station-modal.css); aqui só o que é dele. */
+.ctrl__panel {
+  width: 52rem;
+}
+.ctrl__status {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: -0.8rem 0 1.8rem;
+  color: var(--app-muted-alt);
+  font: 500 1.3rem/1.4 var(--font-body);
+}
+.ctrl__dot {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--app-muted);
+  flex-shrink: 0;
+}
+.ctrl__status--online .ctrl__dot {
+  background: var(--color-green-normal);
+  box-shadow: 0 0 0 0.3rem rgba(104, 173, 163, 0.25);
+}
+.ctrl__status--online {
+  color: var(--app-info);
+}
+
+.ctrl__aviso {
+  background: var(--app-bg);
+  border-left: 0.3rem solid var(--app-accent);
+  border-radius: 0.8rem;
+  padding: 1rem 1.2rem;
+  margin: 0 0 1.4rem;
+  color: var(--app-text);
+  font: 400 1.3rem/1.5 var(--font-body);
+  text-wrap: pretty;
+}
+.ctrl__aviso--erro {
+  border-left-color: var(--color-danger);
+}
+.ctrl__aviso[hidden] {
+  display: none;
+}
+
+.ctrl__leituras {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.ctrl__leitura {
+  background: var(--app-bg);
+  border-radius: 1rem;
+  padding: 1rem 1.2rem;
+  min-width: 0;
+}
+.ctrl__leitura-rotulo {
+  color: var(--app-muted-alt);
+  font: 500 1.1rem/1.3 var(--font-body);
+  margin: 0 0 0.4rem;
+}
+.ctrl__leitura-valor {
+  color: var(--app-text);
+  font: 600 1.7rem/1.2 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ctrl__rotulo {
+  color: var(--app-info);
+  font: 600 1.3rem/normal var(--font-body);
+  margin: 0 0 1rem;
+}
+.ctrl__reles {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+.ctrl__rele {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  background: var(--app-bg);
+  border-radius: 1rem;
+  padding: 1rem 1.2rem;
+}
+.ctrl__rele-info {
+  flex: 1;
+  min-width: 0;
+}
+.ctrl__rele-nome {
+  color: var(--app-text);
+  font: 600 1.4rem/1.3 var(--font-body);
+  margin: 0;
+}
+.ctrl__rele-estado {
+  color: var(--app-muted-alt);
+  font: 400 1.2rem/1.4 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  margin: 0.2rem 0 0;
+}
+.ctrl__rele-estado--ligado {
+  color: var(--color-green-normal);
+  font-weight: 600;
+}
+.ctrl__btn {
+  flex-shrink: 0;
+  min-width: 12rem;
+  height: 3.4rem;
+  padding: 0 1.2rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+  font: 600 1.3rem/normal var(--font-body);
+  cursor: pointer;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.ctrl__btn--auto {
+  background: transparent;
+  border: 1px solid var(--app-muted);
+  color: var(--app-text);
+}
+.ctrl__btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.ctrl__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ctrl__nota {
+  color: var(--app-muted-alt);
+  font: 400 1.2rem/1.5 var(--font-body);
+  text-wrap: pretty;
+  margin: 0 0 1.6rem;
+}
+
+@media (max-width: 899px) {
+  .ctrl__btn {
+    min-width: 10rem;
+  }
+}

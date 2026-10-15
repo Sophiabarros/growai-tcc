@@ -457,6 +457,7 @@
     );
     limited.forEach(function (s, i) { s.__photo = details[i][1]; });
 
+    destaque = { station: limited[0], photo: details[0][1] };
     renderSensors(details[0][0]);
     renderPlantsList(limited);
     renderFeatured(limited[0], details[0][0], details[0][1]);
@@ -486,6 +487,27 @@
     mobilePageId: "mAppHomePage",
     mobileWrapperSelector: ".m-app-home-wrapper",
   });
+
+  /* Ao vivo: a cada fala da placa principal (5-15 s) os sensores da estação em
+     destaque mudam sozinhos; foto nova analisada recarrega a página inteira.
+     O intervalo de 60 s é a reserva para quando o WebSocket não conecta. */
+  var destaque = null;
+  function aplicarAoVivo(leitura) {
+    if (!destaque || !leitura) return;
+    var l = Object.assign({ light_h: destaque.station.light_hours }, leitura);
+    renderSensors(l);
+    renderFeatured(destaque.station, l, destaque.photo);
+    if (l.online) renderSystemStatus("ok");
+  }
+  GrowAI.aoVivo(function (msg) {
+    if (!destaque || Number(msg.station_id) !== Number(destaque.station.id)) return;
+    if (msg.tipo === "telemetria") aplicarAoVivo(msg.leitura);
+    else if (msg.tipo === "foto") load();
+  });
+  setInterval(function () {
+    if (!destaque || document.hidden) return;
+    GrowAI.getLatestReading(destaque.station.id).then(aplicarAoVivo).catch(function () {});
+  }, 60000);
 
   load();
 })();

@@ -2,6 +2,8 @@ const db = require("../config/db");
 const { montarConfig } = require("../services/configDispositivo");
 const { analisar } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
+const aoVivo = require("../services/aoVivo");
+const realtime = require("../services/realtime");
 
 const MAX_FOTOS_POR_ESTACAO = 300; // retenção: cabe no plano gratuito do Neon
 
@@ -17,6 +19,11 @@ const MAX_FOTOS_POR_ESTACAO = 300; // retenção: cabe no plano gratuito do Neon
 const IA_FOTO_INTERVALO_MIN = Number(process.env.IA_FOTO_INTERVALO_MIN || 180);
 const EXPIRA_COMANDO_MIN = 10;
 const PROXIMA_EM_S = 15;
+/* Com o app aberto (WebSocket do usuário conectado) ou comando na fila, a
+   placa fala a cada 5 s: o botão "ligar" do app precisa de resposta em
+   segundos, não em 15. Com ninguém olhando, volta aos 15 s. 5 s é o mínimo
+   que o firmware aceita. */
+const PROXIMA_EM_S_ATIVO = 5;
 
 // ------------------------------------------------------------- telemetria
 async function telemetria(req, res, next) {
@@ -104,8 +111,34 @@ async function telemetria(req, res, next) {
       [station.id]
     );
 
+    // ---- ao vivo: o app vê esta telemetria agora, não daqui a 1 min ----
+    const vivo = {
+      humidity: num(t.umidade),
+      temperature: num(t.temp_c),
+      estado: t.estado || null,
+      reles: t.reles || null,
+      manual: t.manual || {},
+      erro: t.erro || null,
+      erro_cfg: t.erro_cfg || null,
+      hora_valida: t.hora_valida ?? null,
+      nutri_s_hoje: t.nutri_s_hoje ?? null,
+      rssi: t.rssi ?? null,
+      fw: t.fw || null,
+      cfg_versao_placa: t.cfg_versao ?? null,
+      cfg_versao_servidor: station.cfg_versao,
+    };
+    aoVivo.registrar(station.id, vivo);
+    realtime.enviarParaUsuario(station.user_id, {
+      tipo: "telemetria",
+      station_id: station.id,
+      leitura: { ...vivo, online: true, recorded_at: new Date().toISOString() },
+      confirmados: acks,
+    });
+
+    const ativo = pendentes.length > 0 || realtime.usuarioConectado(station.user_id);
+
     // ---- resposta ----
-    const resposta = { cfg_versao: station.cfg_versao, proxima_em_s: PROXIMA_EM_S };
+    const resposta = { cfg_versao: station.cfg_versao, proxima_em_s: ativo ? PROXIMA_EM_S_ATIVO : PROXIMA_EM_S };
 
     // config só quando a placa está numa versão diferente da nossa
     if (Number(t.cfg_versao) !== Number(station.cfg_versao)) {
@@ -263,6 +296,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
       JSON.stringify(iaRaw),
     ]
   );
+  // A tela Câmera/Home aberta recarrega a foto sem esperar o usuário.
+  realtime.enviarParaUsuario(station.user_id, { tipo: "foto", station_id: station.id });
 
   /* Sugestao da IA. O autoAjuste decide se aplica sozinho ou so registra -
      ele e quem conhece o cooldown e o ia_autoajuste da estacao. */

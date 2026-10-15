@@ -66,12 +66,15 @@ function montarConfig(station) {
 
   const luzOnMin = horaParaMin(station.luz_inicio);
   const horasLuz = corta(station.light_hours, LIMITES.light_hours);
+  /* luz_on == luz_off quer dizer 24 h ACESO para o firmware. Então 0 h viraria
+     o contrário do pedido: vai como 1 minuto, que na prática é luz apagada. */
+  const minutosLuz = horasLuz > 0 ? horasLuz * 60 : 1;
 
   return {
     umid_liga,
     umid_desliga,
     luz_on: minParaHora(luzOnMin),
-    luz_off: minParaHora(luzOnMin + horasLuz * 60),
+    luz_off: minParaHora(luzOnMin + minutosLuz),
     vent_min_por_hora: Math.round(corta(station.vent_min_por_hora, LIMITES.vent_min_por_hora)),
     temp_max: Number(corta(station.temp_max, LIMITES.temp_max).toFixed(1)),
     nutri_hora: minParaHora(horaParaMin(station.nutri_hora)),

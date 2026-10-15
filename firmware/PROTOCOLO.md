@@ -14,9 +14,14 @@ ESP32-CAM        --POST /api/device/foto-------->  backend  (a cada 30 min)
 
 Regras que valem para as duas rotas:
 
-- **A placa sempre inicia a requisição.** O backend roda serverless na Vercel:
-  não há WebSocket nem jeito de o servidor chamar a placa. Tudo que o backend
-  quer mandar viaja na *resposta* de uma requisição que a placa fez.
+- **A placa sempre inicia a requisição.** Tudo que o backend quer mandar
+  viaja na *resposta* de uma requisição que a placa fez. O ritmo é o
+  `proxima_em_s` da resposta: **5 s** quando o app está aberto (WebSocket do
+  usuário conectado) ou há comando na fila, **15 s** no resto do tempo. Depois
+  de executar um comando, a placa (`main-1.1.0`) manda a telemetria seguinte
+  em ~1 s, para o app confirmar na hora.
+- O app recebe cada telemetria na hora pelo WebSocket `/ws` do backend
+  (`{tipo:"telemetria", station_id, leitura, confirmados}`), sem polling.
 - **As duas placas não se falam.** Quem junta a foto com a leitura da mesma
   estação é o backend.
 - Autenticação por header `X-Device-Key`. **Não usa o JWT do usuário** — as

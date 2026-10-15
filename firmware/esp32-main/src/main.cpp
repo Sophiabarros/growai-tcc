@@ -24,7 +24,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.0.0"
+#define FW "main-1.1.0"
 
 // ---------------------------------------------------------------- pinos
 const uint8_t PIN_SENSOR  = 34;  // ADC1: le com o Wi-Fi ligado (ADC2 nao le)
@@ -242,7 +242,13 @@ void marcaVisto(long id) {
     idsVistos[MAX_IDS - 1] = id;
   }
 }
-void addAck(long id) { if (nAcks < MAX_IDS) acks[nAcks++] = id; }
+/* Comando executado: o ack e o estado novo dos reles vao em ~1 s, sem esperar
+   o proxima_em_s. E isso que faz o botao do app confirmar na hora. */
+bool telemetriaLogo = false;
+void addAck(long id) {
+  if (nAcks < MAX_IDS) acks[nAcks++] = id;
+  telemetriaLogo = true;
+}
 
 void executaComando(JsonObjectConst c, unsigned long agora) {
   long id = c["id"] | -1L;
@@ -612,7 +618,8 @@ void enviaTelemetria() {
 void cicloTelemetria(unsigned long agora) {
   if (portalAtivo || !provisaoCompleta(cred)) return;
   if (WiFi.status() != WL_CONNECTED) return;
-  if ((unsigned long)(agora - tTelemetria) < (unsigned long)proximaEmS * 1000UL) return;
+  unsigned long intervalo = telemetriaLogo ? 1000UL : (unsigned long)proximaEmS * 1000UL;
+  if ((unsigned long)(agora - tTelemetria) < intervalo) return;
 
   /* O POST bloqueia por ate HTTP_TIMEOUT_MS. Com a bomba ou a minibomba
      ligada isso furaria o MAX_BOMBA / o limite diario, entao espera elas
@@ -620,6 +627,7 @@ void cicloTelemetria(unsigned long agora) {
   if (ligado[R_BOMBA] || ligado[R_NUTRI]) return;
 
   tTelemetria = agora;
+  telemetriaLogo = false;
   enviaTelemetria();
 }
 

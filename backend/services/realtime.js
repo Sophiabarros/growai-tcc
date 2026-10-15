@@ -135,10 +135,21 @@ function enviarParaUsuario(userId, payload) {
   return enviar((c) => c.tipo === "usuario" && Number(c.userId) === Number(userId), payload);
 }
 
+// Há alguma aba/app deste usuário aberta agora?
+function usuarioConectado(userId) {
+  if (!wss) return false;
+  for (const ws of wss.clients) {
+    if (ws.readyState === ws.OPEN && ws.cliente.tipo === "usuario" && Number(ws.cliente.userId) === Number(userId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function fechar() {
   if (!wss) return;
   wss.clients.forEach((ws) => ws.close(1001, "servidor reiniciando"));
   wss.close();
 }
 
-module.exports = { anexar, enviarParaEstacao, enviarParaUsuario, fechar, CAMINHO };
+module.exports = { anexar, enviarParaEstacao, enviarParaUsuario, usuarioConectado, fechar, CAMINHO };

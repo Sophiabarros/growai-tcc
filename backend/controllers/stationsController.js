@@ -5,6 +5,7 @@ const { ONLINE_S } = require("./commandsController");
 const { montarConfig } = require("../services/configDispositivo");
 const { avaliarRotina: iaAvaliarRotina } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
+const aoVivo = require("../services/aoVivo");
 
 async function list(req, res, next) {
   try {
@@ -221,7 +222,9 @@ async function getLatestReading(req, res, next) {
       [req.params.id]
     );
     const leitura = leituras[0];
-    if (!leitura) return res.status(404).json({ error: "Nenhuma leitura registrada ainda" });
+    // A última telemetria (memória, a cada 5-15 s) vence a do banco (1/min).
+    const vivo = aoVivo.obter(req.params.id);
+    if (!leitura && !vivo) return res.status(404).json({ error: "Nenhuma leitura registrada ainda" });
 
     // online = a placa 'main' falou com o servidor nos ultimos 60 s. Nao se
     // deduz de recorded_at, que e limitado a uma gravacao por minuto.
@@ -232,6 +235,18 @@ async function getLatestReading(req, res, next) {
     );
 
     const n = (v) => (v === null || v === undefined ? null : Number(v));
+    const online = !!(vistas[0] && vistas[0].online);
+    const usarVivo = vivo && (!leitura || new Date(vivo.recebida_em) >= new Date(leitura.recorded_at));
+    if (usarVivo) {
+      return res.json({
+        ...vivo,
+        ph: null,
+        light_h: n(station.light_hours),
+        online,
+        recorded_at: vivo.recebida_em,
+      });
+    }
+    const extra = leitura.extra || {};
     res.json({
       humidity: n(leitura.humidity),
       ph: n(leitura.ph),
@@ -239,7 +254,12 @@ async function getLatestReading(req, res, next) {
       temperature: n(leitura.temperature),
       estado: leitura.estado,
       reles: leitura.reles,
-      online: !!(vistas[0] && vistas[0].online),
+      manual: extra.manual || {},
+      erro: extra.erro || null,
+      erro_cfg: extra.erro_cfg || null,
+      hora_valida: extra.hora_valida ?? null,
+      fw: extra.fw || null,
+      online,
       recorded_at: leitura.recorded_at,
     });
   } catch (err) {
