@@ -3,6 +3,7 @@ const { montarConfig } = require("../services/configDispositivo");
 const { analisar } = require("../services/ia");
 const autoAjuste = require("../services/autoAjuste");
 const aoVivo = require("../services/aoVivo");
+const relatorios = require("../services/relatorios");
 const realtime = require("../services/realtime");
 const { temperaturaSaoPauloJa, completarTemperatura } = require("../services/temperaturaExterna");
 
@@ -310,6 +311,10 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
       r.ok ? r.analysis_text : "Análise indisponível no momento.",
       JSON.stringify(iaRaw),
     ]
+  );
+  // O resumo do dia ganha esta foto já (o gráfico de saúde não espera 10 min).
+  relatorios.atualizarResumo(station.id, relatorios.diaSP(0)).catch((e) =>
+    console.error("[foto] resumo do dia:", e.message)
   );
   // A tela Câmera/Home aberta recarrega a foto sem esperar o usuário.
   realtime.enviarParaUsuario(station.user_id, { tipo: "foto", station_id: station.id });

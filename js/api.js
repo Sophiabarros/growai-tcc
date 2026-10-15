@@ -253,6 +253,9 @@
 
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),
+    // Um dia hora a hora (padrão: hoje). dia = "YYYY-MM-DD".
+    getDailyReport: (stationId, dia) =>
+      request("/reports/daily?station_id=" + encodeURIComponent(stationId) + (dia ? "&dia=" + encodeURIComponent(dia) : "")),
     getSuggestions: () => request("/suggestions"),
     applySuggestion: (id) => request(`/suggestions/${id}/apply`, { method: "PATCH" }),
     // Desfaz um ajuste que a IA aplicou sozinha: volta aos valores de antes.

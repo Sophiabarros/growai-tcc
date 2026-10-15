@@ -119,6 +119,9 @@ if (require.main === module) {
     }, 10 * 60 * 1000).unref();
   }
 
+  // Resumo diário dos relatórios + limpeza das leituras brutas antigas.
+  require("./services/relatorios").iniciar();
+
   // O Render manda SIGTERM antes de trocar a instância num deploy.
   const desligar = () => {
     realtime.fechar();

@@ -15,14 +15,15 @@
   var CHART_BOXES = {
     desktop: {
       line: { w: 50.4, h: 29.2, left: 3.3, right: 50.0, top: 2.336, bottom: 25.696 },
-      bars: { w: 48.7, h: 29.2, left: 6.229, right: 46.625, top: 1.46, bottom: 24.82 },
+      // Medido do desenho (chart-cond-*-d.svg): eixo de 2,65 a 20,35rem.
+      bars: { w: 48.7, h: 29.2, left: 6.85, right: 45.66, top: 2.65, bottom: 20.35 },
     },
     mobile: {
       line: { w: 26.5, h: 16.6, left: 1.9, right: 26.2, top: 0.8, bottom: 14.8 },
-      bars: { w: 25.8, h: 18.6, left: 3.3, right: 24.7, top: 0.9, bottom: 17.1 },
+      bars: { w: 25.8, h: 18.6, left: 3.63, right: 24.19, top: 1.69, bottom: 15.27 },
     },
   };
-  var BAR_MAX = 80; // matches the fixed 0-80 axis already printed in the HTML
+  var BAR_MAX = 100; // umidade do solo, 0-100% (eixo impresso no HTML)
 
   function escapeHtml(value) {
     var div = document.createElement("div");
@@ -30,74 +31,264 @@
     return div.innerHTML;
   }
 
-  function buildLineSvg(values, box) {
-    var n = values.length;
-    var pts = values.map(function (v, i) {
-      var x = box.left + (i / (n - 1)) * (box.right - box.left);
-      var clamped = Math.max(0, Math.min(100, Number(v)));
-      var y = box.top + (1 - clamped / 100) * (box.bottom - box.top);
-      return [x, y];
-    });
-    var poly = pts.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join(" ");
-    var circles = pts
-      .map(function (p) {
-        return '<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="0.35" fill="#FCFCFD" stroke="#88D3CF" stroke-width="0.15" />';
-      })
-      .join("");
-    return (
-      '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%">' +
-      '<polyline points="' + poly + '" fill="none" stroke="#88D3CF" stroke-width="0.15" stroke-linecap="round" stroke-linejoin="round" />' +
-      circles +
-      "</svg>"
-    );
+  function temNum(v) {
+    return v !== null && v !== undefined && v !== "" && isFinite(Number(v));
   }
 
-  function buildBarSvg(values, box) {
+  /* Linha da saúde. Ponto sem dado (null) NÃO vira zero: a linha só liga
+     pontos vizinhos que existem, e o buraco fica visível. Cada bolinha tem
+     um <title> (dica ao passar o mouse). */
+  function buildLineSvg(values, dicas, box, ligarLacunas) {
+    var n = values.length;
+    var pts = values.map(function (v, i) {
+      if (!temNum(v)) return null;
+      var x = box.left + (n === 1 ? 0.5 : i / (n - 1)) * (box.right - box.left);
+      var clamped = Math.max(0, Math.min(100, Number(v)));
+      var y = box.top + (1 - clamped / 100) * (box.bottom - box.top);
+      return [x, y, i];
+    });
+    var segs = [];
+    var atual = [];
+    pts.forEach(function (p) {
+      if (p) atual.push(p);
+      // No dia, as fotos são a cada 3 h por projeto: liga os pontos mesmo assim.
+      else if (atual.length && !ligarLacunas) { segs.push(atual); atual = []; }
+    });
+    if (atual.length) segs.push(atual);
+    var linhas = segs
+      .filter(function (seg) { return seg.length > 1; })
+      .map(function (seg) {
+        var poly = seg.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join(" ");
+        return '<polyline points="' + poly + '" fill="none" stroke="#88D3CF" stroke-width="0.15" stroke-linecap="round" stroke-linejoin="round" />';
+      })
+      .join("");
+    var r = n > 12 ? 0.25 : 0.35;
+    var circles = pts
+      .filter(Boolean)
+      .map(function (p) {
+        return '<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="' + r + '" fill="#FCFCFD" stroke="#88D3CF" stroke-width="0.15"><title>' +
+          escapeHtml(dicas[p[2]] || "") + "</title></circle>";
+      })
+      .join("");
+    return '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%">' + linhas + circles + "</svg>";
+  }
+
+  // Barras da umidade. null = sem barra (sem leitura), não barra zerada.
+  function buildBarSvg(values, dicas, box) {
     var n = values.length;
     var groupWidth = (box.right - box.left) / n;
-    var barWidth = groupWidth * 0.45;
+    var barWidth = groupWidth * (n > 12 ? 0.6 : 0.45);
     var bars = values
       .map(function (v, i) {
+        if (!temNum(v)) return "";
         var clamped = Math.max(0, Math.min(BAR_MAX, Number(v)));
         var barHeight = (clamped / BAR_MAX) * (box.bottom - box.top);
         var x = box.left + i * groupWidth + (groupWidth - barWidth) / 2;
         var y = box.bottom - barHeight;
         return (
           '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barWidth.toFixed(2) +
-          '" height="' + Math.max(barHeight, 0.3).toFixed(2) + '" rx="' + (barWidth * 0.3).toFixed(2) + '" fill="#88D3CF" />'
+          '" height="' + Math.max(barHeight, 0.3).toFixed(2) + '" rx="' + (barWidth * 0.3).toFixed(2) + '" fill="#88D3CF"><title>' +
+          escapeHtml(dicas[i] || "") + "</title></rect>"
         );
       })
       .join("");
     return '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%">' + bars + "</svg>";
   }
 
-  function renderCharts(report) {
-    var health = report ? report.health.map(function (d) { return d.value; }) : [0, 0, 0, 0, 0, 0, 0];
-    var env = report ? report.environment.map(function (d) { return d.value; }) : [0, 0, 0, 0, 0, 0, 0];
+  // Aviso por cima do gráfico quando não há nenhum ponto.
+  function vazio(texto) {
+    return '<p class="rel-chart-vazio">' + escapeHtml(texto) + "</p>";
+  }
 
-    document.getElementById("relChart1Data").innerHTML = buildLineSvg(health, CHART_BOXES.desktop.line);
-    document.getElementById("relChart2Data").innerHTML = buildBarSvg(env, CHART_BOXES.desktop.bars);
-    document.getElementById("mRelChart1Data").innerHTML = buildLineSvg(health, CHART_BOXES.mobile.line);
-    document.getElementById("mRelChart2Data").innerHTML = buildBarSvg(env, CHART_BOXES.mobile.bars);
+  function setXLabels(ids, labels, destaque) {
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = labels
+        .map(function (t, i) {
+          return "<span" + (i === destaque ? ' class="is-highlight"' : "") + ">" + escapeHtml(t) + "</span>";
+        })
+        .join("");
+    });
+  }
+
+  function setText(ids, texto) {
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = texto;
+    });
+  }
+
+  function num1(v) {
+    return String(Math.round(Number(v) * 10) / 10).replace(".", ",");
+  }
+
+  function renderCharts(saude, umidade, dicasS, dicasU, msgVazioS, msgVazioU, ligarLacunas) {
+    var temS = saude.some(temNum);
+    var temU = umidade.some(temNum);
+    document.getElementById("relChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, CHART_BOXES.desktop.line, ligarLacunas) : vazio(msgVazioS);
+    document.getElementById("mRelChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, CHART_BOXES.mobile.line, ligarLacunas) : vazio(msgVazioS);
+    document.getElementById("relChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, CHART_BOXES.desktop.bars) : vazio(msgVazioU);
+    document.getElementById("mRelChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, CHART_BOXES.mobile.bars) : vazio(msgVazioU);
   }
 
   // Intervalo da semana atual (segunda a domingo, como no eixo dos gráficos),
   // ex.: "15 - 21 de setembro" ou "28 de set. - 4 de out." quando cruza o mês.
-  function renderWeekRange() {
+  function weekRangeLabel() {
     var now = new Date();
     var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
     var sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
     var month = function (d, style) { return d.toLocaleDateString("pt-BR", { month: style }); };
-    var label =
-      monday.getMonth() === sunday.getMonth()
-        ? monday.getDate() + " - " + sunday.getDate() + " de " + month(sunday, "long")
-        : monday.getDate() + " de " + month(monday, "short").replace(".", "") + ". - " +
-          sunday.getDate() + " de " + month(sunday, "short").replace(".", "") + ".";
-    ["relSubtitle", "mRelSubtitle"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.textContent = label;
-    });
+    return monday.getMonth() === sunday.getMonth()
+      ? monday.getDate() + " - " + sunday.getDate() + " de " + month(sunday, "long")
+      : monday.getDate() + " de " + month(monday, "short").replace(".", "") + ". - " +
+        sunday.getDate() + " de " + month(sunday, "short").replace(".", "") + ".";
   }
+
+  /* Linha de resumo embaixo do subtítulo: "Saúde 75% · Umidade 52% · 21 °C ·
+     Luz 12 h · UV 30 min". Só o que existe. */
+  function resumoTexto(r) {
+    if (!r) return "";
+    var partes = [];
+    if (temNum(r.saude_pct)) partes.push("Saúde " + r.saude_pct + "%");
+    if (temNum(r.umidade)) partes.push("Umidade " + Math.round(r.umidade) + "%");
+    if (temNum(r.temp)) partes.push(num1(r.temp) + " °C");
+    if (temNum(r.luz_h)) partes.push("Luz " + num1(r.luz_h) + " h");
+    if (temNum(r.uv_min)) partes.push("UV " + Math.round(r.uv_min) + " min");
+    return partes.join(" · ");
+  }
+
+  // ---- estado da tela: período e estação ----
+  var relatorios = [];     // GET /reports/weekly (todas as estações)
+  var modo = "semana";     // "semana" | "dia"
+  var estacaoId = null;
+
+  function relatorioDaEstacao() {
+    return relatorios.filter(function (r) { return String(r.station_id) === String(estacaoId); })[0] || relatorios[0] || null;
+  }
+
+  function renderSemana() {
+    var rep = relatorioDaEstacao();
+    var dias = rep && rep.dias ? rep.dias : [];
+    var saude = dias.map(function (d) { return d.futuro ? null : d.saude_pct; });
+    var umid = dias.map(function (d) { return d.futuro ? null : d.umidade_media; });
+    var dicasS = dias.map(function (d) {
+      return d.label + ": " + (temNum(d.saude_pct) ? d.saude_pct + "% saudável (" + d.fotos_analisadas + " fotos analisadas)" : "sem fotos analisadas");
+    });
+    var dicasU = dias.map(function (d) {
+      return d.label + ": umidade média " + (temNum(d.umidade_media) ? Math.round(d.umidade_media) + "%" : "—") +
+        (temNum(d.temp_media) ? " · " + num1(d.temp_media) + " °C" : "");
+    });
+    var hojeIdx = -1;
+    dias.forEach(function (d, i) { if (!d.futuro) hojeIdx = i; });
+    setXLabels(["relChart1X", "relChart2X", "mRelChart1X", "mRelChart2X"], ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"], hojeIdx);
+    setText(["relTitle", "mRelTitle"], "Relatório semanal");
+    setText(["relSubtitle", "mRelSubtitle"], weekRangeLabel() + (rep ? " · " + rep.station_name : ""));
+
+    // Médias da semana para o resumo (só dias com dado).
+    var media = function (campo) {
+      var v = dias.map(function (d) { return d[campo]; }).filter(temNum).map(Number);
+      return v.length ? v.reduce(function (a, b) { return a + b; }, 0) / v.length : null;
+    };
+    // Saúde da semana: % de TODAS as fotos analisadas, não média dos dias.
+    var tot = 0;
+    var boas = 0;
+    dias.forEach(function (d) {
+      if (temNum(d.saude_pct) && d.fotos_analisadas) {
+        tot += d.fotos_analisadas;
+        boas += (d.saude_pct / 100) * d.fotos_analisadas;
+      }
+    });
+    var resumo = resumoTexto({
+      saude_pct: tot ? Math.round((100 * boas) / tot) : null,
+      umidade: media("umidade_media"),
+      temp: media("temp_media"),
+      luz_h: media("luz_h"),
+      uv_min: media("uv_min"),
+    });
+    setText(["relResumo", "mRelResumo"], resumo ? "Média da semana: " + resumo : "");
+
+    renderCharts(saude, umid, dicasS, dicasU,
+      "Nenhuma foto analisada nesta semana ainda.",
+      "Nenhuma leitura de umidade nesta semana ainda.");
+  }
+
+  async function renderDia() {
+    setText(["relTitle", "mRelTitle"], "Relatório de hoje");
+    if (estacaoId == null) { renderCharts([], [], [], [], "Sem estações.", "Sem estações."); return; }
+    var hoje = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+    var rep;
+    try {
+      rep = await GrowAI.getDailyReport(estacaoId);
+    } catch (e) {
+      renderCharts([], [], [], [], "Não foi possível carregar.", "Não foi possível carregar.");
+      return;
+    }
+    if (modo !== "dia") return; // trocou de aba enquanto carregava
+    setText(["relSubtitle", "mRelSubtitle"], "Hoje, " + hoje + " · " + rep.station_name);
+    var horas = rep.horas || [];
+    var saude = horas.map(function (h) { return h.futuro ? null : h.saude_pct; });
+    var umid = horas.map(function (h) { return h.futuro ? null : h.umidade; });
+    var dicasS = horas.map(function (h) {
+      return h.hora + "h: " + (temNum(h.saude_pct) ? h.saude_pct + "% saudável (" + h.fotos_analisadas + " fotos)" : "sem foto analisada");
+    });
+    var dicasU = horas.map(function (h) {
+      return h.hora + "h: umidade " + (temNum(h.umidade) ? Math.round(h.umidade) + "%" : "—") + (temNum(h.temp) ? " · " + num1(h.temp) + " °C" : "");
+    });
+    // 24 pontos; 7 rótulos nas horas que caem embaixo deles.
+    var horaAgora = new Date().getHours();
+    var rotulos = [0, 4, 8, 12, 15, 19, 23];
+    var destaque = -1;
+    rotulos.forEach(function (h, i) { if (h <= horaAgora) destaque = i; });
+    setXLabels(["relChart1X", "relChart2X", "mRelChart1X", "mRelChart2X"], rotulos.map(function (h) { return h + "h"; }), destaque);
+
+    var r = rep.resumo;
+    var resumo = r ? resumoTexto({ saude_pct: r.saude_pct, umidade: r.umidade_media, temp: r.temp_media, luz_h: r.luz_h, uv_min: r.uv_min }) : "";
+    setText(["relResumo", "mRelResumo"], resumo ? "Até agora: " + resumo : "");
+    renderCharts(saude, umid, dicasS, dicasU,
+      "Nenhuma foto analisada hoje ainda. A câmera fotografa às :00 e :30.",
+      "Nenhuma leitura de umidade hoje ainda.", true);
+  }
+
+  function render() {
+    document.querySelectorAll(".rel-controls__btn").forEach(function (b) {
+      var ativo = b.dataset.modo === modo;
+      b.classList.toggle("is-active", ativo);
+      b.setAttribute("aria-selected", ativo ? "true" : "false");
+    });
+    if (modo === "dia") renderDia();
+    else renderSemana();
+  }
+
+  function montarEstacoes() {
+    ["relStation", "mRelStation"].forEach(function (id) {
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = relatorios
+        .map(function (r) {
+          return '<option value="' + r.station_id + '">' + escapeHtml(r.station_name + " · " + r.plant) + "</option>";
+        })
+        .join("");
+      sel.value = String(estacaoId);
+      // Uma estação só: o seletor não serve para nada e fica escondido.
+      sel.hidden = relatorios.length < 2;
+    });
+    // No celular o seletor ocupa a direita do subtítulo: o texto encolhe.
+    document.body.classList.toggle("rel-varias-estacoes", relatorios.length > 1);
+  }
+
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest(".rel-controls__btn");
+    if (!b || b.dataset.modo === modo) return;
+    modo = b.dataset.modo;
+    render();
+  });
+  document.addEventListener("change", function (ev) {
+    if (ev.target.id !== "relStation" && ev.target.id !== "mRelStation") return;
+    estacaoId = ev.target.value;
+    montarEstacoes();
+    render();
+  });
 
   // ---- suggestions ----
   var HEALTHY_THRESHOLD = 85;
@@ -341,14 +532,15 @@
   });
 
   async function load() {
-    renderWeekRange();
     GrowAI.syncProfile();
     try {
-      var reports = await GrowAI.getWeeklyReports();
-      renderCharts(reports[0] || null);
+      relatorios = await GrowAI.getWeeklyReports();
     } catch (err) {
-      renderCharts(null);
+      relatorios = [];
     }
+    estacaoId = relatorios[0] ? relatorios[0].station_id : null;
+    montarEstacoes();
+    render();
 
     try {
       suggestionsCache = await GrowAI.getSuggestions();

@@ -108,11 +108,13 @@
 .rel-chart2__vector { position: absolute; left: 6.847rem; top: 2.654rem; width: 38.809rem; height: 17.702rem; }
 .rel-chart2__axis { position: absolute; left: 6.239rem; top: 2.654rem; width: 0.598rem; height: 17.702rem; }
 .rel-chart2__data { position: absolute; inset: 0; }
+/* Os números ficam centrados nas linhas do desenho: 100 no topo do eixo
+   (2,65rem) e 0 na linha de base (20,35rem). */
 .rel-chart2__y-labels {
   position: absolute;
   left: 0;
-  top: 1.46rem;
-  bottom: 4.38rem;
+  top: 1.85rem;
+  bottom: 8.05rem;
   width: 4.5rem;
   display: flex;
   flex-direction: column;
@@ -121,13 +123,14 @@
   color: var(--app-info);
   font: 400 1.3rem/normal var(--font-inter);
 }
+/* space-around põe cada dia no centro da sua barra. */
 .rel-chart2__x-labels {
   position: absolute;
-  left: 6.229rem;
-  right: 2.075rem;
-  top: 24.8rem;
+  left: 6.85rem;
+  right: 3.04rem;
+  top: 21.3rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   text-align: center;
   color: var(--app-info);
   font: 400 1.3rem/normal var(--font-inter);
@@ -397,8 +400,8 @@
   .m-rel-chart2__y-labels {
     position: absolute;
     left: 0;
-    top: 0.9rem;
-    bottom: 1.5rem;
+    top: 0.89rem;
+    bottom: 2.53rem;
     width: 2.1rem;
     display: flex;
     flex-direction: column;
@@ -409,11 +412,11 @@
   }
   .m-rel-chart2__x-labels {
     position: absolute;
-    left: 3.3rem;
-    right: 1.1rem;
-    top: 15.8rem;
+    left: 3.63rem;
+    right: 1.61rem;
+    top: 15.6rem;
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     text-align: center;
     color: var(--app-info);
     font: 400 1.3rem/normal var(--font-inter);
@@ -527,4 +530,138 @@
     cursor: default;
   }
 
+}
+
+/* ============ SEMANA | HOJE, ESTAÇÃO E RESUMO ============ */
+/* js/app-relatorios.js (render, montarEstacoes). */
+.rel-controls {
+  position: absolute;
+  right: 13.4rem;             /* alinha com a borda direita do card 2 */
+  top: 21.4rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+.rel-controls__modo {
+  display: inline-flex;
+  padding: 0.4rem;
+  border-radius: 999px;
+  background: var(--app-card-bg);
+}
+.rel-controls__btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.8rem 2rem;
+  background: transparent;
+  color: var(--app-info);
+  font: 500 1.5rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.rel-controls__btn.is-active {
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+}
+.rel-controls__station {
+  height: 3.8rem;
+  padding: 0 1.2rem;
+  border: 1px solid var(--app-muted);
+  border-radius: 0.8rem;
+  background: var(--app-card-bg);
+  color: var(--app-text);
+  font: 500 1.4rem/normal var(--font-body);
+  max-width: 26rem;
+}
+.rel-controls__station[hidden] { display: none; }
+.rel-resumo {
+  position: absolute;
+  right: 13.4rem;
+  top: 28.4rem;
+  margin: 0;
+  color: var(--app-muted-alt);
+  font: 400 1.5rem/normal var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+/* Unidade ao lado do título do gráfico. */
+.rel-chart-card__unit {
+  color: var(--app-muted-alt);
+  font-size: 0.65em;
+  margin-left: 0.4em;
+}
+/* Gráfico sem nenhum ponto: aviso no meio, em vez de um gráfico "zerado". */
+.rel-chart-vazio {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4rem;
+  text-align: center;
+  color: var(--app-muted-alt);
+  font: 400 1.4rem/1.4 var(--font-body);
+}
+.rel-chart1__x-labels span.is-highlight {
+  color: #7ab2b0;
+  font-weight: 500;
+}
+
+@media (max-width: 899px) {
+  .m-rel-controls {
+    position: absolute;
+    right: 2.4rem;
+    top: 10.1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+  }
+  .m-rel-controls .rel-controls__btn {
+    padding: 0.5rem 1.2rem;
+    font-size: 1.15rem;
+  }
+  .m-rel-controls .rel-controls__modo {
+    padding: 0.3rem;
+  }
+  .m-rel-controls .rel-controls__station {
+    height: 2.6rem;
+    max-width: 14rem;
+    font-size: 1.1rem;
+    padding: 0 0.6rem;
+  }
+  .m-rel-resumo {
+    position: absolute;
+    left: 2.5rem;
+    right: 2.4rem;
+    top: 14.9rem;
+    margin: 0;
+    color: var(--app-muted-alt);
+    font: 400 1.05rem/normal var(--font-body);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-rel-chart-card__label .rel-chart-card__unit {
+    font-size: 0.75em;
+  }
+  .rel-chart-vazio {
+    padding: 0 1.6rem;
+    font-size: 1.1rem;
+  }
+  .m-rel-chart1__x-labels span.is-highlight {
+    color: #7ab2b0;
+    font-weight: 500;
+  }
+}
+
+@media (max-width: 899px) {
+  /* Várias estações: o seletor fica à direita, embaixo do Semana | Hoje. */
+  .rel-varias-estacoes .m-rel-subtitle,
+  .rel-varias-estacoes .m-rel-resumo {
+    max-width: 19rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
