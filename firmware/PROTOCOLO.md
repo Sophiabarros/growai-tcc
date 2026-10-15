@@ -79,6 +79,7 @@ router.post("/foto", express.raw({ type: "image/jpeg", limit: "2mb" }), handler)
   "reles": {"bomba": 0, "nutri": 0, "luz": 1, "vent": 0},
   "manual": {"vent": 540},
   "nutri_s_hoje": 8,
+  "uv_s_hoje": 540,
   "hora_valida": true,
   "rssi": -61,
   "uptime_s": 12345,
@@ -99,6 +100,7 @@ router.post("/foto", express.raw({ type: "image/jpeg", limit: "2mb" }), handler)
 | `reles` | objeto | estado real de cada relé, `0`/`1` |
 | `manual` | objeto | segundos que **restam** de cada sobreposição manual; só aparecem os relés com sobreposição ativa. `{}` = tudo no automático |
 | `nutri_s_hoje` | int | segundos de nutriente já dosados hoje (zera à meia-noite local) |
+| `uv_s_hoje` | int | segundos de luz UV hoje = tempo com o relé `vent` ligado (main-1.2.0) |
 | `hora_valida` | bool | `false` = NTP ainda não chegou. Com `false`, a luz fica acesa e não há dose de nutriente |
 | `rssi` | int | dBm do Wi-Fi |
 | `uptime_s` | int | segundos desde o boot |
@@ -115,7 +117,8 @@ router.post("/foto", express.raw({ type: "image/jpeg", limit: "2mb" }), handler)
     "umid_liga": 60, "umid_desliga": 75,
     "luz_on": "06:00", "luz_off": "18:00",
     "vent_min_por_hora": 10, "temp_max": 30,
-    "nutri_hora": "08:00", "nutri_s": 8
+    "nutri_hora": "08:00", "nutri_s": 8,
+    "uv_min_dia": 30
   },
   "comandos": [{"id": 126, "rele": "vent", "acao": "ligar", "dur_s": 600}],
   "proxima_em_s": 15
@@ -165,6 +168,7 @@ Mandar fora disso faz a placa **recusar a config inteira**, não só o campo.
 | `temp_max` | número | 15 a 45 |
 | `nutri_hora` | string `"HH:MM"` | 00:00–23:59 |
 | `nutri_s` | int | 0 a 30 |
+| `uv_min_dia` | int | 0 a 240 (main-1.2.0; firmware antigo ignora) |
 
 Detalhes que economizam dor de cabeça:
 

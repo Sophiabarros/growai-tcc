@@ -133,6 +133,10 @@
   opacity: 0.5;
   cursor: default;
 }
+.ctrl__nota.ctrl__nota--uv {
+  margin-top: -0.8rem;
+  color: var(--app-accent);
+}
 .ctrl__nota {
   color: var(--app-muted-alt);
   font: 400 1.2rem/1.5 var(--font-body);

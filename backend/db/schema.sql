@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS stations (
   -- nasce em 0: a primeira telemetria de uma placa nova ja recebe a config.
   luz_inicio        TIME    NOT NULL DEFAULT '06:00',
   vent_min_por_hora INTEGER NOT NULL DEFAULT 10,
+  uv_min_dia        INTEGER NOT NULL DEFAULT 30 CHECK (uv_min_dia BETWEEN 0 AND 240),
   temp_max          NUMERIC NOT NULL DEFAULT 30,
   nutri_hora        TIME    NOT NULL DEFAULT '08:00',
   nutri_s           INTEGER NOT NULL DEFAULT 8,

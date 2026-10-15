@@ -19,7 +19,7 @@ const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA }
 const { LIMITES } = require("./configDispositivo");
 
 const TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 25000);
-/* A avaliação de rotina devolve a rotina inteira (7 campos) e leva mais que a
+/* A avaliação de rotina devolve a rotina inteira (8 campos) e leva mais que a
    foto: medido em ~24 s, colado no limite de 25. Quem espera é o usuário com
    o app aberto, e o Render não corta a requisição, então ela tem folga própria. */
 const TIMEOUT_ROTINA_MS = Number(process.env.IA_TIMEOUT_ROTINA_MS || 45000);
@@ -34,6 +34,7 @@ const CAMPOS_SUGESTAO = [
   "nutri_s",
   "water_interval_h",
   "ph_target",
+  "uv_min_dia",
 ];
 
 function habilitada() {
@@ -119,7 +120,7 @@ function validarResposta(obj) {
         if (origem[campo] === undefined || origem[campo] === null) continue;
         const v = corta(origem[campo], LIMITES[campo][0], LIMITES[campo][1]);
         if (v === null) continue;
-        if (campo === "vent_min_por_hora" || campo === "nutri_s" || campo === "water_interval_h") cfg[campo] = Math.round(v);
+        if (campo === "vent_min_por_hora" || campo === "nutri_s" || campo === "water_interval_h" || campo === "uv_min_dia") cfg[campo] = Math.round(v);
         else if (campo === "ph_target") cfg[campo] = Math.round(v * 10) / 10;
         else cfg[campo] = v;
       }

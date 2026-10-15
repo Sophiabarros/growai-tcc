@@ -10,7 +10,7 @@ const aoVivo = require("../services/aoVivo");
 async function list(req, res, next) {
   try {
     const { rows } = await db.query(
-      "SELECT * FROM stations WHERE user_id = $1 ORDER BY created_at",
+      "SELECT * FROM stations WHERE user_id = $1 ORDER BY created_at, id",
       [req.user.id]
     );
     res.json(rows);
@@ -38,13 +38,15 @@ async function create(req, res, next) {
     if (!name || !plant) {
       return res.status(400).json({ error: "Nome e planta são obrigatórios" });
     }
+    // Corta em 0..240 como na edição; ausente = padrão do banco (30).
+    const uvMinDia = sanearEntrada({ uv_min_dia: req.body.uv_min_dia }).valores.uv_min_dia ?? null;
 
     const { rows } = await db.query(
-      `INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target)
+      `INSERT INTO stations (user_id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target, uv_min_dia)
        VALUES ($1, $2, $3, $4,
-               COALESCE($5, 8), COALESCE($6, 12), COALESCE($7, 70), COALESCE($8, 6.5))
+               COALESCE($5, 8), COALESCE($6, 12), COALESCE($7, 70), COALESCE($8, 6.5), COALESCE($9, 30))
        RETURNING *`,
-      [req.user.id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target]
+      [req.user.id, name, plant, tag, water_interval_h, light_hours, humidity_target, ph_target, uvMinDia]
     );
     res.status(201).json(rows[0]);
   } catch (err) {

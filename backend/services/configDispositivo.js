@@ -17,6 +17,9 @@ const LIMITES = {
   vent_min_por_hora: [0, 60],
   temp_max: [15, 45],
   nutri_s: [0, 30],
+  // Minutos de luz UV por dia. A UV está no relé dos ventiladores, então isto
+  // também limita a ventilação programada (ver firmware, bloco "UV").
+  uv_min_dia: [0, 240],
   light_hours: [0, 24],
   humidity_target: [0, 100],
   // O firmware não usa estes dois (a rega é por umidade e não há sensor de
@@ -79,6 +82,8 @@ function montarConfig(station) {
     temp_max: Number(corta(station.temp_max, LIMITES.temp_max).toFixed(1)),
     nutri_hora: minParaHora(horaParaMin(station.nutri_hora)),
     nutri_s: Math.round(corta(station.nutri_s, LIMITES.nutri_s)),
+    // Estação de antes da migração 003 não tem a coluna: vale o padrão, 30.
+    uv_min_dia: Math.round(corta(station.uv_min_dia ?? 30, LIMITES.uv_min_dia)),
   };
 }
 
@@ -105,6 +110,7 @@ const CAMPOS_DE_CONFIG = [
   "temp_max",
   "nutri_hora",
   "nutri_s",
+  "uv_min_dia",
 ];
 
 /* Valida e corta o que veio do app antes de gravar. Devolve
@@ -139,6 +145,7 @@ function sanearEntrada(body) {
   num("vent_min_por_hora", LIMITES.vent_min_por_hora, true);
   num("temp_max", LIMITES.temp_max, false);
   num("nutri_s", LIMITES.nutri_s, true);
+  num("uv_min_dia", LIMITES.uv_min_dia, true);
   num("water_interval_h", LIMITES.water_interval_h, false);
   num("ph_target", LIMITES.ph_target, false);
   hora("luz_inicio");

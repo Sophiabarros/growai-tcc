@@ -58,6 +58,7 @@ const placa = {
   reles: { bomba: 0, nutri: 0, luz: 1, vent: 0 },
   manual: {},              // rele -> segundos restantes
   nutri_s_hoje: 0,
+  uv_s_hoje: 0,            // luz UV = mesmo relé dos ventiladores
   idsVistos: new Set(),
   acks: [],
   erro_cfg: null,
@@ -102,12 +103,25 @@ function passoLocal(segundos) {
     placa.estado = "MONITORANDO";
   }
 
+  function ventProgramada() {
+  const uv = placa.cfg.uv_min_dia ?? 30;
+  if (uv <= 0 || !dentroFotoperiodo() || placa.uv_s_hoje >= uv * 60) return false;
+  const [h1, m1] = placa.cfg.luz_on.split(":").map(Number);
+  const [h2, m2] = placa.cfg.luz_off.split(":").map(Number);
+  const luzMin = h1 * 60 + m1 === h2 * 60 + m2 ? 1440 : (((h2 * 60 + m2) - (h1 * 60 + m1)) % 1440 + 1440) % 1440;
+  const porHora = Math.min(placa.cfg.vent_min_por_hora, Math.ceil(uv / Math.ceil(luzMin / 60)));
+  const min = new Date().getMinutes();
+  return min >= 1 && min < 1 + porHora;
+}
+
   // relés no automático
   const quer = {
     bomba: placa.estado === "REGANDO" ? 1 : 0,
     nutri: 0,
     luz: dentroFotoperiodo() ? 1 : 0,
-    vent: placa.temp > placa.cfg.temp_max || new Date().getMinutes() < placa.cfg.vent_min_por_hora ? 1 : 0,
+    // Igual ao firmware main-1.2.0: a ventilação programada (que liga a UV)
+    // fica no fotoperíodo, do minuto 1 em diante, dentro do orçamento de UV.
+    vent: placa.temp > placa.cfg.temp_max || ventProgramada() ? 1 : 0,
   };
 
   // sobreposição manual + expiração
@@ -128,6 +142,7 @@ function passoLocal(segundos) {
     delete placa.manual.nutri;
   }
   if (quer.nutri) placa.nutri_s_hoje = Math.min(30, placa.nutri_s_hoje + segundos);
+  if (quer.vent) placa.uv_s_hoje += segundos;
 
   placa.reles = quer;
 }
@@ -181,6 +196,7 @@ async function telemetria() {
     reles: placa.reles,
     manual: placa.manual,
     nutri_s_hoje: Math.round(placa.nutri_s_hoje),
+    uv_s_hoje: Math.round(placa.uv_s_hoje),
     hora_valida: true,
     rssi: -55 - Math.round(Math.random() * 15),
     uptime_s: Math.round((Date.now() - placa.t0) / 1000),

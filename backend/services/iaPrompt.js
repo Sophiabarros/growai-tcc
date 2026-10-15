@@ -42,6 +42,7 @@ const ESQUEMA_RESPOSTA = {
             nutri_s: { type: "number" },
             water_interval_h: { type: "number" },
             ph_target: { type: "number" },
+            uv_min_dia: { type: "number" },
           },
           additionalProperties: false,
         },
@@ -55,7 +56,7 @@ const ESQUEMA_RESPOSTA = {
 };
 
 /* Esquema do modo ROTINA: igual ao de cima, mas a config é a rotina INTEIRA,
-   com os 7 campos obrigatórios. Deixando a IA escolher quais campos mandar,
+   com os 8 campos obrigatórios. Deixando a IA escolher quais campos mandar,
    ela escrevia "corrigimos pH, umidade e temperatura" e esquecia a umidade
    no config. Obrigando todos, cada parâmetro sai avaliado; o servidor
    (services/autoAjuste.js) compara com a estação e aplica só o que mudou. */
@@ -67,6 +68,7 @@ const CAMPOS_ROTINA = [
   "temp_max",
   "vent_min_por_hora",
   "nutri_s",
+  "uv_min_dia",
 ];
 const ESQUEMA_ROTINA = JSON.parse(JSON.stringify(ESQUEMA_RESPOSTA));
 ESQUEMA_ROTINA.properties.suggestion.required = ["message", "growth_pct", "health_pct", "config"];
@@ -103,7 +105,11 @@ function blocoConfig(c) {
 - Irrigação: liga abaixo de ${ou(c.umid_liga, "?")}% de umidade no substrato, desliga em ${ou(c.umid_desliga, "?")}%
 - Fotoperíodo (LED de cultivo): ${ou(c.luz_on, "?")} às ${ou(c.luz_off, "?")}
 - Ventilação: ${ou(c.vent_min_por_hora, "?")} min por hora, e sempre que passar de ${ou(c.temp_max, "?")} °C
-- Nutriente: ${ou(c.nutri_s, "?")} s de dosagem por dia, às ${ou(c.nutri_hora, "?")}`;
+- Nutriente: ${ou(c.nutri_s, "?")} s de dosagem por dia, às ${ou(c.nutri_hora, "?")}
+- Luz UV: até ${ou(c.uv_min_dia, "?")} min por dia. A UV está no MESMO relé dos
+  ventiladores: só liga junto com eles. A ventilação programada fica dentro do
+  fotoperíodo e para quando o orçamento de UV do dia acaba; a ventilação por
+  temperatura liga a qualquer hora e também conta como UV.`;
 }
 
 function blocoLeitura(l) {
@@ -126,7 +132,8 @@ function blocoLimites(comRotinaCompleta) {
   - light_hours: ${LIMITES.light_hours[0]} a ${LIMITES.light_hours[1]}
   - vent_min_por_hora: ${LIMITES.vent_min_por_hora[0]} a ${LIMITES.vent_min_por_hora[1]}
   - temp_max: ${LIMITES.temp_max[0]} a ${LIMITES.temp_max[1]}
-  - nutri_s: ${LIMITES.nutri_s[0]} a ${LIMITES.nutri_s[1]}`;
+  - nutri_s: ${LIMITES.nutri_s[0]} a ${LIMITES.nutri_s[1]}
+  - uv_min_dia: ${LIMITES.uv_min_dia[0]} a ${LIMITES.uv_min_dia[1]}`;
   if (!comRotinaCompleta) return base;
   return `${base}
   - water_interval_h: ${LIMITES.water_interval_h[0]} a ${LIMITES.water_interval_h[1]}
@@ -150,6 +157,12 @@ cores são reais: pode confiar em tons de verde, amarelo e marrom.
 ## O que avaliar
 Apenas SINAIS VISUAIS: cor das folhas, murcha, manchas, bordas secas, pragas
 visíveis, porte, vigor e — se a finalidade pedir — presença e quantidade de flores.
+
+A planta recebe luz UV de propósito (estresse leve para estimular compostos de
+defesa). Sinais de UV DEMAIS: folhas novas bronzeadas, avermelhadas ou com
+manchas esbranquiçadas/prateadas na face de cima, bordas enroladas para cima,
+crescimento travado. Se vir isso, o ajuste certo é reduzir uv_min_dia (não mexa
+na ventilação por causa disso).
 
 Regras:
 1. Não invente medição que não recebeu.
@@ -209,6 +222,13 @@ Pense em:
   espécie aguentar sem estresse?
 - **Ventilação** — pouca favorece fungo em ambiente úmido; muita resseca.
 - **Nutriente** — a dose diária é compatível com o porte da planta?
+- **Luz UV (uv_min_dia)** — é um estressor usado de propósito: em dose curta a
+  planta produz mais flavonoides e óleos essenciais; em dose alta queima folha.
+  Estudos com ervas medicinais mostram ganho com 15 a 60 min por dia; acima de
+  ~120 min o risco de dano cresce. Folhosas tenras e mudas pedem menos; ervas
+  aromáticas de sol pleno toleram mais. 0 desliga a UV, mas também desliga a
+  ventilação programada (só a por temperatura continua) — em ambiente úmido,
+  prefira uma dose baixa a zero.
 
 Regras:
 1. Não invente medição que não recebeu, e não cite leitura de pH nem de luminosidade.
@@ -218,9 +238,9 @@ Regras:
    fizer sentido para ela, diga isso em analysis_text com health_status
    "atencao" e devolva suggestion: null — não adivinhe uma rotina.
 4. Se a rotina está inadequada, CORRIJA TUDO DE UMA VEZ: suggestion.config é
-   a ROTINA COMPLETA recomendada, com os 7 campos (light_hours,
+   a ROTINA COMPLETA recomendada, com os 8 campos (light_hours,
    humidity_target, water_interval_h, ph_target, temp_max, vent_min_por_hora,
-   nutri_s). Para cada um: se o valor atual já é bom para esta espécie e
+   nutri_s, uv_min_dia). Para cada um: se o valor atual já é bom para esta espécie e
    finalidade, repita o valor atual; se não é, ponha o valor ideal. O app
    compara e aplica só o que mudou.
 5. Coerência: todo parâmetro que você citar como errado em analysis_text ou em
@@ -237,7 +257,7 @@ Regras:
   - message: uma frase dizendo como a rotina corrigida favorece esta espécie e
     esta finalidade.
   - growth_pct e health_pct: ganho esperado, de 0 a 30. Seja conservador.
-  - config: a rotina completa (os 7 campos), dentro destes limites:
+  - config: a rotina completa (os 8 campos), dentro destes limites:
 ${blocoLimites(true)}
 
 Responda SOMENTE o JSON, sem texto antes ou depois.`;

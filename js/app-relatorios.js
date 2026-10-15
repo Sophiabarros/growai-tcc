@@ -113,6 +113,7 @@
     temp_max: { nome: "Ventilar acima de", un: " °C" },
     vent_min_por_hora: { nome: "Ventilação", un: " min/h" },
     nutri_s: { nome: "Nutriente", un: " s/dia" },
+    uv_min_dia: { nome: "Luz UV", un: " min/dia" },
     luz_inicio: { nome: "Luz acende às", un: "" },
     nutri_hora: { nome: "Nutriente às", un: "" },
   };

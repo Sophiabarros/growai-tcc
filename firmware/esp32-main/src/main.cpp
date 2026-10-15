@@ -24,14 +24,14 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.1.0"
+#define FW "main-1.2.0"
 
 // ---------------------------------------------------------------- pinos
 const uint8_t PIN_SENSOR  = 34;  // ADC1: le com o Wi-Fi ligado (ADC2 nao le)
 const uint8_t PIN_DS18B20 = 25;  // OneWire escreve no pino: nao pode ser 34-39
 const uint8_t PIN_BOMBA   = 26;
 const uint8_t PIN_LUZ     = 27;
-const uint8_t PIN_VENT    = 14;  // solta PWM no boot, antes do setup(): ver README
+const uint8_t PIN_VENT    = 14;  // ventiladores E luz UV (mesmo rele): ver UV abaixo
 const uint8_t PIN_NUTRI   = 32;
 /* Botao BOOT da DevKit. Segurar ao ligar abre o portal de configuracao, que e
    como se troca de rede sem computador. Depois do boot ele e uma entrada
@@ -106,9 +106,30 @@ struct Config {
   float    temp_max;
   int      nutri_hora;          // minutos desde a meia-noite
   int      nutri_s;
+  int      uv_min_dia;          // orcamento diario da luz UV (= ventiladores)
   uint32_t cfg_versao;
 };
-Config cfg = { 40, 60, 6 * 60, 18 * 60, 10, 30.0f, 8 * 60, 8, 0 };  // fabrica
+Config cfg = { 40, 60, 6 * 60, 18 * 60, 10, 30.0f, 8 * 60, 8, 30, 0 };  // fabrica
+
+/* ------------------------------------------------------------------ UV
+   A luz UV esta ligada no MESMO rele dos ventiladores: ventilador ligado =
+   UV ligado, sem excecao. UV e um estressor: em dose curta faz a planta
+   produzir mais compostos de defesa (flavonoides, oleos essenciais); em dose
+   alta queima a folha. Por isso a ventilacao programada passou a obedecer ao
+   UV, e nao o contrario:
+
+   - so dentro do fotoperiodo: a planta repara o dano do UV usando luz
+     visivel (fotorreativacao), que no escuro nao acontece;
+   - espalhada pelo dia: os minutos por hora saem de uv_min_dia dividido
+     pelas horas de luz (nunca mais que vent_min_por_hora);
+   - para no orcamento: depois de uv_min_dia minutos de UV no dia, a
+     ventilacao programada nao liga mais ate a meia-noite;
+   - apagada na janela de foto: a luz UV falsearia as cores da foto.
+
+   A ventilacao por TEMPERATURA continua valendo a qualquer hora (calor mata
+   mais rapido que UV) e o comando manual tambem; os dois contam no
+   orcamento do dia. Rele separado para o UV acabaria com essa troca. */
+unsigned long uvMsHoje = 0;
 
 Preferences nvs;
 String erroCfg = "";
@@ -183,6 +204,7 @@ void carregaCfg() {
     cfg.temp_max          = nvs.getFloat("tm", cfg.temp_max);
     cfg.nutri_hora        = nvs.getInt("nh", cfg.nutri_hora);
     cfg.nutri_s           = nvs.getInt("ns", cfg.nutri_s);
+    cfg.uv_min_dia        = nvs.getInt("uv", cfg.uv_min_dia);
     cfg.cfg_versao        = nvs.getUInt("v", cfg.cfg_versao);
     Serial.println("[cfg] carregada da NVS");
   } else {
@@ -201,6 +223,7 @@ void salvaCfg() {
   nvs.putFloat("tm", cfg.temp_max);
   nvs.putInt("nh", cfg.nutri_hora);
   nvs.putInt("ns", cfg.nutri_s);
+  nvs.putInt("uv", cfg.uv_min_dia);
   nvs.putUInt("v", cfg.cfg_versao);
   nvs.end();
 }
@@ -215,15 +238,16 @@ bool valida(const Config &c, String &err) {
   if (c.vent_min_por_hora < 0 || c.vent_min_por_hora > 60) { err = "vent_min_por_hora fora de 0..60"; return false; }
   if (isnan(c.temp_max) || c.temp_max < 15 || c.temp_max > 45) { err = "temp_max fora de 15..45"; return false; }
   if (c.nutri_s < 0 || c.nutri_s > 30)       { err = "nutri_s fora de 0..30"; return false; }
+  if (c.uv_min_dia < 0 || c.uv_min_dia > 240) { err = "uv_min_dia fora de 0..240"; return false; }
   return true;
 }
 
 void mostraCfg() {
-  Serial.printf("[cfg] v%u  umid %d/%d  luz %s-%s  vent %d min/h  temp_max %.1f  nutri %s x%d s\n",
+  Serial.printf("[cfg] v%u  umid %d/%d  luz %s-%s  vent %d min/h  temp_max %.1f  nutri %s x%d s  uv %d min/dia\n",
                 cfg.cfg_versao, cfg.umid_liga, cfg.umid_desliga,
                 fmtHora(cfg.luz_on).c_str(), fmtHora(cfg.luz_off).c_str(),
                 cfg.vent_min_por_hora, cfg.temp_max,
-                fmtHora(cfg.nutri_hora).c_str(), cfg.nutri_s);
+                fmtHora(cfg.nutri_hora).c_str(), cfg.nutri_s, cfg.uv_min_dia);
 }
 
 // ---------------------------------------------------- comandos manuais
@@ -346,10 +370,31 @@ void viraDia() {
   if (diaDoAno == tmAgora.tm_yday) return;
   if (diaDoAno >= 0) {
     nutriMsHoje = 0;
+    uvMsHoje = 0;
     nutriFeitoHoje = false;
     Serial.println("[dia] virou: contador de nutriente zerado");
   }
   diaDoAno = tmAgora.tm_yday;
+}
+
+/* Minutos de luz por dia, a partir de luz_on/luz_off (que podem cruzar a
+   meia-noite). luz_on == luz_off e 24 h. */
+int minutosDeLuz() {
+  if (cfg.luz_on == cfg.luz_off) return 1440;
+  return ((cfg.luz_off - cfg.luz_on) % 1440 + 1440) % 1440;
+}
+
+/* Ventilacao programada (e portanto UV) agora? Ver o bloco "UV" la em cima.
+   Comeca no minuto 1 de cada hora, e nao no 0, para nao cair em cima da
+   janela de foto do :00. */
+bool ventProgramada(int minutos) {
+  if (cfg.uv_min_dia <= 0 || cfg.vent_min_por_hora <= 0) return false;
+  if (!dentroFotoperiodo(minutos)) return false;
+  if (uvMsHoje >= (unsigned long)cfg.uv_min_dia * 60000UL) return false;
+  int horasLuz = (minutosDeLuz() + 59) / 60;               // arredonda para cima
+  int porHora = (cfg.uv_min_dia + horasLuz - 1) / horasLuz; // idem
+  if (porHora > cfg.vent_min_por_hora) porHora = cfg.vent_min_por_hora;
+  return tmAgora.tm_min >= 1 && tmAgora.tm_min < 1 + porHora;
 }
 
 void atualizaCargas(unsigned long agora) {
@@ -363,8 +408,8 @@ void atualizaCargas(unsigned long agora) {
   quer[R_LUZ] = !horaValida
                 || (dentroFotoperiodo(minutos) && !naJanelaFoto(tmAgora.tm_min, tmAgora.tm_sec));
 
-  // ventiladores: N min no inicio de cada hora, ou temperatura alta (1 C de histerese)
-  bool ventPorHora = horaValida && tmAgora.tm_min < cfg.vent_min_por_hora;
+  // ventiladores (+ UV): ciclo programado limitado pelo UV, ou temperatura alta
+  bool ventPorHora = horaValida && ventProgramada(minutos);
   if (tempOk) {
     if (!ventPorTemp && tempC > cfg.temp_max)            ventPorTemp = true;
     else if (ventPorTemp && tempC <= cfg.temp_max - 1.0f) ventPorTemp = false;
@@ -396,6 +441,8 @@ void atualizaCargas(unsigned long agora) {
     if (estado == REGANDO) { estado = ABSORVENDO; tEstado = agora; }
   }
   if (nutriMsHoje >= NUTRI_MAX_MS) { quer[R_NUTRI] = false; nutriDosando = false; }
+  // Janela de foto: a luz UV (presa aos ventiladores) falsearia as cores.
+  if (horaValida && naJanelaFoto(tmAgora.tm_min, tmAgora.tm_sec)) quer[R_VENT] = false;
 
   // ---- escreve so o que mudou ----
   for (int i = 0; i < N_RELES; i++) {
@@ -404,6 +451,13 @@ void atualizaCargas(unsigned long agora) {
     rele(PINO_RELE[i], quer[i]);
     if (i == R_BOMBA && quer[i]) bombaLigadaEm = agora;
   }
+
+  // contabiliza o UV de hoje (= tempo com os ventiladores ligados)
+  static unsigned long tickUv = 0;
+  if (ligado[R_VENT]) {
+    if (tickUv) uvMsHoje += agora - tickUv;
+    tickUv = agora;
+  } else tickUv = 0;
 
   // contabiliza o nutriente gasto hoje
   static unsigned long tickNutri = 0;
@@ -497,6 +551,7 @@ void trataResposta(const String &corpo) {
     nova.vent_min_por_hora = c["vent_min_por_hora"] | cfg.vent_min_por_hora;
     nova.temp_max          = c["temp_max"]          | cfg.temp_max;
     nova.nutri_s           = c["nutri_s"]           | cfg.nutri_s;
+    nova.uv_min_dia        = c["uv_min_dia"]        | cfg.uv_min_dia;
 
     bool horasOk = leHora(c, "luz_on",     nova.luz_on,     err)
                 && leHora(c, "luz_off",    nova.luz_off,    err)
@@ -555,6 +610,7 @@ void enviaTelemetria() {
   }
 
   doc["nutri_s_hoje"] = (int)(nutriMsHoje / 1000);
+  doc["uv_s_hoje"]    = (int)(uvMsHoje / 1000);
   doc["hora_valida"]  = horaValida;
   doc["rssi"]         = WiFi.RSSI();
   doc["uptime_s"]     = (uint32_t)(agora / 1000);

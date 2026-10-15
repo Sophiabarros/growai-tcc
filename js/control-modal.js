@@ -19,7 +19,8 @@
     { id: "bomba", nome: "Bomba d'água", ligar: "Regar 30 s", dur: 30 },
     { id: "nutri", nome: "Nutriente", ligar: "Dosar 5 s", dur: 5 },
     { id: "luz", nome: "Luz", ligar: "Acender 1 h", dur: 3600 },
-    { id: "vent", nome: "Ventilação", ligar: "Ventilar 10 min", dur: 600 },
+    // Ventiladores e luz UV no mesmo relé: ligar um liga o outro.
+    { id: "vent", nome: "Ventilação + luz UV", ligar: "Ligar 5 min", dur: 300 },
   ];
   var ESTADOS = { MONITORANDO: "Monitorando", REGANDO: "Regando", ABSORVENDO: "Absorvendo" };
   var NUTRI_MAX_S = 30;
@@ -38,6 +39,7 @@
     '    <p class="ctrl__rotulo">Relés</p>',
     '    <ul class="ctrl__reles" id="ctrlReles"></ul>',
     '    <p class="ctrl__nota">“Automático” devolve o relé à placa, que decide pela umidade, pelo horário da luz e pela temperatura. Por segurança, a bomba liga no máximo 50 s por vez e o nutriente soma no máximo 30 s por dia — quem corta é a própria placa.</p>',
+    '    <p class="ctrl__nota ctrl__nota--uv">A luz UV liga junto com os ventiladores. Não olhe direto para ela e evite expor a pele por muito tempo. O tempo ligado manualmente conta no limite de UV do dia.</p>',
     '    <div class="station-modal__actions">',
     '      <button type="button" class="station-modal__submit" data-ctrl="fechar">Fechar</button>',
     "    </div>",
@@ -231,6 +233,18 @@
       .join("");
   }
 
+  function uvLimite() {
+    var l = leitura || {};
+    var v = l.uv_min_dia != null ? l.uv_min_dia : station && station.uv_min_dia;
+    return v != null ? v : 30;
+  }
+
+  function sinalWifi(rssi) {
+    var r = Number(rssi);
+    if (rssi == null || !isFinite(r) || r === 0) return "—";
+    return r >= -60 ? "Ótimo" : r >= -70 ? "Bom" : r >= -80 ? "Fraco" : "Muito fraco";
+  }
+
   function renderLeituras() {
     var l = leitura || {};
     var temNum = function (v) { return v !== null && v !== undefined && v !== "" && isFinite(Number(v)); };
@@ -239,6 +253,10 @@
       ["Temperatura", temNum(l.temperature) ? String(Math.round(l.temperature * 10) / 10).replace(".", ",") + " °C" : "—"],
       ["Situação", ESTADOS[l.estado] || "—"],
       ["Nutriente hoje", temNum(l.nutri_s_hoje) ? l.nutri_s_hoje + " de " + NUTRI_MAX_S + " s" : "—"],
+      ["Luz UV hoje", temNum(l.uv_s_hoje)
+        ? (l.uv_s_hoje > 0 && l.uv_s_hoje < 60 ? "<1" : Math.round(l.uv_s_hoje / 60)) + " de " + uvLimite() + " min"
+        : "—"],
+      ["Sinal Wi-Fi", sinalWifi(l.rssi)],
     ];
     document.getElementById("ctrlLeituras").innerHTML = itens
       .map(function (i) {

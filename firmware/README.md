@@ -491,6 +491,27 @@ termos. Use o roteador do celular, e configure pelo portal da placa na hora.
 Confira também: senha com acento ou caractere especial, e SSID escrito com
 maiúscula/minúscula exatamente igual.
 
+### Luz UV no relé dos ventiladores
+
+A luz UV está ligada no **mesmo relé** dos ventiladores (GPIO 14): ventilador
+ligado = UV ligado. Desde o `main-1.2.0` a ventilação programada obedece ao UV:
+
+- só liga **dentro do fotoperíodo** (a planta repara o dano do UV usando luz
+  visível; no escuro não repara);
+- os minutos por hora saem de `uv_min_dia` dividido pelas horas de luz,
+  começando no minuto 1 de cada hora (o :00 é da foto);
+- para quando o UV do dia chega em `uv_min_dia` (padrão 30 min; o app edita
+  em "Configurar rotina" e a IA sugere por espécie);
+- fica **apagada na janela de foto**, senão a UV falsearia as cores.
+
+A ventilação por **temperatura** continua ligando a qualquer hora, e o comando
+manual também — os dois contam no UV do dia. A troca é inevitável com um relé
+só: menos UV significa menos ventilação programada. Um relé separado para o UV
+(qualquer GPIO livre) acaba com isso.
+
+> **Segurança:** não olhe direto para a luz UV e evite expor a pele. Se for
+> lâmpada **UV-C** (germicida), **não use em plantas**: ela queima a folha.
+
 ### Usar o 4G do celular (roteador do celular)
 
 Funciona sem nada no backend: as placas só fazem conexões de **saída** (HTTPS
