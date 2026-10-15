@@ -99,6 +99,22 @@ if (require.main === module) {
     console.log(`GrowAI API rodando em http://localhost:${PORT} (WebSocket em ${realtime.CAMINHO})`);
   });
 
+  /* Despertador: no plano free o Render dorme após 15 min sem requisição, e
+     acordar leva ~50 s — mais que os 10 s que a CAM espera, então a foto se
+     perdia sempre que a placa principal estava fora do ar. O serviço chama a
+     própria URL pública a cada 10 min; a chamada passa pelo proxy do Render
+     e conta como tráfego. RENDER_EXTERNAL_URL o Render define sozinho, então
+     localmente e na Vercel isto não faz nada. Um serviço ligado o mês inteiro
+     usa até 744 h das 750 h grátis. */
+  if (process.env.RENDER_EXTERNAL_URL) {
+    const alvo = `${process.env.RENDER_EXTERNAL_URL}/health`;
+    setInterval(() => {
+      fetch(alvo, { signal: AbortSignal.timeout(15000) }).catch((e) =>
+        console.warn(`[despertador] ${alvo} falhou: ${e.message}`)
+      );
+    }, 10 * 60 * 1000).unref();
+  }
+
   // O Render manda SIGTERM antes de trocar a instância num deploy.
   const desligar = () => {
     realtime.fechar();

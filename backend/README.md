@@ -201,7 +201,8 @@ cortado.
 | `IA_HABILITADA` | `false` salva como `indefinido` sem chamar a IA |
 | `IA_TIMEOUT_MS` | padrão 25000 |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | provedor Gemini (padrão `gemini-3.6-flash`) |
-| `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` | provedor Claude |
+| `GEMINI_MODELOS_RESERVA` | tentados em ordem quando o principal dá 503/429/timeout (padrão `gemini-3.5-flash,gemini-3.7-flash`; vazio desliga) |
+| `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` | provedor Claude; com `IA_PROVIDER=gemini`, vira a última reserva |
 
 Sem SDK: as duas usam o `fetch` nativo do Node 22.
 
@@ -224,6 +225,14 @@ vendo. Fique nos modelos sem `-lite`.
 O `gemini-3.8-flash` (o mais novo) deu `503 high demand` e timeout de forma
 intermitente nos testes. O `3.6-flash` respondeu em 5–7 s de forma consistente —
 daí o padrão. Se o 3.8 estabilizar, é só trocar `GEMINI_MODEL`.
+
+**Plano gratuito = fila de baixa prioridade.** Em 15/10/2026, no mesmo minuto,
+`3.5-flash` e `flash-latest` deram 503 "high demand" e `3.7`/`3.8` estouraram
+o tempo, enquanto o `3.6` tinha respondido minutos antes. O Google atende antes
+quem tem faturamento ativo, então a sobrecarga não é do nosso código. Por isso
+`chamarGemini` percorre `GEMINI_MODELOS_RESERVA` (e o Claude, se houver chave)
+antes de desistir. O `gemini-2.5-flash` não serve de reserva: dá 404 ("no
+longer available to new users").
 
 Para listar os modelos que a sua chave acessa:
 

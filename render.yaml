@@ -14,7 +14,8 @@
 #
 # Plano free: o serviço dorme após ~15 min sem requisição e a 1a resposta
 # depois disso leva ~50 s. Com a placa principal ligada (telemetria a cada
-# 15 s) ele não dorme.
+# 15 s) ele não dorme, e o server.js chama a própria /health a cada 10 min
+# (RENDER_EXTERNAL_URL) para não dormir nem com as placas desligadas.
 
 services:
   - type: web

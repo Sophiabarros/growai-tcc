@@ -258,9 +258,11 @@
     }
     if (!r || !r.avaliado) {
       semAvaliacao[saved.id] = true;
-      var cheia = r && /(503|500|502|504)|high demand|não respondeu/i.test(r.motivo || "");
+      var cheia = r && /\b50[0234]\b|high demand|não respondeu/i.test(r.motivo || "");
       // 429 = acabou a cota gratuita do Gemini (20 por dia): só volta amanhã.
-      var semCota = r && /429|quota/i.test(r.motivo || "");
+      // O backend tenta vários modelos e junta os erros com " | ": se algum
+      // estava só cheio, vale tentar de novo em minutos, não amanhã.
+      var semCota = r && !cheia && /\b429\b|quota/i.test(r.motivo || "");
       toast(
         semCota
           ? "A IA atingiu o limite de avaliações de hoje. A rotina foi salva; salve de novo amanhã para ela conferir."

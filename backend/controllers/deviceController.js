@@ -136,6 +136,12 @@ async function telemetria(req, res, next) {
 }
 
 // ------------------------------------------------------------------- foto
+/* A placa recebe o 200 assim que a foto está gravada; a IA roda DEPOIS.
+   Antes a resposta esperava a análise (5-20 s, mais quando um modelo de
+   reserva entra), e a CAM desiste em HTTP_TIMEOUT_MS = 10 s: a foto chegava,
+   mas a placa registrava falha. O Render mantém o processo vivo depois da
+   resposta, então a análise termina normalmente. Se a instância reiniciar no
+   meio, a foto só fica como 'indefinido' — a próxima vem em 30 min. */
 async function foto(req, res, next) {
   try {
     const station = req.station;
@@ -171,24 +177,7 @@ async function foto(req, res, next) {
         ORDER BY captured_at DESC LIMIT 1`,
       [station.id, String(IA_FOTO_INTERVALO_MIN)]
     );
-
-    let r;
-    if (ultimaAnalise.length) {
-      const min = Math.round((Date.now() - new Date(ultimaAnalise[0].captured_at).getTime()) / 60000);
-      r = {
-        ok: false,
-        motivo: `análise espaçada: a última foi há ${min} min (intervalo de ${IA_FOTO_INTERVALO_MIN} min, para caber na cota da API)`,
-        raw: null,
-        provider: null,
-        model: null,
-      };
-    } else {
-      r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
-      if (!r.ok) console.warn(`[foto] estação ${station.id}: IA não analisou — ${r.motivo}`);
-    }
-
-    const health = r.ok ? r.health_status : "indefinido";
-    const texto = r.ok ? r.analysis_text : "Análise indisponível no momento.";
+    const analisarAgora = !ultimaAnalise.length;
 
     const snapshot = leitura
       ? {
@@ -201,47 +190,30 @@ async function foto(req, res, next) {
         }
       : { humidity: null, temperature: null, config, aviso: "nenhuma leitura registrada ainda" };
 
-    const iaRaw = {
-      provider: r.provider,
-      model: r.model,
-      ok: r.ok,
-      motivo: r.ok ? null : r.motivo,
-      resposta: r.raw || null,
-    };
+    let motivo = "análise em andamento";
+    if (!analisarAgora) {
+      const min = Math.round((Date.now() - new Date(ultimaAnalise[0].captured_at).getTime()) / 60000);
+      motivo = `análise espaçada: a última foi há ${min} min (intervalo de ${IA_FOTO_INTERVALO_MIN} min, para caber na cota da API)`;
+    }
 
     /* image_url como data URL: o disco da Vercel é somente leitura, e o app
-       já joga image_url direto no <img>. Mesmo esquema do avatar. */
+       já joga image_url direto no <img>. Mesmo esquema do avatar.
+       Entra como 'indefinido'; analisarFoto() troca pelo resultado. */
     const dataUrl = `data:image/jpeg;base64,${jpeg.toString("base64")}`;
-
     const { rows: fotoRows } = await db.query(
       `INSERT INTO station_photos
          (station_id, image_url, health_status, analysis_text, sensor_snapshot, ia_raw, captured_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, 'indefinido', $3, $4, $5, $6)
        RETURNING id, captured_at`,
-      [station.id, dataUrl, health, texto, JSON.stringify(snapshot), JSON.stringify(iaRaw), capturedAt]
+      [
+        station.id,
+        dataUrl,
+        "Análise indisponível no momento.",
+        JSON.stringify(snapshot),
+        JSON.stringify({ provider: null, model: null, ok: false, motivo, resposta: null }),
+        capturedAt,
+      ]
     );
-
-    /* Sugestao da IA. O autoAjuste decide se aplica sozinho ou so registra -
-       ele e quem conhece o cooldown e o ia_autoajuste da estacao. Uma falha
-       aqui nao pode derrubar a resposta: a foto ja esta gravada e a placa nao
-       reenvia. */
-    if (r.ok && r.suggestion) {
-      try {
-        const res = await autoAjuste.registrar({
-          stationId: station.id,
-          sugestao: r.suggestion,
-          origem: "ia_foto",
-        });
-        if (process.env.DEVICE_LOG === "1") {
-          console.log(
-            `[foto] sugestao ${res.sugestao.id}: ` +
-              (res.aplicada ? "APLICADA automaticamente" : `so registrada (${res.motivo})`)
-          );
-        }
-      } catch (e) {
-        console.error(`[foto] estacao ${station.id}: falha ao registrar sugestao -`, e.message);
-      }
-    }
 
     // Retenção: as fotos são data URLs e ocupam ~60-120 kB cada linha.
     await db.query(
@@ -256,17 +228,63 @@ async function foto(req, res, next) {
       [station.id, MAX_FOTOS_POR_ESTACAO]
     );
 
-    if (process.env.DEVICE_LOG === "1") {
-      console.log(
-        `[foto] estação ${station.id} ${(jpeg.length / 1024).toFixed(1)} kB -> ${health}` +
-          (r.ok && r.suggestion ? " (+sugestão)" : "")
-      );
-    }
-
-    // 200 mesmo quando a IA falhou: a placa não reenvia foto.
     res.json({ ok: true });
+
+    if (analisarAgora) {
+      analisarFoto({ fotoId: fotoRows[0].id, jpeg, station, leitura, config }).catch((e) =>
+        console.error(`[foto] estação ${station.id}: falha na análise em segundo plano -`, e.message)
+      );
+    } else if (process.env.DEVICE_LOG === "1") {
+      console.log(`[foto] estação ${station.id} ${(jpeg.length / 1024).toFixed(1)} kB guardada sem análise (${motivo})`);
+    }
   } catch (err) {
     next(err);
+  }
+}
+
+// Roda depois de a placa já ter recebido o 200.
+async function analisarFoto({ fotoId, jpeg, station, leitura, config }) {
+  const r = await analisar({ jpegBuffer: jpeg, estacao: station, leitura, config });
+  if (!r.ok) console.warn(`[foto] estação ${station.id}: IA não analisou — ${r.motivo}`);
+
+  const iaRaw = {
+    provider: r.provider,
+    model: r.model,
+    ok: r.ok,
+    motivo: r.ok ? null : r.motivo,
+    resposta: r.raw || null,
+  };
+  await db.query(
+    `UPDATE station_photos SET health_status = $2, analysis_text = $3, ia_raw = $4 WHERE id = $1`,
+    [
+      fotoId,
+      r.ok ? r.health_status : "indefinido",
+      r.ok ? r.analysis_text : "Análise indisponível no momento.",
+      JSON.stringify(iaRaw),
+    ]
+  );
+
+  /* Sugestao da IA. O autoAjuste decide se aplica sozinho ou so registra -
+     ele e quem conhece o cooldown e o ia_autoajuste da estacao. */
+  if (r.ok && r.suggestion) {
+    const reg = await autoAjuste.registrar({
+      stationId: station.id,
+      sugestao: r.suggestion,
+      origem: "ia_foto",
+    });
+    if (process.env.DEVICE_LOG === "1") {
+      console.log(
+        `[foto] sugestao ${reg.sugestao.id}: ` +
+          (reg.aplicada ? "APLICADA automaticamente" : `so registrada (${reg.motivo})`)
+      );
+    }
+  }
+
+  if (process.env.DEVICE_LOG === "1") {
+    console.log(
+      `[foto] estação ${station.id} ${(jpeg.length / 1024).toFixed(1)} kB -> ${r.ok ? r.health_status : "indefinido"}` +
+        (r.ok && r.suggestion ? " (+sugestão)" : "")
+    );
   }
 }
 

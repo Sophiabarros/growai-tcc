@@ -182,11 +182,58 @@ async function postJson(url, headers, corpo, timeoutMs = TIMEOUT_MS) {
 }
 
 // ------------------------------------------------------------------- Gemini
+/* Modelo principal seguido dos de reserva. No plano gratuito o Google atende
+   primeiro quem paga, e o 503 "high demand" vem em rajadas que duram minutos:
+   repetir no MESMO modelo não resolvia, e o app vivia mostrando "IA
+   sobrecarregada". Outro modelo quase sempre está livre, e cada um tem a sua
+   cota de 20/dia, então a reserva também multiplica a cota.
+   Nada de modelo -lite aqui: eles alucinam em foto escura (ver README). */
+function modelosGemini() {
+  const principal = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  const reserva = (process.env.GEMINI_MODELOS_RESERVA ?? "gemini-3.5-flash,gemini-3.7-flash")
+    .split(",")
+    .map((m) => m.trim())
+    .filter((m) => m && m !== principal);
+  return [principal, ...reserva];
+}
+
+// Falha que outro modelo pode não ter: sobrecarga, cota esgotada ou demora.
+function falhaPassageira(r) {
+  return r.timeout || [429, 500, 502, 503, 504].includes(r.status);
+}
+
 async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
   const chave = process.env.GEMINI_API_KEY;
   if (!chave) return { erro: "GEMINI_API_KEY não configurada" };
-  const modelo = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
+  /* Orçamento total da cadeia: um modelo que estourou o tempo já gastou
+     timeoutMs, e quem espera é o usuário com o app aberto. Só passa para o
+     próximo modelo se ainda sobra pelo menos metade de uma chamada. */
+  const prazo = Date.now() + timeoutMs * 1.5;
+  const erros = [];
+  let ultimo = null;
+  for (const modelo of modelosGemini()) {
+    const restante = prazo - Date.now();
+    if (erros.length && restante < timeoutMs / 2) break;
+    let r;
+    try {
+      r = await chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, timeoutMs: Math.min(timeoutMs, restante) });
+    } catch (err) {
+      if (err.name !== "AbortError") throw err;
+      r = { erro: `Gemini ${modelo} não respondeu a tempo`, timeout: true };
+    }
+    if (!r.erro) {
+      if (erros.length) console.warn(`[ia] ${modelo} respondeu depois de: ${erros.join(" | ")}`);
+      return r;
+    }
+    erros.push(r.erro);
+    ultimo = r;
+    if (!falhaPassageira(r)) break;
+  }
+  return { erro: erros.join(" | "), raw: ultimo && ultimo.raw, modelo: ultimo && ultimo.modelo, passageira: falhaPassageira(ultimo) };
+}
+
+async function chamarModeloGemini({ modelo, chave, jpegBuffer, prompt, esquema, timeoutMs }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`;
   // Sem jpegBuffer (modo rotina) vai só o texto.
   const parts = [];
@@ -210,15 +257,12 @@ async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
 
   let r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
 
-  /* 503 "high demand" (e 500/502/504) é sobrecarga momentânea do Gemini, não
-     erro nosso, e não gasta cota. Visto várias vezes no mesmo dia com o
-     gemini-3.6-flash: sem repetir, o aviso de rotina inadequada sumia em
-     silêncio sempre que o Gemini estava cheio. O 503 volta em ~2 s, então
-     duas novas tentativas (após 2 s e 5 s) cabem no tempo de uma chamada
-     normal. 429 (cota) não repete: só pioraria. */
-  for (const espera of [2000, 5000]) {
-    if (r.ok || ![500, 502, 503, 504].includes(r.status)) break;
-    await new Promise((ok) => setTimeout(ok, espera));
+  /* 503 "high demand" (e 500/502/504) é sobrecarga do Gemini, não erro
+     nosso, e não gasta cota. Uma nova tentativa após 2 s pega os soluços
+     curtos; se persistir, chamarGemini() passa para o modelo de reserva.
+     429 (cota) não repete: só pioraria. */
+  if (!r.ok && [500, 502, 503, 504].includes(r.status)) {
+    await new Promise((ok) => setTimeout(ok, 2000));
     r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
   }
 
@@ -231,16 +275,16 @@ async function chamarGemini({ jpegBuffer, prompt, esquema, timeoutMs }) {
     delete semEsquema.generationConfig.responseSchema;
     const r2 = await postJson(url, { "x-goog-api-key": chave }, semEsquema, timeoutMs);
     if (r2.ok) r = r2;
-    else return { erro: `Gemini ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, raw: r.json || r.texto };
+    else return { erro: `Gemini ${modelo} ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, status: r.status, raw: r.json || r.texto, modelo };
   }
 
   if (!r.ok) {
-    return { erro: `Gemini ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, raw: r.json || r.texto };
+    return { erro: `Gemini ${modelo} ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, status: r.status, raw: r.json || r.texto, modelo };
   }
 
   const cand = r.json && r.json.candidates && r.json.candidates[0];
   if (cand && cand.finishReason && cand.finishReason !== "STOP") {
-    return { erro: `Gemini encerrou com ${cand.finishReason}`, raw: r.json };
+    return { erro: `Gemini ${modelo} encerrou com ${cand.finishReason}`, raw: r.json, modelo };
   }
   const partes = (cand && cand.content && cand.content.parts) || [];
   const texto = partes.map((p) => p.text).filter(Boolean).join("");
@@ -296,7 +340,7 @@ async function chamarClaude({ jpegBuffer, prompt, esquema, timeoutMs }) {
 
 // -------------------------------------------------------------------- fachada
 async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config }) {
-  const nome = provedor();
+  let nome = provedor();
 
   if (!habilitada()) {
     return { ok: false, motivo: "IA desligada (IA_HABILITADA=false)", raw: null, provider: nome, model: null };
@@ -321,8 +365,19 @@ async function analisar({ modo = "foto", jpegBuffer, estacao, leitura, config })
     // A rotina usa um esquema que obriga a config completa (ver iaPrompt.js).
     const esquema = modo === "rotina" ? ESQUEMA_ROTINA : ESQUEMA_RESPOSTA;
     if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
-    else if (nome === "gemini") r = await chamarGemini({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
-    else return { ok: false, motivo: `IA_PROVIDER desconhecido: ${nome}`, raw: null, provider: nome, model: null };
+    else if (nome === "gemini") {
+      r = await chamarGemini({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+      /* Todos os Gemini cheios ou sem cota: se houver chave da Anthropic, o
+         Claude é a última reserva. Sem a chave, nada muda. */
+      if (r.erro && r.passageira && process.env.ANTHROPIC_API_KEY) {
+        const rc = await chamarClaude({ jpegBuffer: imagem, prompt, esquema, timeoutMs });
+        if (!rc.erro) {
+          console.warn(`[ia] Claude respondeu depois de: ${r.erro}`);
+          r = rc;
+          nome = "claude";
+        } else r = { ...rc, erro: `${r.erro} | ${rc.erro}` };
+      }
+    } else return { ok: false, motivo: `IA_PROVIDER desconhecido: ${nome}`, raw: null, provider: nome, model: null };
   } catch (err) {
     const motivo = err.name === "AbortError" ? `IA não respondeu em ${timeoutMs} ms` : `falha de rede: ${err.message}`;
     return { ok: false, motivo, raw: null, provider: nome, model: null };
