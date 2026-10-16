@@ -315,9 +315,18 @@
     renderSensorsUpdated(reading);
     var horasLuz = fmtSensor(reading, "light_h", "h");
     var nivel = photo && LUZ_NIVEL[photo.luz_nivel] ? photo.luz_nivel : null;
+    /* Sem avaliação da IA ainda, o card diz por quê, em vez de mostrar só as
+       horas e parecer que não faz nada: luz de cultivo apagada agora (a luz
+       só é avaliada no horário de luz da rotina) ou aguardando a primeira
+       análise do dia. */
+    var luzApagada = !!(reading && reading.reles && Number(reading.reles.luz) === 0);
+    var situacao = nivel ? LUZ_NIVEL[nivel] : luzApagada ? "apagada" : "avaliando";
     var light = nivel ? LUZ_NIVEL[nivel] : horasLuz;
     var lightLabel = document.getElementById("appSensorLightLabel");
-    if (lightLabel) lightLabel.textContent = nivel && horasLuz !== "—" ? "Luz · " + horasLuz + "/dia" : "Luz";
+    if (lightLabel) {
+      lightLabel.textContent = nivel && horasLuz !== "—" ? "Luz · " + horasLuz + "/dia"
+        : reading ? "Luz · " + situacao : "Luz";
+    }
     var humidity = fmtSensor(reading, "humidity", "%");
     var temp = fmtSensor(reading, "temperature", "°C");
     /* Sensor de temperatura sem leitura: o backend manda a de São Paulo
@@ -336,7 +345,7 @@
     var tempLabel = document.getElementById("appSensorTempLabel");
     if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · São Paulo" : "Temp";
 
-    document.getElementById("mSensorLight").textContent = nivel ? horasLuz + " · " + LUZ_NIVEL[nivel] : horasLuz;
+    document.getElementById("mSensorLight").textContent = reading ? horasLuz + " · " + situacao : horasLuz;
     document.getElementById("mSensorUv").textContent = uvMin === null ? "—" : "UV " + uvMin + " min";
     document.getElementById("mSensorHumidity").textContent = humidity;
     document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP)" : temp;
