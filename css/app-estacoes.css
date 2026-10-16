@@ -446,14 +446,21 @@
     font: 300 1rem/normal var(--font-body);
   }
 
+  /* Botões presos na base do card, como o "Ver histórico de imagens" dos
+     cards da Câmera (mesma distância da borda e mesma altura). */
   .m-est-card__actions {
+    position: absolute;
+    left: 1.3rem;
+    right: 1.3rem;
+    bottom: 1.5rem;
     display: flex;
     gap: 0.7rem;
-    margin-top: 1.7rem;
+    margin-top: 0;
   }
   .m-est-card__actions .m-est-card__btn {
     margin-top: 0;
     flex: 1;
+    height: 2.85rem;
   }
 
   .m-est-card__btn {
