@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const crypto = require("crypto");
 const { hashChave } = require("../middleware/deviceAuth");
+const aoVivo = require("../services/aoVivo");
 
 const RELES = ["bomba", "nutri", "luz", "vent"];
 const ACOES = ["ligar", "desligar"];
@@ -10,6 +11,8 @@ const DUR_MAX_S = 3600;
    em firmware/esp32-main/src/main.cpp). Mudou lá, mude aqui — isto serve só
    para o app receber um aviso claro, o corte de verdade é da placa. */
 const BOMBA_MAX_S = 50;
+// Espelha o NUTRI_MAX_MS do firmware: nutriente soma no máximo 30 s por dia.
+const NUTRI_MAX_S = 30;
 
 /* "Online" quer dizer coisas diferentes para cada placa, e usar o mesmo prazo
    para as duas dava um resultado errado.
@@ -67,6 +70,19 @@ async function create(req, res, next) {
       // Aviso, não erro: a placa corta no teto dela e o comando ainda é válido.
       if (rele === "bomba" && n > BOMBA_MAX_S) {
         res.set("X-Aviso", `a placa limita a bomba a ${BOMBA_MAX_S} s por acionamento`);
+      }
+      /* Nutriente acima do limite do dia: a placa confirmava o comando e não
+         dosava nada, e o app não dizia por quê. Agora o erro é claro. */
+      if (rele === "nutri") {
+        const vivo = aoVivo.obter(req.params.id);
+        const hoje = vivo && vivo.nutri_s_hoje != null ? Number(vivo.nutri_s_hoje) : 0;
+        const resta = NUTRI_MAX_S - hoje;
+        if (resta < 1) {
+          return res.status(409).json({
+            error: `O nutriente já chegou no limite de segurança de hoje (${NUTRI_MAX_S} s por dia, para não queimar a planta). Libera de novo à meia-noite.`,
+          });
+        }
+        if (dur_s > resta) dur_s = resta;
       }
     }
 

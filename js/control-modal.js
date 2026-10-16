@@ -356,7 +356,10 @@
       var pend = pendentes[r.id];
       var bloqueio = "";
       if (r.id === "bomba" && online && l.humidity == null) bloqueio = "Bloqueada: sensor de umidade sem leitura";
-      if (r.id === "nutri" && Number(l.nutri_s_hoje) >= NUTRI_MAX_S) bloqueio = "Limite de hoje atingido";
+      // A placa arredonda para baixo: com 29 s já não sobra 1 s inteiro para dosar.
+      if (r.id === "nutri" && Number(l.nutri_s_hoje) >= NUTRI_MAX_S - 1) {
+        bloqueio = "Limite de hoje atingido (" + NUTRI_MAX_S + " s por dia) · libera à meia-noite";
+      }
 
       var estado;
       var classe = "ctrl__rele-estado";
