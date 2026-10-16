@@ -12,9 +12,19 @@
 
 const db = require("../config/db");
 const notificacoes = require("./notificacoes");
+const aoVivo = require("./aoVivo");
 
 const IA_FOTO_INTERVALO_MIN = Number(process.env.IA_FOTO_INTERVALO_MIN || 180);
 const FOLGA_MIN = 15;
+
+/* Só a placa main-1.5.0 em diante apaga o LED no quadro de luz e obedece a
+   pausa. Com firmware antigo o quadro sai com o LED aceso e o veredito não
+   diz nada sobre a luz natural: aí não se decide nem se avisa. */
+function placaSabe(stationId) {
+  const vivo = aoVivo.obter(stationId);
+  const m = vivo && /^main-(\d+)\.(\d+)/.exec(String(vivo.fw || ""));
+  return !!m && (Number(m[1]) > 1 || Number(m[2]) >= 5);
+}
 
 function horaSP(data) {
   return data.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
@@ -31,6 +41,7 @@ async function decidir(station, r) {
     if (!station || !r || !r.ok) return;
     const nivel = r.luz_nivel;
     if (nivel !== "pouca" && nivel !== "boa" && nivel !== "muita") return;
+    if (!placaSabe(station.id)) return;
 
     const { rows } = await db.query("SELECT luz_ia_ate FROM stations WHERE id = $1", [station.id]);
     const estavaPausada = pausaSegundos(rows[0]) > 0;
