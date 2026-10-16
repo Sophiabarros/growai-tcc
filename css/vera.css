@@ -233,3 +233,34 @@
 .visor-aberto .vera-fab {
   display: none;
 }
+
+/* ---- transição de abrir/fechar (js/vera.js: mostrar/esconder) ---- */
+.vera-fundo {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.vera-fundo.is-aberto {
+  opacity: 1;
+}
+.vera {
+  opacity: 0;
+  transform: translateY(12px) scale(0.98);
+  transform-origin: bottom right;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.vera.is-aberto {
+  opacity: 1;
+  transform: none;
+}
+@media (max-width: 899px) {
+  .vera {
+    transform: translateY(-10px) scale(0.98);
+    transform-origin: top center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vera,
+  .vera-fundo {
+    transition: none;
+  }
+}

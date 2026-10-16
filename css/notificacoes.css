@@ -88,9 +88,13 @@
 .notif__fechar:hover {
   background: rgba(255, 255, 255, 0.06);
 }
+/* Cada notificação é um card separado, com respiro entre eles. */
 .notif__lista {
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .notif__vazio {
   margin: 0;
@@ -101,10 +105,15 @@
 .notif__item {
   display: flex;
   gap: 12px;
-  padding: 12px;
+  padding: 14px;
   border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(136, 211, 207, 0.08);
   text-decoration: none;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+.notif__item:active {
+  transform: scale(0.985);
 }
 .notif__item:hover {
   background: rgba(255, 255, 255, 0.04);
@@ -158,5 +167,31 @@
     width: auto;
     max-width: none;
     max-height: calc(100vh - 9.4rem - 120px);
+  }
+}
+
+/* ---- transição de abrir/fechar (js/notificacoes.js: mostrar/esconder) ---- */
+.notif-fundo {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.notif-fundo.is-aberto {
+  opacity: 1;
+}
+.notif {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+  transform-origin: top right;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.notif.is-aberto {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notif,
+  .notif-fundo,
+  .notif__item {
+    transition: none;
   }
 }

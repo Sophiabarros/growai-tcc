@@ -32,6 +32,29 @@
   ].join("\n");
 
   var painel, lista, fundo;
+
+  // Abre/fecha com transição (css: .is-aberto). hidden só volta no fim da saída.
+  var timerSaida = null;
+  function mostrar(els) {
+    clearTimeout(timerSaida);
+    els.forEach(function (e) { e.hidden = false; });
+    // Dois quadros: o navegador precisa pintar o estado inicial antes de animar.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        els.forEach(function (e) { e.classList.add("is-aberto"); });
+      });
+    });
+  }
+  function esconder(els) {
+    els.forEach(function (e) { e.classList.remove("is-aberto"); });
+    clearTimeout(timerSaida);
+    timerSaida = setTimeout(function () {
+      els.forEach(function (e) { if (!e.classList.contains("is-aberto")) e.hidden = true; });
+    }, 180);
+  }
+  function estaAberto(el) {
+    return !!el && el.classList.contains("is-aberto");
+  }
   var naoLidas = 0;
   var itens = [];
 
@@ -117,15 +140,14 @@
       if (ev.target.closest('[data-notif="fechar"]')) fechar();
     });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && painel && !painel.hidden) fechar();
+      if (ev.key === "Escape" && estaAberto(painel)) fechar();
     });
   }
 
   async function abrir() {
     montarPainel();
     if (window.Vera && window.Vera.fechar) window.Vera.fechar();
-    painel.hidden = false;
-    fundo.hidden = false;
+    mostrar([painel, fundo]);
     lista.innerHTML = '<p class="notif__vazio">Carregando…</p>';
     await carregar();
     // Viu a lista: tudo vira lido (as novas continuam destacadas até fechar).
@@ -138,8 +160,7 @@
 
   function fechar() {
     if (!painel) return;
-    painel.hidden = true;
-    fundo.hidden = true;
+    esconder([painel, fundo]);
     itens = itens.map(function (n) { return Object.assign({}, n, { lida: true }); });
   }
 
@@ -150,7 +171,7 @@
     sino.setAttribute("tabindex", "0");
     sino.classList.add("notif-sino");
     sino.addEventListener("click", function () {
-      if (painel && !painel.hidden) fechar();
+      if (estaAberto(painel)) fechar();
       else abrir();
     });
     sino.addEventListener("keydown", function (ev) {
@@ -165,7 +186,7 @@
   GrowAI.aoVivo(function (msg) {
     if (!msg || msg.tipo !== "notificacao" || !msg.notificacao) return;
     itens.unshift(msg.notificacao);
-    if (painel && !painel.hidden) {
+    if (estaAberto(painel)) {
       render();
     } else {
       naoLidas++;
@@ -177,7 +198,7 @@
   carregar();
   // Reserva do WebSocket: confere o contador a cada 2 min.
   setInterval(function () {
-    if (!document.hidden && (!painel || painel.hidden)) carregar();
+    if (!document.hidden && !estaAberto(painel)) carregar();
   }, 120000);
 
   window.Notificacoes = { abrir: abrir, fechar: fechar };

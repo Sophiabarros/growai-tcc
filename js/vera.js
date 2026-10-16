@@ -37,6 +37,29 @@
     "Pergunte, por exemplo: \"A análise falou em folha amarelada, o que eu faço?\"";
 
   var painel, conversa, campo, enviar, sub, fundo;
+
+  // Abre/fecha com transição (css: .is-aberto). hidden só volta no fim da saída.
+  var timerSaida = null;
+  function mostrar(els) {
+    clearTimeout(timerSaida);
+    els.forEach(function (e) { e.hidden = false; });
+    // Dois quadros: o navegador precisa pintar o estado inicial antes de animar.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        els.forEach(function (e) { e.classList.add("is-aberto"); });
+      });
+    });
+  }
+  function esconder(els) {
+    els.forEach(function (e) { e.classList.remove("is-aberto"); });
+    clearTimeout(timerSaida);
+    timerSaida = setTimeout(function () {
+      els.forEach(function (e) { if (!e.classList.contains("is-aberto")) e.hidden = true; });
+    }, 180);
+  }
+  function estaAberto(el) {
+    return !!el && el.classList.contains("is-aberto");
+  }
   var estado = null;
   var enviando = false;
 
@@ -56,8 +79,8 @@
     sub = document.getElementById("veraSub");
 
     function alternar() {
-      if (painel.hidden) abrir();
-      else fechar();
+      if (estaAberto(painel)) fechar();
+      else abrir();
     }
     document.getElementById("veraFab").addEventListener("click", alternar);
     // Celular: botão no topo do app, ao lado do sino.
@@ -83,7 +106,7 @@
       }
     });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && painel && !painel.hidden) fechar();
+      if (ev.key === "Escape" && estaAberto(painel)) fechar();
     });
   }
 
@@ -150,8 +173,7 @@
   function abrir(textoInicial) {
     montar();
     if (window.Notificacoes && window.Notificacoes.fechar) window.Notificacoes.fechar();
-    painel.hidden = false;
-    fundo.hidden = false;
+    mostrar([painel, fundo]);
     document.body.classList.add("vera-aberta");
     document.getElementById("veraFab").classList.add("is-aberto");
     if (typeof textoInicial === "string" && textoInicial) campo.value = textoInicial;
@@ -162,8 +184,7 @@
 
   function fechar() {
     if (!painel) return;
-    painel.hidden = true;
-    fundo.hidden = true;
+    esconder([painel, fundo]);
     document.body.classList.remove("vera-aberta");
     document.getElementById("veraFab").classList.remove("is-aberto");
   }
