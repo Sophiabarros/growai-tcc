@@ -368,6 +368,12 @@
         estado = "Ligado pela rotina" + porqueLigou(r.id, l);
         classe += " ctrl__rele-estado--ligado";
       }
+      // A IA viu luz natural boa e deixou o LED apagado até a próxima avaliação.
+      else if (r.id === "luz" && Number(l.luz_pausa_s) - passou > 0) {
+        var volta = new Date(Date.now() + (Number(l.luz_pausa_s) - passou) * 1000);
+        estado = "Desligada pela IA: luz natural boa · reavalia até " +
+          volta.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
       else estado = "Desligado · rotina no automático";
 
       // Tempo ligado hoje, separando a rotina do manual.

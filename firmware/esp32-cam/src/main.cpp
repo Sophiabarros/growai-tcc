@@ -328,8 +328,8 @@ bool enviaFoto(camera_fb_t *fb, time_t capturadaEm) {
 
 /* ------------------------------------------------------ quadro de luz
    cam-2.1.0. LUZ_ANTES_S antes de cada janela de foto (:59:40 e :29:40), a
-   luz de cultivo AINDA esta acesa: o ESP32 principal so a apaga no inicio da
-   janela. Um quadro SEM flash e com a exposicao TRAVADA vai para
+   luz de cultivo ja esta APAGADA (main-1.5.0 apaga 30 s antes): o quadro mede so
+   a luz natural. Um quadro SEM flash e com a exposicao TRAVADA vai para
    POST /device/luz. Travada porque, no automatico, o sensor clareia uma cena
    escura sozinho e esconderia a falta de luz; travada, quadro escuro = pouca
    luz de verdade. A IA recebe esse quadro junto com a foto seguinte e diz
@@ -579,7 +579,7 @@ void loop() {
   }
 
   ws.loop();
-  cuidaQuadroLuz();       // ~20 s antes da foto, com a luz de cultivo acesa
+  cuidaQuadroLuz();       // ~20 s antes da foto, com o LED apagado (luz natural)
   cuidaFotoAgendada();
   cuidaAoVivo();
   delay(5);

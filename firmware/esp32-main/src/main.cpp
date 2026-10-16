@@ -24,7 +24,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.4.0"
+#define FW "main-1.5.0"
 
 /* ------------------------------------------------------- dois nucleos
    O controle da horta (loop, nucleo 1) e a internet (tarefaRede, nucleo 0)
@@ -340,6 +340,15 @@ void executaComando(JsonObjectConst c, unsigned long agora) {
   addAck(id);                                   // ack mesmo se recusado: nao reenviar
 }
 
+/* Luz decidida pela IA (main-1.5.0). Pelo quadro de luz NATURAL da CAM, o
+   servidor manda em toda resposta `luz_pausa_s`: por quantos segundos o LED
+   Grow fica APAGADO mesmo dentro do fotoperiodo (luz natural boa/muita),
+   ou 0 = segue a rotina (pouca luz natural). O prazo corre aqui na placa:
+   sem internet, a pausa acaba sozinha e o LED volta para a rotina. Comando
+   manual de ligar continua mandando. */
+bool luzPausada = false;
+unsigned long luzPausaFim = 0;
+
 void expiraManuais(unsigned long agora) {
   for (int i = 0; i < N_RELES; i++)
     if (manual[i] && (long)(agora - manualFim[i]) >= 0) {
@@ -526,6 +535,13 @@ void atualizaCargas(unsigned long agora) {
   if (nutriDosando && (long)(agora - nutriFim) >= 0) nutriDosando = false;
   quer[R_NUTRI] = nutriDosando;
 
+  // IA: luz natural suficiente -> LED apagado ate a proxima avaliacao
+  if (luzPausada && (long)(agora - luzPausaFim) >= 0) {
+    luzPausada = false;
+    Serial.println("[luz] pausa da IA acabou, LED volta para a rotina");
+  }
+  if (luzPausada) quer[R_LUZ] = false;
+
   // ---- sobreposicao manual ----
   for (int i = 0; i < N_RELES; i++) if (manual[i]) quer[i] = true;
 
@@ -539,6 +555,11 @@ void atualizaCargas(unsigned long agora) {
   if (nutriMsHoje >= NUTRI_MAX_MS) { quer[R_NUTRI] = false; nutriDosando = false; }
   // Janela de foto: a luz UV (presa aos ventiladores) falsearia as cores.
   if (horaValida && naJanelaFoto(tmAgora.tm_min, tmAgora.tm_sec)) quer[R_VENT] = false;
+  // Quadro de luz natural da CAM: LED e UV apagados, ate no manual (30 s).
+  if (horaValida && naJanelaQuadroLuz(tmAgora.tm_min, tmAgora.tm_sec)) {
+    quer[R_LUZ] = false;
+    quer[R_VENT] = false;
+  }
 
   // ---- escreve so o que mudou ----
   /* Liga UM rele por vez, com ESCALONA_MS entre eles. Bomba e luz ligando no
@@ -703,6 +724,17 @@ void trataResposta(const String &corpo) {
     for (JsonObjectConst c : doc["comandos"].as<JsonArrayConst>()) executaComando(c, agora);
   }
 
+  // --- luz decidida pela IA ---
+  if (!doc["luz_pausa_s"].isNull()) {
+    long ps = doc["luz_pausa_s"] | 0L;
+    if (ps > 6L * 3600) ps = 6L * 3600;
+    bool antes = luzPausada;
+    luzPausada = ps > 0;
+    if (luzPausada) luzPausaFim = millis() + (unsigned long)ps * 1000UL;
+    if (antes != luzPausada)
+      Serial.printf("[luz] IA: %s\n", luzPausada ? "luz natural basta, LED apagado" : "pouca luz natural, LED pela rotina");
+  }
+
   // --- ritmo ---
   int p = doc["proxima_em_s"] | 15;
   proximaEmS = constrain(p, 5, 300);
@@ -729,6 +761,8 @@ String montaTelemetria(int &acksEnviados) {
     m[NOME_RELE[i]] = resta > 0 ? resta : 0;
   }
 
+  long pausaResta = luzPausada ? (long)(luzPausaFim - agora) / 1000 : 0;
+  doc["luz_pausa_s"]  = pausaResta > 0 ? pausaResta : 0;
   doc["nutri_s_hoje"] = (int)(nutriMsHoje / 1000);
   doc["uv_s_hoje"]    = (int)(uvMsHoje / 1000);
   doc["hora_valida"]  = horaValida;

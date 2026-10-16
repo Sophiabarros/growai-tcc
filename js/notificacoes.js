@@ -194,7 +194,7 @@
     } else {
       naoLidas++;
       atualizarContador();
-      if (typeof window.showToast === "function") window.showToast("🔔 " + msg.notificacao.titulo);
+      if (typeof window.showToast === "function") window.showToast(msg.notificacao.titulo);
     }
   });
 

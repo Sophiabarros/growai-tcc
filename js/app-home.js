@@ -322,9 +322,12 @@
     var luzApagada = !!(reading && reading.reles && Number(reading.reles.luz) === 0);
     var situacao = nivel ? LUZ_NIVEL[nivel] : luzApagada ? "apagada" : "avaliando";
     var light = nivel ? LUZ_NIVEL[nivel] : horasLuz;
+    // Luz natural boa: a IA deixou o LED de cultivo apagado (services/luzIa.js).
+    var ledPelaIa = !!(reading && Number(reading.luz_pausa_s) > 0);
     var lightLabel = document.getElementById("appSensorLightLabel");
     if (lightLabel) {
-      lightLabel.textContent = nivel && horasLuz !== "—" ? "Luz · " + horasLuz + "/dia"
+      lightLabel.textContent = ledPelaIa ? "Luz natural · LED off (IA)"
+        : nivel && horasLuz !== "—" ? "Luz · " + horasLuz + "/dia"
         : reading ? "Luz · " + situacao : "Luz";
     }
     var humidity = fmtSensor(reading, "humidity", "%");
@@ -345,7 +348,8 @@
     var tempLabel = document.getElementById("appSensorTempLabel");
     if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · São Paulo" : "Temp";
 
-    document.getElementById("mSensorLight").textContent = reading ? horasLuz + " · " + situacao : horasLuz;
+    document.getElementById("mSensorLight").textContent = ledPelaIa ? situacao + " · LED off"
+      : reading ? horasLuz + " · " + situacao : horasLuz;
     document.getElementById("mSensorUv").textContent = uvMin === null ? "—" : "UV " + uvMin + " min";
     document.getElementById("mSensorHumidity").textContent = humidity;
     document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP)" : temp;

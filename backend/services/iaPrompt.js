@@ -154,22 +154,28 @@ function blocoLimites(comRotinaCompleta) {
 }
 
 // ------------------------------------------------- modo foto (análise visual)
-const RESPOSTA_LUZ = "\n- luz_nivel: \"pouca\", \"boa\", \"muita\" ou \"incerto\", pela IMAGEM 2.\n- luz_descricao: uma frase de até 100 caracteres explicando o nível de luz\n  (ex.: \"Planta bem iluminada, sem sombras fortes nem áreas estouradas\").";
+const RESPOSTA_LUZ = "\n- luz_nivel: \"pouca\", \"boa\", \"muita\" ou \"incerto\", pela IMAGEM 2 (luz NATURAL).\n- luz_descricao: uma frase de até 100 caracteres explicando o nível de luz natural\n  (ex.: \"Luz do dia forte na planta, sem precisar do LED\").";
 
+/* main-1.5.0: o quadro de luz é tirado com o LED Grow APAGADO, então mede só
+   a luz natural. O veredito decide o LED (services/luzIa.js): pouca = acende
+   pela rotina; boa ou muita = fica apagado até a próxima avaliação. */
 function blocoLuz() {
   return `
-## IMAGEM 2: iluminação
+## IMAGEM 2: luz natural
 Você recebeu DUAS imagens. A primeira é a foto de saúde (flash, LED apagado).
-A SEGUNDA foi tirada ~20 s antes, SEM flash, com o LED de cultivo (roxo)
-ACESO e com a exposição da câmera TRAVADA (sem correção automática de
-brilho). Use a segunda só para julgar QUANTA LUZ a planta está recebendo:
-- muito escura, planta mal visível => pouca luz;
-- planta bem iluminada, detalhes visíveis, sem áreas estouradas => boa luz;
-- muito clara, áreas brancas estouradas, folhas lavadas => muita luz.
+A SEGUNDA foi tirada ~20 s antes, SEM flash, com o LED de cultivo APAGADO e a
+exposição da câmera TRAVADA (sem correção automática de brilho). Ela mostra
+só a luz NATURAL (sol, janela, ambiente) que chega na planta agora.
+Sua resposta DECIDE o LED de cultivo:
+- "pouca": escura, planta mal visível => o sistema ACENDE o LED;
+- "boa": planta bem iluminada só com a luz natural, detalhes visíveis => o LED
+  fica APAGADO (economiza energia, o sol basta);
+- "muita": muito clara, áreas brancas estouradas => o LED fica APAGADO.
 Considere a espécie: ervas de sol pleno pedem mais luz que folhosas de sombra.
-O tom roxo é normal (LED de cultivo) e não indica problema. Se a imagem 2
-não permitir julgar (lente tampada, planta fora do quadro), use "incerto".
-Não use a imagem 2 para avaliar saúde nem pragas: isso é da imagem 1.`;
+Na dúvida entre pouca e boa, prefira "pouca": a planta não pode ficar sem luz.
+Se a imagem 2 não permitir julgar (lente tampada, planta fora do quadro), use
+"incerto" (o LED segue a rotina). Não use a imagem 2 para avaliar saúde nem
+pragas: isso é da imagem 1.`;
 }
 function montarPromptFoto({ estacao, leitura, config, comLuz = false }) {
   return `Você é especialista em fisiologia vegetal e cultivo semi-hidropônico de plantas medicinais. Avalie a foto desta planta e responda em JSON.

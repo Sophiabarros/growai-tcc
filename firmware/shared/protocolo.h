@@ -49,6 +49,18 @@ static inline bool naJanelaFoto(int minuto, int segundo) {
   return segNoCicloFoto(minuto, segundo) < FOTO_JANELA_S;
 }
 
+/* --- Quadro de luz natural (main-1.5.0) --------------------------------
+   A CAM tira o quadro de iluminacao 20 s antes da janela (:59:40, :29:40).
+   O principal apaga o LED Grow (e o rele da ventilacao + UV) a partir de
+   LUZ_QUADRO_ANTES_S antes da janela: o quadro mede so a luz NATURAL, e e
+   com ela que a IA decide se vale acender o LED ou deixa-lo apagado.
+   A folga de 10 s cobre a diferenca de relogio entre as placas. */
+static const int LUZ_QUADRO_ANTES_S = 30;
+
+static inline bool naJanelaQuadroLuz(int minuto, int segundo) {
+  return segNoCicloFoto(minuto, segundo) >= FOTO_INTERVALO_MIN * 60 - LUZ_QUADRO_ANTES_S;
+}
+
 /* Invariantes conferidos pelo compilador: se alguem mexer nas constantes de
    cima e quebrar uma destas regras, o build FALHA em vez de gerar um firmware
    que tira foto com a luz roxa acesa. */

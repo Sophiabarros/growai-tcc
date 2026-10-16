@@ -5,6 +5,7 @@ const autoAjuste = require("../services/autoAjuste");
 const aoVivo = require("../services/aoVivo");
 const relatorios = require("../services/relatorios");
 const notificacoes = require("../services/notificacoes");
+const luzIa = require("../services/luzIa");
 const realtime = require("../services/realtime");
 const { temperaturaSaoPauloJa, completarTemperatura } = require("../services/temperaturaExterna");
 
@@ -140,6 +141,9 @@ async function telemetria(req, res, next) {
       light_hours: station.light_hours != null ? Number(station.light_hours) : null,
       rssi: t.rssi ?? null,
       fw: t.fw || null,
+      // LED apagado pela IA (luz natural boa): segundos restantes e o motivo.
+      luz_pausa_s: t.luz_pausa_s ?? null,
+      luz_ia_motivo: station.luz_ia_motivo || null,
       cfg_versao_placa: t.cfg_versao ?? null,
       cfg_versao_servidor: station.cfg_versao,
     };
@@ -166,6 +170,8 @@ async function telemetria(req, res, next) {
 
     // ---- resposta ----
     const resposta = { cfg_versao: station.cfg_versao, proxima_em_s: ativo ? PROXIMA_EM_S_ATIVO : PROXIMA_EM_S };
+    // Luz decidida pela IA: quanto tempo o LED fica apagado (0 = rotina).
+    resposta.luz_pausa_s = luzIa.pausaSegundos(station);
 
     // config só quando a placa está numa versão diferente da nossa
     if (Number(t.cfg_versao) !== Number(station.cfg_versao)) {
@@ -347,6 +353,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, capturedAt
   );
   // Avisos no sino: atenção, praga, pouca/muita luz.
   notificacoes.daAnalise(station, r);
+  // Luz natural boa = LED apagado até a próxima avaliação; pouca = rotina.
+  await luzIa.decidir(station, r);
   // O resumo do dia ganha esta foto já (o gráfico de saúde não espera 10 min).
   relatorios.atualizarResumo(station.id, relatorios.diaSP(0)).catch((e) =>
     console.error("[foto] resumo do dia:", e.message)
@@ -382,8 +390,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, capturedAt
 
 // ------------------------------------------------------------- luz
 /* POST /api/device/luz — quadro da ILUMINAÇÃO (cam-2.1.0).
-   A CAM o tira ~20 s antes da foto da IA, sem flash, com a luz de cultivo
-   acesa e exposição travada. Só guarda o último por estação; a análise da
+   A CAM o tira ~20 s antes da foto da IA, sem flash, com o LED de cultivo
+   apagado (só luz natural) e exposição travada. Só guarda o último por estação; a análise da
    foto seguinte o manda junto para a IA, que diz pouca/boa/muita luz. */
 async function luz(req, res, next) {
   try {
