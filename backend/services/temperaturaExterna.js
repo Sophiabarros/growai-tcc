@@ -1,4 +1,5 @@
-// Temperatura atual de São Paulo, da internet (Open-Meteo: grátis, sem chave).
+// Temperatura atual de São Paulo, da internet: a MEDIÇÃO do aeroporto de
+// Congonhas (METAR), com modelos de previsão como reserva. Grátis, sem chave.
 //
 // Usada só quando o sensor da placa (DS18B20) não tem leitura: o app mostra
 // esta temperatura no lugar, marcada como "São Paulo (internet)", e o aviso de
@@ -15,6 +16,23 @@ const CACHE_MS = 15 * 60 * 1000;
    vazia (no computador local funcionava). Cada fonte devolve °C ou lança. */
 const UA = "GrowAI-TCC/1.0 (+https://growai-xi.vercel.app)";
 const FONTES = [
+  {
+    /* MEDIÇÃO real, não previsão: o boletim METAR das estações dos
+       aeroportos, atualizado a cada hora. Congonhas fica dentro da cidade;
+       Campo de Marte é a reserva. As fontes de baixo são modelos numéricos e
+       erravam 1-2 °C (em 15/10 21h: Open-Meteo 18,7 °C, Congonhas mediu 20 °C,
+       o mesmo do app de clima do celular). Boletim com mais de 2 h é ignorado. */
+    nome: "METAR Congonhas",
+    url: "https://aviationweather.gov/api/data/metar?ids=SBSP,SBMT&format=json",
+    ler: (lista) => {
+      const recente = (m) => m && m.temp != null && Date.now() - new Date(m.reportTime).getTime() < 2 * 3600 * 1000;
+      const sbsp = lista.find((m) => m.icaoId === "SBSP");
+      const sbmt = lista.find((m) => m.icaoId === "SBMT");
+      if (recente(sbsp)) return sbsp.temp;
+      if (recente(sbmt)) return sbmt.temp;
+      throw new Error("sem boletim recente");
+    },
+  },
   {
     nome: "Open-Meteo",
     url: "https://api.open-meteo.com/v1/forecast?latitude=-23.55&longitude=-46.63&current=temperature_2m&timezone=America%2FSao_Paulo",

@@ -19,6 +19,9 @@ const PREFERENCIA = {
   sensor: "health_alerts",
   placa: "health_alerts",
   rega: "watering_updates",
+  aparelho: "watering_updates",
+  manual: "watering_updates",
+  analise: "health_alerts",
   relatorio: "weekly_reports",
 };
 // Padrões das colunas de notification_settings (schema.sql).
@@ -31,7 +34,9 @@ async function preferencias(userId) {
 
 /* Cria a notificação se a preferência deixa e se não é repetida.
    Nunca lança: notificação é extra, não pode derrubar quem chamou. */
-async function criar({ userId, stationId = null, tipo, titulo, mensagem = null, semRepetirMin = 60 }) {
+/* mesmoTitulo: o "não repetir" vale só para avisos com o MESMO título
+   (ex.: luz e ventilação são do mesmo tipo, mas não se bloqueiam). */
+async function criar({ userId, stationId = null, tipo, titulo, mensagem = null, semRepetirMin = 60, mesmoTitulo = false }) {
   try {
     if (!userId || !tipo || !titulo) return null;
     const pref = PREFERENCIA[tipo];
@@ -44,8 +49,9 @@ async function criar({ userId, stationId = null, tipo, titulo, mensagem = null, 
         `SELECT 1 FROM notificacoes
           WHERE user_id = $1 AND tipo = $2 AND station_id IS NOT DISTINCT FROM $3
             AND criado_em > now() - ($4 || ' minutes')::interval
+            AND ($5::text IS NULL OR titulo = $5)
           LIMIT 1`,
-        [userId, tipo, stationId, String(semRepetirMin)]
+        [userId, tipo, stationId, String(semRepetirMin), mesmoTitulo ? String(titulo).slice(0, 140) : null]
       );
       if (rows.length) return null;
     }
@@ -62,29 +68,91 @@ async function criar({ userId, stationId = null, tipo, titulo, mensagem = null, 
   }
 }
 
-/* Avisos que saem da análise de uma foto (saúde, praga, luz). */
+/* Toda análise de foto concluída vira UM aviso, com o resumo (saúde,
+   pragas, luz) e o título pelo que for mais importante. A pessoa fica
+   sabendo de cada análise, não só das ruins. */
 async function daAnalise(station, r) {
   if (!r || !r.ok || !station) return;
   const nome = station.name || station.plant || "estação";
+  const planta = station.plant || nome;
+  const resumo = [
+    r.health_status === "atencao" ? "precisa de atenção" : "saudável",
+    r.pragas === "sim" ? "praga detectada" : r.pragas === "nao" ? "sem pragas" : null,
+    r.luz_nivel === "boa" ? "luz boa" : r.luz_nivel === "pouca" ? "pouca luz" : r.luz_nivel === "muita" ? "luz demais" : null,
+  ].filter(Boolean).join(" · ");
+  const mensagem = resumo + (r.analysis_text ? " — " + r.analysis_text : "");
+
+  let tipo = "analise";
+  let titulo = `Nova análise de ${nome}: ${r.health_status === "atencao" ? "atenção" : "saudável"}`;
   if (r.pragas === "sim") {
-    await criar({
-      userId: station.user_id, stationId: station.id, tipo: "praga", semRepetirMin: 180,
-      titulo: `Praga detectada em ${nome}`,
-      mensagem: r.pragas_descricao || r.analysis_text,
-    });
+    tipo = "praga";
+    titulo = `Praga detectada em ${nome}`;
   } else if (r.health_status === "atencao") {
-    await criar({
-      userId: station.user_id, stationId: station.id, tipo: "saude", semRepetirMin: 180,
-      titulo: `${station.plant || nome} precisa de atenção`,
-      mensagem: r.analysis_text,
-    });
+    tipo = "saude";
+    titulo = `${planta} precisa de atenção`;
+  } else if (r.luz_nivel === "pouca" || r.luz_nivel === "muita") {
+    tipo = "luz";
+    titulo = r.luz_nivel === "pouca" ? `Pouca luz em ${nome}` : `Luz demais em ${nome}`;
   }
-  if (r.luz_nivel === "pouca" || r.luz_nivel === "muita") {
-    await criar({
-      userId: station.user_id, stationId: station.id, tipo: "luz", semRepetirMin: 360,
-      titulo: r.luz_nivel === "pouca" ? `Pouca luz em ${nome}` : `Luz demais em ${nome}`,
-      mensagem: r.luz_descricao,
-    });
+  // Cada análise é um aviso (o botão "Analisar agora" já limita 1 por minuto).
+  await criar({ userId: station.user_id, stationId: station.id, tipo, semRepetirMin: 0, titulo, mensagem });
+}
+
+/* Aparelhos ligando (telemetria). Compara o estado anterior (memória) com o
+   novo: relé que acendeu pela rotina vira um aviso com o motivo; relé que
+   entrou no modo manual vira outro. Sem estado anterior (servidor acabou de
+   reiniciar) não avisa nada, para não disparar uma rajada. */
+const APARELHOS = {
+  luz: { nome: "Luz de cultivo", ligou: "acesa", manual: "acesa manualmente", repetir: 60 },
+  vent: { nome: "Ventilação + luz UV", ligou: "ligada", manual: "ligada manualmente", repetir: 30 },
+  bomba: { nome: "Bomba d'água", ligou: "ligada (rega)", manual: "ligada manualmente", repetir: 20 },
+  nutri: { nome: "Nutriente", ligou: "sendo dosado", manual: "dosado manualmente", repetir: 60 },
+};
+
+function duracao(seg) {
+  const s = Math.max(0, Math.round(Number(seg) || 0));
+  if (s < 90) return s + " s";
+  const m = Math.round(s / 60);
+  return m < 90 ? m + " min" : Math.round(m / 60) + " h";
+}
+
+function porqueLigou(rele, station, t) {
+  if (rele === "luz") return "Horário de luz da rotina.";
+  if (rele === "bomba") return `O solo chegou a ${t.umidade ?? "?"}% de umidade.`;
+  if (rele === "nutri") return "Dose diária de nutriente da rotina.";
+  if (rele === "vent") {
+    const tmax = Number(station.temp_max);
+    if (t.temp_c != null && Number.isFinite(tmax) && Number(t.temp_c) > tmax) {
+      return `Temperatura de ${t.temp_c} °C, acima do limite de ${tmax} °C.`;
+    }
+    return "Ciclo de ventilação e luz UV da rotina.";
+  }
+  return null;
+}
+
+async function daTelemetria(station, anterior, t) {
+  if (!station || !anterior || !t || !t.reles) return;
+  const nome = station.name || station.plant || "estação";
+  const relesAntes = anterior.reles || {};
+  const manualAntes = anterior.manual || {};
+  const manualAgora = t.manual || {};
+  for (const [rele, info] of Object.entries(APARELHOS)) {
+    const ligou = Number(relesAntes[rele]) === 0 && Number(t.reles[rele]) === 1;
+    const entrouManual = manualAntes[rele] == null && manualAgora[rele] != null;
+    if (entrouManual) {
+      await criar({
+        userId: station.user_id, stationId: station.id, tipo: "manual", semRepetirMin: 1, mesmoTitulo: true,
+        titulo: `${info.nome} ${info.manual} em ${nome}`,
+        mensagem: `Comando do app, por ${duracao(manualAgora[rele])}. Depois volta para a rotina.`,
+      });
+    } else if (ligou && manualAgora[rele] == null) {
+      await criar({
+        userId: station.user_id, stationId: station.id, tipo: rele === "bomba" ? "rega" : "aparelho",
+        semRepetirMin: info.repetir, mesmoTitulo: true,
+        titulo: `${info.nome} ${info.ligou} em ${nome}`,
+        mensagem: porqueLigou(rele, station, t) + " Ligado automaticamente pela rotina.",
+      });
+    }
   }
 }
 
@@ -141,4 +209,4 @@ async function rodada() {
   }
 }
 
-module.exports = { criar, daAnalise, rodada };
+module.exports = { criar, daAnalise, daTelemetria, rodada };

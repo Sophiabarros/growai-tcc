@@ -18,6 +18,9 @@
     rega: { rotulo: "Rega", destino: "app-estacoes.html" },
     sensor: { rotulo: "Sensor", destino: "app-estacoes.html" },
     placa: { rotulo: "Placa", destino: "app-estacoes.html" },
+    aparelho: { rotulo: "Automático", destino: "app-estacoes.html" },
+    manual: { rotulo: "Manual", destino: "app-estacoes.html" },
+    analise: { rotulo: "Análise", destino: "app-camera.html" },
   };
 
   var MARKUP = [

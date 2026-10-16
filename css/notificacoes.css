@@ -195,3 +195,7 @@
     transition: none;
   }
 }
+
+.notif__item--manual .notif__ponto {
+  background: #c0e79d;
+}

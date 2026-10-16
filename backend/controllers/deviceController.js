@@ -143,15 +143,9 @@ async function telemetria(req, res, next) {
       cfg_versao_placa: t.cfg_versao ?? null,
       cfg_versao_servidor: station.cfg_versao,
     };
-    // Avisos no sino: rega começando e sensor com problema.
+    // Avisos no sino: aparelho ligado (pela rotina ou manual) e sensor com problema.
     const anterior = aoVivo.obter(station.id);
-    if (t.estado === "REGANDO" && (!anterior || anterior.estado !== "REGANDO")) {
-      notificacoes.criar({
-        userId: station.user_id, stationId: station.id, tipo: "rega", semRepetirMin: 120,
-        titulo: `Regando ${station.name || station.plant}`,
-        mensagem: `O solo chegou a ${t.umidade ?? "?"}% de umidade e a bomba ligou.`,
-      });
-    }
+    notificacoes.daTelemetria(station, anterior, t).catch(() => {});
     if (t.erro) {
       notificacoes.criar({
         userId: station.user_id, stationId: station.id, tipo: "sensor", semRepetirMin: 24 * 60,
