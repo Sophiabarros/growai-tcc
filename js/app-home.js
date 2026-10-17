@@ -346,13 +346,17 @@
     document.getElementById("appSensorHumidity").textContent = humidity;
     document.getElementById("appSensorTemp").textContent = temp;
     var tempLabel = document.getElementById("appSensorTempLabel");
-    if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · São Paulo" : "Temp";
+    // Hora da medição (Congonhas mede de hora em hora): mostra que a temperatura muda.
+    var tempHora = tempDeSP && reading.temperatura_medida_em
+      ? new Date(reading.temperatura_medida_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      : "";
+    if (tempLabel) tempLabel.textContent = tempDeSP ? "Temp · SP" + (tempHora ? " às " + tempHora : "") : "Temp";
 
     document.getElementById("mSensorLight").textContent = ledPelaIa ? situacao + " · LED off"
       : reading ? horasLuz + " · " + situacao : horasLuz;
     document.getElementById("mSensorUv").textContent = uvMin === null ? "—" : "UV " + uvMin + " min";
     document.getElementById("mSensorHumidity").textContent = humidity;
-    document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP)" : temp;
+    document.getElementById("mSensorTemp").textContent = tempDeSP && temp !== "—" ? temp + " (SP" + (tempHora ? " " + tempHora.replace(":00", "h") : "") + ")" : temp;
 
     setSensorBar("appSensorLightBar", nivel ? LUZ_BARRA[nivel] : razaoSensor(reading, "light_h", SENSOR_MAX.light));
     setSensorBar("appSensorHumidityBar", razaoSensor(reading, "humidity", SENSOR_MAX.humidity));

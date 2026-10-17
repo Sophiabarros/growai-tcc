@@ -28,8 +28,9 @@ const FONTES = [
       const recente = (m) => m && m.temp != null && Date.now() - new Date(m.reportTime).getTime() < 2 * 3600 * 1000;
       const sbsp = lista.find((m) => m.icaoId === "SBSP");
       const sbmt = lista.find((m) => m.icaoId === "SBMT");
-      if (recente(sbsp)) return sbsp.temp;
-      if (recente(sbmt)) return sbmt.temp;
+      // Com a hora do boletim: o app mostra "SP · 21h" e dá para ver que muda.
+      if (recente(sbsp)) return { temp: sbsp.temp, em: sbsp.reportTime };
+      if (recente(sbmt)) return { temp: sbmt.temp, em: sbmt.reportTime };
       throw new Error("sem boletim recente");
     },
   },
@@ -61,9 +62,12 @@ async function buscar() {
     try {
       const res = await fetch(f.url, { headers: { "user-agent": UA }, signal: AbortSignal.timeout(5000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const t = Number(f.ler(await res.json()));
+      // ler() devolve °C, ou { temp, em } quando a fonte diz a hora da medição.
+      const v = f.ler(await res.json());
+      const t = Number(v && typeof v === "object" ? v.temp : v);
       if (!Number.isFinite(t)) throw new Error("sem temperatura na resposta");
-      cache = { temperatura: Math.round(t * 10) / 10, em: Date.now(), fonte: f.nome };
+      const medidaEm = v && typeof v === "object" && v.em ? new Date(v.em).getTime() : Date.now();
+      cache = { temperatura: Math.round(t * 10) / 10, em: Date.now(), medidaEm, fonte: f.nome };
       if (falhas.length) console.warn(`[temperatura] ${f.nome} respondeu depois de: ${falhas.join(" | ")}`);
       return cache;
     } catch (err) {
@@ -78,7 +82,8 @@ async function buscar() {
 async function diagnostico() {
   const r = await temperaturaSaoPaulo();
   return { temperatura: r ? r.temperatura : null, fonte: r ? r.fonte : null,
-           atualizada_em: r ? new Date(r.em).toISOString() : null, ultima_falha: ultimaFalha };
+           atualizada_em: r ? new Date(r.em).toISOString() : null,
+           medida_em: r && r.medidaEm ? new Date(r.medidaEm).toISOString() : null, ultima_falha: ultimaFalha };
 }
 
 /* Devolve { temperatura, em } ou null. Nunca lança: sem internet, a tela só
@@ -111,7 +116,12 @@ function temperaturaSaoPauloJa() {
 function completarTemperatura(leitura, externa) {
   if (!leitura || (leitura.temperature !== null && leitura.temperature !== undefined)) return leitura;
   if (!externa) return leitura;
-  return { ...leitura, temperature: externa.temperatura, temperatura_fonte: "sao_paulo" };
+  return {
+    ...leitura,
+    temperature: externa.temperatura,
+    temperatura_fonte: "sao_paulo",
+    temperatura_medida_em: new Date(externa.medidaEm || externa.em).toISOString(),
+  };
 }
 
 module.exports = { temperaturaSaoPaulo, temperaturaSaoPauloJa, completarTemperatura, diagnostico };

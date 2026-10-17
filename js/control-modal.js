@@ -311,7 +311,11 @@
     var temNum = function (v) { return v !== null && v !== undefined && v !== "" && isFinite(Number(v)); };
     var itens = [
       ["Umidade do solo", temNum(l.humidity) ? Math.round(l.humidity) + "%" : "—"],
-      [l.temperatura_fonte === "sao_paulo" ? "Temperatura (São Paulo)" : "Temperatura",
+      [l.temperatura_fonte === "sao_paulo"
+        ? "Temperatura (São Paulo" + (l.temperatura_medida_em
+          ? ", " + new Date(l.temperatura_medida_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+          : "") + ")"
+        : "Temperatura",
         temNum(l.temperature) ? String(Math.round(l.temperature * 10) / 10).replace(".", ",") + " °C" : "—"],
       ["Situação", ESTADOS[l.estado] || "—"],
       ["Nutriente hoje", temNum(l.nutri_s_hoje) ? l.nutri_s_hoje + " de " + NUTRI_MAX_S + " s" : "—"],
