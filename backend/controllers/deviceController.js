@@ -338,7 +338,8 @@ async function analisarFoto({ fotoId, jpeg, station, leitura, config, capturedAt
   await db.query(
     `UPDATE station_photos
         SET health_status = $2, analysis_text = $3, ia_raw = $4, pragas = $5, pragas_descricao = $6,
-            luz_nivel = $7, luz_descricao = $8
+            -- Análise sem quadro de luz (reanálise fora da hora) não apaga o veredito que a foto já tinha.
+            luz_nivel = COALESCE($7, luz_nivel), luz_descricao = COALESCE($8, luz_descricao)
       WHERE id = $1`,
     [
       fotoId,

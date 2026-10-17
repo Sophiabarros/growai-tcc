@@ -300,7 +300,25 @@ async function getLatestPhoto(req, res, next) {
       [req.params.id]
     );
     if (!rows[0]) return res.status(404).json({ error: "Nenhuma foto registrada ainda" });
-    res.json(rows[0]);
+    const foto = rows[0];
+    /* A luz só é avaliada quando há quadro de luz (no horário de luz) e a
+       análise espaçada pula fotos: a foto acima pode não ter veredito de luz.
+       Aí vale o último veredito das últimas 12 h, com a hora dele. */
+    foto.luz_avaliada_em = foto.luz_nivel ? foto.captured_at : null;
+    if (!foto.luz_nivel) {
+      const { rows: luz } = await db.query(
+        `SELECT luz_nivel, luz_descricao, captured_at FROM station_photos
+          WHERE station_id = $1 AND luz_nivel IS NOT NULL AND captured_at > now() - interval '12 hours'
+          ORDER BY captured_at DESC LIMIT 1`,
+        [req.params.id]
+      );
+      if (luz[0]) {
+        foto.luz_nivel = luz[0].luz_nivel;
+        foto.luz_descricao = luz[0].luz_descricao;
+        foto.luz_avaliada_em = luz[0].captured_at;
+      }
+    }
+    res.json(foto);
   } catch (err) {
     next(err);
   }

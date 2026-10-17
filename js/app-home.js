@@ -308,8 +308,9 @@
   /* Nível de luz que a IA avaliou no quadro de iluminação da câmera
      (cam-2.1.0), da última foto analisada. Sem avaliação, fica o que era:
      as horas de luz da rotina. */
-  var LUZ_NIVEL = { pouca: "Pouca", boa: "Boa", muita: "Muita" };
-  var LUZ_BARRA = { pouca: 0.3, boa: 0.7, muita: 1 };
+  // "Incerta": a IA não conseguiu julgar (câmera sem a planta no quadro, lente tampada).
+  var LUZ_NIVEL = { pouca: "Pouca", boa: "Boa", muita: "Muita", incerto: "Incerta" };
+  var LUZ_BARRA = { pouca: 0.3, boa: 0.7, muita: 1, incerto: 0 };
 
   function renderSensors(reading, photo) {
     renderSensorsUpdated(reading);
