@@ -10,7 +10,7 @@ const DUR_MAX_S = 3600;
 /* Espelha o MAX_BOMBA do firmware (REGA_ENCHE + 2 x REGA_DOSE, hoje 20 + 2x15
    em firmware/esp32-main/src/main.cpp). Mudou lá, mude aqui — isto serve só
    para o app receber um aviso claro, o corte de verdade é da placa. */
-const BOMBA_MAX_S = 50;
+const BOMBA_MAX_S = 330; // main-1.6.0: 5 min de enchimento + 2 x 15 s
 // Espelha o NUTRI_MAX_MS do firmware: nutriente soma no máximo 30 s por dia.
 const NUTRI_MAX_S = 30;
 
@@ -39,7 +39,7 @@ async function estacaoDoUsuario(stationId, userId) {
 /* Cria um comando manual. Ele fica 'pendente' até a placa pedir a próxima
    telemetria — o servidor não consegue chamar a placa.
 
-   Os limites de segurança de verdade (50 s de bomba, 30 s de nutriente por
+   Os limites de segurança de verdade (5,5 min de bomba, 30 s de nutriente por
    dia) são do firmware e não dependem daqui. A validação abaixo existe para o
    app receber um erro claro em vez de enfileirar algo que a placa vai cortar
    em silêncio. */

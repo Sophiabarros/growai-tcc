@@ -24,7 +24,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.5.0"
+#define FW "main-1.6.0"
 
 /* ------------------------------------------------------- dois nucleos
    O controle da horta (loop, nucleo 1) e a internet (tarefaRede, nucleo 0)
@@ -81,9 +81,9 @@ const int BRUTO_MIN = 500, BRUTO_MAX = 4000; // fora disso: solto ou em curto
    da a ele mais uma dose de margem e corta: no pior caso a planta recebe o
    DOBRO da dose, nunca mais que isso.
 
-   MEDIR o seu REGA_ENCHE: README secao 3.1. Enquanto nao medir, o valor abaixo
-   e so um ponto de partida. */
-const unsigned long REGA_ENCHE    = 20000;   // enchimento dos canos (MEDIR)
+   MEDIR o seu REGA_ENCHE: README secao 3.1. main-1.6.0: medido na horta
+   real, 20 s deixava pouquissima agua nos canos; com 5 min eles enchem. */
+const unsigned long REGA_ENCHE    = 300000;  // enchimento dos canos: 5 min (medido)
 const unsigned long REGA_DOSE     = 15000;   // rega de verdade, cano ja cheio
 const unsigned long REGA_MIN      = REGA_ENCHE + REGA_DOSE;      // sensor nao corta antes
 const unsigned long MAX_BOMBA     = REGA_ENCHE + 2 * REGA_DOSE;  // teto por acionamento
@@ -100,8 +100,20 @@ const unsigned long ESCALONA_MS = 300;  // intervalo entre ligar um rele e o pro
    corta a bomba antes de o cano encher. */
 static_assert(REGA_MIN < MAX_BOMBA,
               "o teto duro cortaria a bomba antes de a dose do ciclo terminar");
-static_assert(MAX_BOMBA <= 120000,
-              "bomba acima de 2 min por acionamento: confira REGA_ENCHE/REGA_DOSE");
+static_assert(MAX_BOMBA <= 600000,
+              "bomba acima de 10 min por acionamento: confira REGA_ENCHE/REGA_DOSE");
+
+/* Travas contra rega sem fim (main-1.6.0). Com 5 min por rega, um sensor de
+   umidade fora da terra (le seco para sempre) ou um reservatorio vazio fariam
+   a bomba ligar 5 min a cada 10, o dia inteiro:
+   - REGA_SEM_EFEITO_MAX regas seguidas em que a umidade nao subiu nem
+     REGA_SUBIDA_MIN pontos -> a rega automatica para por REGA_PAUSA_MS e a
+     placa avisa o app (campo erro);
+   - REGA_MAX_DIA_MS: teto da rega AUTOMATICA por dia. O manual continua. */
+const int           REGA_SEM_EFEITO_MAX = 2;
+const int           REGA_SUBIDA_MIN     = 3;              // pontos de umidade
+const unsigned long REGA_PAUSA_MS       = 2UL * 3600000UL; // 2 h
+const unsigned long REGA_MAX_DIA_MS     = 30UL * 60000UL;  // 30 min/dia
 
 // ---------------------------------------------------------------- reles
 enum { R_BOMBA, R_NUTRI, R_LUZ, R_VENT, N_RELES };
@@ -170,6 +182,29 @@ int   umidade = -1, umidadeBruto = 0;     // umidade -1 = invalida
 float tempC = NAN;
 bool  tempOk = false;
 String erro = "";
+int  umidInicioRega = -1;            // umidade quando a rega comecou
+int  regasSemEfeito = 0;
+bool regaBloqueada = false;
+unsigned long regaBloqueadaEm = 0;
+extern unsigned long msHoje[], msManualHoje[];   // uso do dia, mais abaixo
+
+/* Fim de uma rega (pelo sensor ou pelo teto). A umidade nao subiu? Conta
+   como rega sem efeito; duas seguidas bloqueiam a rega automatica por 2 h. */
+void fimDaRega(unsigned long agora) {
+  if (umidInicioRega >= 0 && umidade >= 0 && umidade - umidInicioRega < REGA_SUBIDA_MIN) {
+    regasSemEfeito++;
+    Serial.printf("[rega] umidade nao subiu (%d -> %d), %d seguida(s)\n",
+                  umidInicioRega, umidade, regasSemEfeito);
+    if (regasSemEfeito >= REGA_SEM_EFEITO_MAX) {
+      regaBloqueada = true;
+      regaBloqueadaEm = agora;
+      Serial.println("[rega] BLOQUEADA por 2 h: sensor fora da terra ou reservatorio vazio?");
+    }
+  } else {
+    regasSemEfeito = 0;
+  }
+  umidInicioRega = -1;
+}
 
 OneWire ow(PIN_DS18B20);
 DallasTemperature ds(&ow);
@@ -385,8 +420,20 @@ void leSensores(unsigned long agora) {
     erro = "sensor de umidade invalido (GPIO 34)";
   } else {
     erro = tempOk ? "" : "DS18B20 sem leitura (GPIO 25)";
-    if (estado == MONITORANDO && umidade < cfg.umid_liga) {
+    if (regaBloqueada && (unsigned long)(agora - regaBloqueadaEm) >= REGA_PAUSA_MS) {
+      regaBloqueada = false;
+      regasSemEfeito = REGA_SEM_EFEITO_MAX - 1;   // tenta uma vez; sem efeito, bloqueia de novo
+      Serial.println("[rega] pausa acabou, tentando de novo");
+    }
+    unsigned long autoHoje = msHoje[R_BOMBA] - msManualHoje[R_BOMBA];
+    bool tetoDia = autoHoje >= REGA_MAX_DIA_MS;
+    if (regaBloqueada)
+      erro = "rega pausada: a umidade nao subiu depois de 2 regas (sensor fora da terra ou reservatorio vazio?)";
+    else if (tetoDia)
+      erro = "rega automatica no limite do dia (30 min)";
+    if (estado == MONITORANDO && umidade < cfg.umid_liga && !regaBloqueada && !tetoDia) {
       estado = REGANDO; tEstado = agora;
+      umidInicioRega = umidade;
     } else if (estado == REGANDO && umidade >= cfg.umid_desliga
                && (unsigned long)(agora - tEstado) >= REGA_MIN) {
       /* A umidade so manda desligar DEPOIS de REGA_MIN. Antes disso o sensor
@@ -394,6 +441,7 @@ void leSensores(unsigned long agora) {
          planta. Quem garante que a bomba nao fica ligada para sempre nesse
          trecho e o MAX_BOMBA, la em atualizaCargas(). */
       estado = ABSORVENDO; tEstado = agora;
+      fimDaRega(agora);
     }
   }
   if (estado == ABSORVENDO && (unsigned long)(agora - tEstado) >= ABSORCAO) {
@@ -550,7 +598,7 @@ void atualizaCargas(unsigned long agora) {
   if (ligado[R_BOMBA] && (unsigned long)(agora - bombaLigadaEm) >= MAX_BOMBA) {
     quer[R_BOMBA] = false;
     manual[R_BOMBA] = false;
-    if (estado == REGANDO) { estado = ABSORVENDO; tEstado = agora; }
+    if (estado == REGANDO) { estado = ABSORVENDO; tEstado = agora; fimDaRega(agora); }
   }
   if (nutriMsHoje >= NUTRI_MAX_MS) { quer[R_NUTRI] = false; nutriDosando = false; }
   // Janela de foto: a luz UV (presa aos ventiladores) falsearia as cores.

@@ -16,7 +16,7 @@
   //     firmware; o app só não oferece o que a placa vai recusar.
 
   var RELES = [
-    { id: "bomba", nome: "Bomba d'água", ligar: "Regar 30 s", dur: 30 },
+    { id: "bomba", nome: "Bomba d'água", ligar: "Regar 5 min", dur: 300 },
     { id: "nutri", nome: "Nutriente", ligar: "Dosar 5 s", dur: 5 },
     { id: "luz", nome: "Luz", ligar: "Acender 1 h", dur: 3600 },
     // Ventiladores e luz UV no mesmo relé: ligar um liga o outro.
@@ -39,7 +39,7 @@
     '    <div class="ctrl__leituras" id="ctrlLeituras"></div>',
     '    <p class="ctrl__rotulo">Relés</p>',
     '    <ul class="ctrl__reles" id="ctrlReles"></ul>',
-    '    <p class="ctrl__nota">“Automático” devolve o relé à placa, que decide pela umidade, pelo horário da luz e pela temperatura. Por segurança, a bomba liga no máximo 50 s por vez e o nutriente soma no máximo 30 s por dia — quem corta é a própria placa.</p>',
+    '    <p class="ctrl__nota">“Automático” devolve o relé à placa, que decide pela umidade, pelo horário da luz e pela temperatura. Por segurança, a bomba liga no máximo 5,5 min por vez (5 min só para encher os canos) e o nutriente soma no máximo 30 s por dia — quem corta é a própria placa.</p>',
     '    <p class="ctrl__nota ctrl__nota--uv">A luz UV liga junto com os ventiladores. Não olhe direto para ela e evite expor a pele por muito tempo. O tempo ligado manualmente conta no limite de UV do dia.</p>',
     '    <div class="station-modal__actions">',
     '      <button type="button" class="station-modal__submit" data-ctrl="fechar">Fechar</button>',
@@ -219,7 +219,15 @@
       avisos.push({ erro: false, texto: "Sem contato com a placa. Ligue-a e confira o Wi-Fi: o controle volta assim que ela falar com o servidor. A irrigação e a luz continuam funcionando sozinhas nela." });
     }
     if (leitura && online) {
-      if (leitura.erro) {
+      // main-1.6.0: rega automática pausada pela própria placa (não é defeito de sensor).
+      if (leitura.erro && /^rega /.test(leitura.erro)) {
+        avisos.push({
+          erro: true,
+          texto: /pausada/.test(leitura.erro)
+            ? "Rega automática pausada: a umidade não subiu depois de 2 regas. Confira se o sensor está enterrado e se o reservatório tem água. A placa tenta de novo em 2 h."
+            : "Rega automática no limite do dia (30 min). Volta amanhã; o botão Regar continua funcionando.",
+        });
+      } else if (leitura.erro) {
         avisos.push({
           erro: true,
           texto: "Sensor: " + leitura.erro +

@@ -239,7 +239,7 @@
     // Usado pelo painel "Controlar placa" (js/control-modal.js).
     // createCommand enfileira; com o app aberto a placa busca a cada 5 s e
     // confirma em ~1 s depois de executar.
-    // Os limites de seguranca (50 s de bomba, 30 s de nutriente por dia) sao
+    // Os limites de seguranca (5,5 min de bomba, 30 s de nutriente por dia) sao
     // do firmware: dur_s maior que isso e aceito e cortado pela placa.
     createCommand: (id, data) =>
       request(`/stations/${id}/commands`, { method: "POST", body: JSON.stringify(data) }),

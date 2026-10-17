@@ -150,7 +150,19 @@ async function telemetria(req, res, next) {
     // Avisos no sino: aparelho ligado (pela rotina ou manual) e sensor com problema.
     const anterior = aoVivo.obter(station.id);
     notificacoes.daTelemetria(station, anterior, t).catch(() => {});
-    if (t.erro) {
+    /* main-1.6.0: a placa pausa a rega automática quando a umidade não sobe
+       depois de 2 regas (sensor fora da terra, reservatório vazio) ou quando
+       passa de 30 min no dia. Não é defeito de sensor: aviso próprio. */
+    if (t.erro && /^rega /.test(String(t.erro))) {
+      const pausada = /pausada/.test(String(t.erro));
+      notificacoes.criar({
+        userId: station.user_id, stationId: station.id, tipo: "rega", semRepetirMin: 120, mesmoTitulo: true,
+        titulo: (pausada ? "Rega pausada em " : "Rega no limite do dia em ") + (station.name || station.plant),
+        mensagem: pausada
+          ? "A umidade não subiu depois de 2 regas seguidas. Confira se o sensor está enterrado e se o reservatório tem água. A placa tenta de novo em 2 h."
+          : "A rega automática já somou 30 min hoje e só volta amanhã. Pelo app você ainda pode regar manualmente.",
+      });
+    } else if (t.erro) {
       notificacoes.criar({
         userId: station.user_id, stationId: station.id, tipo: "sensor", semRepetirMin: 24 * 60,
         titulo: `Sensor com problema em ${station.name || station.plant}`,
