@@ -348,8 +348,6 @@ async function avaliarRotina(req, res, next) {
       estacao: station,
       leitura: leituras[0] || null,
       config: montarConfig(station),
-      capturedAt: foto.captured_at,
-      manterSeFalhar: true,
     });
 
     // Marca a tentativa mesmo se a IA falhou, senao um erro de rede faria o app
@@ -438,6 +436,8 @@ async function analisarFotoAgora(req, res, next) {
       station,
       leitura: leituras[0] || null,
       config: montarConfig(station),
+      capturedAt: foto.captured_at,
+      manterSeFalhar: true,
     });
 
     const { rows: atual } = await db.query(
