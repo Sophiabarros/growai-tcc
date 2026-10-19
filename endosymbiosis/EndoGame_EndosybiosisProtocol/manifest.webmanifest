@@ -1,0 +1,26 @@
+{
+  "name": "Endosymbiosis Protocol",
+  "short_name": "Endosymbiosis Protocol",
+  "id": "com.tracklink.endosymbiosis",
+  "description": "Ciclo 147. Três pendências. Assine o relatório.\n\nAris Valentine trabalha há tempo demais no mesmo setor. Mede nutrientes, ajusta a luz, cuida de um espécime que ninguém explicou. A V.E.R.A. acompanha cada tarefa, responde em maiúsculas e nunca mente — ela só não registra o que não cabe num formulário.\n\nResolva o laboratório peça por peça: combine ferramentas, force fechaduras, leia o que ficou esquecido nas gavetas. Cada objeto tem um uso, e alguns têm dois.\n\nMas a V.E.R.A. consulta o banco de registro na sua frente. E as respostas que ela devolve não batem com o que você lembra.\n\nTerror point-and-click. Um capítulo. Sem combate, sem pressa, sem segunda chance de não ter visto.",
+  "orientation": "landscape",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "black",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "tracklink-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "tracklink-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
