@@ -23,9 +23,44 @@
     <link rel="stylesheet" href="css/global.css?v=36" />
     <link rel="stylesheet" href="css/header.css?v=44" />
     <link rel="stylesheet" href="css/footer.css?v=42" />
-    <link rel="stylesheet" href="css/game.css?v=41" />
+    <link rel="stylesheet" href="css/game.css?v=40" />
+    <link rel="stylesheet" href="css/jogar.css?v=6" />
     <link rel="stylesheet" href="css/animations.css?v=36" />
     <link rel="stylesheet" href="css/responsive.css?v=39" />
+    <!-- Botões "Iniciar Ciclo 147" (estilo .btn-site, do css/jogar.css) e o
+         espaçamento em volta deles. Só afeta esta página. -->
+    <style>
+      .game__quote {
+        top: 45.8rem;
+      }
+      .game__desc {
+        top: 52.8rem;
+      }
+      .game__cta {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 72.6rem;
+        width: max-content;
+        margin: 0 auto;
+      }
+      @media (max-width: 767px) {
+        .m-game__quote {
+          top: 43rem;
+        }
+        .m-game__desc {
+          top: 47.6rem;
+        }
+        .m-game__cta {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 64.8rem;
+          width: max-content;
+          margin: 0 auto;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="page-loader" id="pageLoader" aria-hidden="true">
@@ -115,9 +150,11 @@
           a sua humanidade? Prepare-se para um puzzle point &amp; click onde a lógica é sua
           ferramenta e a sua consciência, o alvo.
         </p>
-        <a href="endosymbiosis/EndoGame_EndosybiosisProtocol/index.html" class="game__btn">
+        <a href="jogar.html" class="game__cta btn-site btn-site--lg">
           Iniciar Ciclo 147
-          <img alt="" src="assets/icons/icon-game-play.svg" />
+          <svg class="btn-site__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"></path>
+          </svg>
         </a>
 
       </div>
@@ -160,16 +197,18 @@
           a sua humanidade? Prepare-se para um puzzle point &amp; click onde a lógica é sua
           ferramenta e a sua consciência, o alvo.
         </p>
-        <a href="endosymbiosis/EndoGame_EndosybiosisProtocol/index.html" class="m-game__btn">
+        <a href="jogar.html" class="m-game__cta btn-site">
           Iniciar Ciclo 147
-          <img alt="" src="assets/icons/icon-game-play.svg" />
+          <svg class="btn-site__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"></path>
+          </svg>
         </a>
 
       </div>
     </div>
 
     <script src="js/theme.js?v=36"></script>
-    <script src="js/game.js?v=39"></script>
+    <script src="js/game.js?v=40"></script>
     <script src="js/menu.js?v=37"></script>
     <script src="js/navigation.js?v=38"></script>
     <script src="js/page-loader.js?v=36"></script>

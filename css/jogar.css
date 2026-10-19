@@ -1,0 +1,514 @@
+/*
+  JOGAR page - o jogo Endosymbiosis Protocol (endosymbiosis/) num iframe.
+
+  Tema: o js/theme.js põe data-theme em #jogarRoot (.jogar-wrapper), e as
+  variáveis --dm-* abaixo trocam a página toda. Só se usam variáveis do
+  css/variables.css; o bloco do tema claro aqui é cópia do mesmo bloco de lá
+  (para esta página não depender de nenhuma linha extra naquele arquivo).
+
+  Visual no padrão do site: faixa curva do topo da página Sobre nós, card
+  com borda fina + raio 2rem + sombra dos cards da home, botão principal
+  igual ao "Conheça o produto" (.hero__btn--primary, css/home.css).
+
+  Este arquivo também é carregado pelo game.html, só por causa
+  dos botões (.btn-site).
+*/
+
+/* Fonte principal do jogo, direto da pasta do jogo (arquivo não copiado) */
+@font-face {
+  font-family: "Syne Mono";
+  src: url("../endosymbiosis/EndoGame_EndosybiosisProtocol/07a92133150a87ca126825433825a6d8da16a268fccb2cc8ad7c4cb643271d51-SyneMono-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============ BOTÕES (.btn-site) ============
+   Copiado do .hero__btn--primary (css/home.css): fundo verde, texto claro,
+   raio 1.5rem, Lexend 700 1.6rem. Hover: sobe 1px com a sombra dos cards.
+   O hover usa a propriedade `translate` (e não `transform`), pra não brigar
+   com quem posiciona o botão com transform. */
+.btn-site {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  padding: 1.2rem 2.4rem;
+  border: 0;
+  border-radius: 1.5rem;
+  background: var(--color-green-normal);
+  color: var(--color-violet-light);
+  font: 700 1.6rem/2.4rem var(--font-body);
+  letter-spacing: 0.016rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    translate 0.15s ease,
+    scale 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+}
+.btn-site:hover {
+  translate: 0 -1px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+.btn-site:active {
+  translate: 0 0;
+  scale: 0.98;
+  box-shadow: none;
+}
+.btn-site:focus-visible {
+  outline: 2px solid var(--dm-accent);
+  outline-offset: 3px;
+}
+.btn-site:disabled {
+  cursor: progress;
+  opacity: 0.85;
+  translate: 0 0;
+  box-shadow: none;
+}
+.btn-site__icon {
+  flex-shrink: 0;
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.btn-site--sm {
+  padding: 0.8rem 1.6rem;
+  border-radius: 1rem;
+  font-size: 1.4rem;
+  line-height: 2rem;
+}
+.btn-site--sm .btn-site__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+.btn-site--lg {
+  gap: 1.2rem;
+  padding: 1.8rem 4rem;
+  font-size: 2.2rem;
+  line-height: 3rem;
+  letter-spacing: 0.022rem;
+}
+.btn-site--lg .btn-site__icon {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+/* secundário: só contorno */
+.btn-site--outline {
+  background: transparent;
+  color: var(--dm-text);
+  box-shadow: inset 0 0 0 1px var(--dm-border);
+}
+.btn-site--outline:hover {
+  background: var(--dm-surface-alt);
+  box-shadow:
+    inset 0 0 0 1px var(--dm-border),
+    0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+/* discreto: só texto (usado no "← Voltar") */
+.btn-site--ghost {
+  padding: 0.6rem 1rem;
+  border-radius: 1rem;
+  background: transparent;
+  color: var(--dm-text);
+  font-weight: 500;
+  font-size: 1.5rem;
+  opacity: 0.85;
+}
+.btn-site--ghost:hover {
+  translate: -2px 0;
+  box-shadow: none;
+  color: var(--dm-accent);
+  opacity: 1;
+}
+
+/* ============ PÁGINA ============ */
+.jogar-wrapper {
+  /* --jogar-stage-w: largura do palco (16:9). O js/jogar.js calcula o
+     maior tamanho em que o card inteiro cabe na altura da tela e grava o
+     valor aqui; esta conta é só a reserva caso o JS não rode.
+     --jogar-band-h: altura da faixa do topo. */
+  --jogar-head-h: 11.4rem;
+  --jogar-card-pad: 1.2rem;
+  --jogar-stage-w: min(100vw - 11rem, (100vh - 10rem) * 16 / 9, 160rem);
+  --jogar-band-h: 50vh;
+
+  position: relative;
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--dm-bg);
+  color: var(--dm-text);
+  font-family: var(--font-body);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Tema claro: cópia do bloco "Light theme tokens" do css/variables.css */
+.jogar-wrapper[data-theme="light"] {
+  --dm-bg: #fcfcfd;
+  --dm-surface: #f5f5f7;
+  --dm-surface-alt: #f5f5f7;
+  --dm-border: #bdbeb8;
+  --dm-border-alt: #bdbeb8;
+  --dm-text: #2d4e49;
+  --dm-text-soft: #2d4e49;
+  --dm-accent: #65ada3;
+  --dm-accent-green: #5da578;
+  --dm-cta-text: #5da578;
+  --dm-tag-text: #90ad76;
+  --dm-tag-text-alt: #669e9b;
+  --dm-step-accent: var(--color-teal-deep);
+  --dm-card-bg: #ebf8e1;
+  --dm-price: var(--color-green-normal-hover);
+  --dm-subtitle: var(--color-grey-dark);
+  --dm-heading-soft: var(--dm-text);
+}
+
+/* ---- Faixa do topo com a curva (mesma da página Sobre nós) ---- */
+.jogar-band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: 100%;
+  height: var(--jogar-band-h);
+  pointer-events: none;
+}
+.jogar-band img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.jogar-band .icon-light {
+  display: none;
+}
+.jogar-wrapper[data-theme="light"] .jogar-band .icon-dark {
+  display: none;
+}
+.jogar-wrapper[data-theme="light"] .jogar-band .icon-light {
+  display: block;
+}
+
+/* ---- Header desktop: canvas de 1440px escalado (js/jogar.js) ---- */
+.jogar-head {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  height: var(--jogar-head-h);
+}
+.jogar-head__canvas {
+  position: relative;
+  flex-shrink: 0;
+  width: 144rem;
+  height: 11.4rem; /* header: top 3.4rem + altura 8rem (css/header.css) */
+  transform-origin: top center;
+}
+.m-jogar-head {
+  display: none;
+}
+
+/* ---- Conteúdo ---- */
+.jogar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.8rem;
+  /* laterais = margem do header (9.6rem de 144rem, escalado pela janela),
+     assim o card começa no logo e termina no fim do menu */
+  padding: 4rem calc(100vw * 96 / 1440) 3.2rem;
+}
+
+.jogar__intro {
+  width: calc(var(--jogar-stage-w) + 2 * var(--jogar-card-pad) + 2px);
+  max-width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2.4rem;
+}
+.jogar__title {
+  color: var(--dm-heading-soft);
+  font: 400 4.4rem/1.1 "Syne Mono", monospace;
+  letter-spacing: 0.04rem;
+}
+.jogar__subtitle {
+  margin-top: 0.8rem;
+  color: var(--dm-price);
+  font: 500 1.6rem/1.5 var(--font-body);
+}
+.jogar__back {
+  flex-shrink: 0;
+  margin-bottom: 0.2rem;
+}
+
+/* ---- Card do palco (borda, raio e sombra dos cards do site) ---- */
+.jogar-card {
+  width: calc(var(--jogar-stage-w) + 2 * var(--jogar-card-pad) + 2px);
+  max-width: 100%;
+  padding: var(--jogar-card-pad);
+  border: 1px solid var(--dm-border);
+  border-radius: 2rem;
+  background: var(--dm-surface);
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.jogar-stage {
+  position: relative;
+}
+.jogar-stage__screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 1.2rem;
+  background: #000;
+}
+.jogar-stage__frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+/* ---- Capa (antes do clique em "Iniciar protocolo") ---- */
+.jogar-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.jogar-cover[hidden] {
+  display: none;
+}
+.jogar-cover__img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.jogar-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+.jogar-cover__play {
+  position: relative;
+  z-index: 1;
+  gap: 1.2rem;
+  padding: 1.6rem 3.2rem;
+  font-size: 2rem;
+  line-height: 2.8rem;
+}
+.jogar-cover__play .btn-site__icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* ---- Aviso "ESC" que aparece ao entrar em tela cheia ---- */
+.jogar-stage__hint {
+  position: absolute;
+  left: 50%;
+  top: 2rem;
+  z-index: 3;
+  translate: -50% 0;
+  padding: 0.8rem 1.6rem;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font: 500 1.4rem/2rem var(--font-body);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.jogar-stage__hint.is-visible {
+  opacity: 1;
+}
+
+/* ---- Barra embaixo do palco: dica + botão de tela cheia ---- */
+.jogar-stage__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6rem;
+  padding: 1.2rem 0.4rem 0;
+}
+.jogar-stage__tip {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  color: var(--dm-text-soft);
+  font: 400 1.4rem/2rem var(--font-body);
+}
+.jogar-stage__tip svg {
+  flex-shrink: 0;
+  width: 1.8rem;
+  height: 1.8rem;
+}
+.jogar-stage__fs {
+  flex-shrink: 0;
+}
+/* só um dos dois ícones de tela cheia aparece por vez */
+.jogar-stage__fs-exit,
+.jogar-stage.is-fullscreen .jogar-stage__fs-enter {
+  display: none;
+}
+.jogar-stage.is-fullscreen .jogar-stage__fs-exit {
+  display: block;
+}
+
+/* ---- Tela cheia: o palco ocupa a tela toda, sem a barra ---- */
+.jogar-stage:fullscreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.jogar-stage:-webkit-full-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.jogar-stage.is-fullscreen .jogar-stage__screen {
+  width: min(100vw, 100vh * 16 / 9);
+  border-radius: 0;
+}
+.jogar-stage.is-fullscreen .jogar-stage__bar {
+  display: none;
+}
+
+/* ---- Aviso de celular (só aparece no mobile) ---- */
+.jogar__mobile-note {
+  display: none;
+}
+
+/* ---- Ajustes de alinhamento ---- */
+.jogar__heading {
+  min-width: 0;
+}
+.jogar__back {
+  align-self: flex-end;
+  /* centro do botão na linha do subtítulo; o texto encosta na borda do card */
+  margin: 0 -1rem -0.6rem 0;
+}
+.jogar__back span {
+  font-size: 1.8rem;
+  line-height: 1;
+  translate: 0 -0.1rem;
+}
+
+/* ============ MOBILE ============ */
+@media (max-width: 767px) {
+  .jogar-head {
+    display: none;
+  }
+  .m-jogar-head {
+    position: relative;
+    z-index: 20;
+    display: block;
+    width: 37.5rem;
+    max-width: 100%;
+    height: 8.6rem;
+    margin: 0 auto;
+  }
+  .m-jogar-head .m-header {
+    left: 1.8rem;
+    right: 1.8rem;
+    width: auto;
+  }
+
+  .jogar {
+    gap: 2rem;
+    padding: 1.6rem 1.8rem 3.2rem;
+  }
+  .jogar__intro {
+    width: 100%;
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 1.2rem;
+  }
+  .jogar__back {
+    align-self: flex-start;
+    margin: 0 0 0 -1rem;
+  }
+  .jogar__title {
+    font-size: 3rem;
+  }
+  .jogar__subtitle {
+    font-size: 1.4rem;
+  }
+
+  .jogar-card {
+    width: 100%;
+    padding: 0.8rem;
+    border-radius: 1.6rem;
+  }
+  .jogar-stage__screen {
+    border-radius: 1rem;
+  }
+  .jogar-cover__play {
+    gap: 0.8rem;
+    padding: 1rem 2rem;
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  .jogar-cover__play .btn-site__icon {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+  .jogar-stage__bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem 0.2rem 0.2rem;
+  }
+  .jogar-stage__tip {
+    align-items: flex-start;
+    font-size: 1.3rem;
+    line-height: 1.8rem;
+  }
+  .jogar-stage__tip svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    margin-top: 0.1rem;
+  }
+
+  .jogar__mobile-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    width: 100%;
+    color: var(--dm-text-soft);
+    font: 400 1.3rem/1.8rem var(--font-body);
+  }
+  .jogar__mobile-note svg {
+    flex-shrink: 0;
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}

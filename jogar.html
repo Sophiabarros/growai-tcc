@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Endosymbiosis Protocol | TrackLink</title>
+    <!-- Ícone do site: SVG para navegadores modernos, .ico/PNG de reserva,
+         apple-touch-icon para iPhone/iPad e manifesto para Android/PWA -->
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/icons/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <meta name="theme-color" content="#182825" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/reset.css?v=36" />
+    <link rel="stylesheet" href="css/variables.css?v=36" />
+    <link rel="stylesheet" href="css/global.css?v=36" />
+    <link rel="stylesheet" href="css/header.css?v=44" />
+    <link rel="stylesheet" href="css/footer.css?v=42" />
+    <link rel="stylesheet" href="css/animations.css?v=36" />
+    <link rel="stylesheet" href="css/responsive.css?v=39" />
+    <link rel="stylesheet" href="css/jogar.css?v=6" />
+  </head>
+  <body>
+    <div class="page-loader" id="pageLoader" aria-hidden="true">
+      <div class="page-loader__spinner"></div>
+    </div>
+
+    <!-- Raiz com o tema: o js/theme.js (via js/jogar.js) põe data-theme aqui,
+         e o css/jogar.css troca as variáveis --dm-* da página inteira. -->
+    <div class="jogar-wrapper" id="jogarRoot" data-theme="dark">
+      <script src="js/theme-no-flash.js?v=35" data-page="jogarRoot"></script>
+
+      <!-- Faixa do topo com a curva, a mesma da página Sobre nós -->
+      <div class="jogar-band" aria-hidden="true">
+        <img class="icon-dark" alt="" src="assets/icons/icon-sobre-subtract-dark.svg" />
+        <img class="icon-light" alt="" src="assets/icons/icon-sobre-subtract-light.svg" />
+      </div>
+
+      <!-- ===== HEADER DESKTOP =====
+           Canvas de 1440px escalado pela largura da janela (js/jogar.js),
+           a mesma lógica do js/game.js. -->
+      <div class="jogar-head">
+        <div class="jogar-head__canvas" id="jogarHead">
+          <header class="header">
+            <a href="index.html" class="header__brand">
+              <p class="header__brand-text">TRACKLINK</p>
+              <div class="header__logo">
+                <div class="v1"><img class="fill" alt="" src="assets/icons/logo-vector-1.svg" /></div>
+                <div class="v2"><img class="fill" alt="" src="assets/icons/logo-vector-2.svg" /></div>
+                <div class="v3"><img class="fill" alt="" src="assets/icons/logo-vector-3.svg" /></div>
+                <div class="v4"><img class="fill" alt="" src="assets/icons/logo-vector-4.svg" /></div>
+                <div class="v5"><img class="fill" alt="" src="assets/icons/logo-vector-5.svg" /></div>
+              </div>
+            </a>
+            <button type="button" class="header__menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false">&#9776;</button>
+            <button type="button" aria-label="Alternar tema claro/escuro" class="theme-toggle" id="themeToggle"></button>
+            <nav class="header__nav" id="headerNav">
+              <a href="sistema.html" class="header__nav-link header__nav-link--sistema">Sistema</a>
+              <a href="investimento.html" class="header__nav-link header__nav-link--investimento">Investimento</a>
+              <a href="sobre.html" class="header__nav-link header__nav-link--sobre">Sobre nós</a>
+              <a href="bibliografia.html" class="header__nav-link header__nav-link--bibliografia">Bibliografia</a>
+              <a href="game.html" class="header__nav-link header__nav-link--game header__nav-link--active">Game</a>
+            </nav>
+          </header>
+        </div>
+      </div>
+
+      <!-- ===== HEADER MOBILE ===== -->
+      <div class="m-jogar-head">
+        <header class="m-header">
+          <a href="index.html" class="m-header__logo">
+            <div class="v1"><img class="fill" alt="" src="assets/icons/logo-vector-1.svg" /></div>
+            <div class="v2"><img class="fill" alt="" src="assets/icons/logo-vector-2.svg" /></div>
+            <div class="v3"><img class="fill" alt="" src="assets/icons/logo-vector-3.svg" /></div>
+            <div class="v4"><img class="fill" alt="" src="assets/icons/logo-vector-4.svg" /></div>
+            <div class="v5"><img class="fill" alt="" src="assets/icons/logo-vector-5.svg" /></div>
+          </a>
+          <button type="button" class="m-header__menu-toggle" id="mMenuToggle" aria-label="Abrir menu" aria-expanded="false">
+            <img alt="" src="assets/icons/icon-hamburger-dark.svg" />
+          </button>
+          <button type="button" aria-label="Alternar tema claro/escuro" class="m-theme-toggle" id="mThemeToggle"></button>
+          <nav class="m-header__nav" id="mHeaderNav">
+            <a href="sistema.html">Sistema</a>
+            <a href="investimento.html">Investimento</a>
+            <a href="sobre.html">Sobre nós</a>
+            <a href="bibliografia.html">Bibliografia</a>
+            <a href="game.html" class="is-active">Game</a>
+          </nav>
+        </header>
+      </div>
+
+      <!-- ===== JOGO ===== -->
+      <main class="jogar" id="jogarMain">
+        <div class="jogar__intro">
+          <div class="jogar__heading">
+            <h1 class="jogar__title">Endosymbiosis Protocol</h1>
+            <p class="jogar__subtitle">O sangue alimenta a raiz. A memória sustenta o vidro. Bem-vindo ao Ciclo Eterno.</p>
+          </div>
+          <a href="game.html" class="btn-site btn-site--ghost jogar__back">
+            <span aria-hidden="true">←</span>
+            Voltar
+          </a>
+        </div>
+
+        <!-- Card do palco. O .jogar-stage é o que entra em tela cheia: o
+             iframe começa SEM src, e os ~54 MB do jogo só são baixados depois
+             do clique em "Iniciar protocolo" (o clique também libera o áudio).
+             Ver js/jogar.js. -->
+        <div class="jogar-card">
+          <div class="jogar-stage" id="jogarStage">
+            <div class="jogar-stage__screen">
+              <iframe
+                class="jogar-stage__frame"
+                id="jogarFrame"
+                title="Endosymbiosis Protocol"
+                data-src="endosymbiosis/EndoGame_EndosybiosisProtocol/index.html"
+                allow="fullscreen; autoplay; gamepad"
+                allowfullscreen
+              ></iframe>
+
+              <div class="jogar-cover" id="jogarCover">
+                <img
+                  class="jogar-cover__img"
+                  alt="Capa do jogo Endosymbiosis Protocol"
+                  src="endosymbiosis/EndoGame_EndosybiosisProtocol/c8d9e16aa0b8363548d998524931244718debd876aa4bce10484c0e6c68d0f8a-Capa-jogo-Endosybiosis%20Protocol.png"
+                />
+                <button type="button" class="btn-site jogar-cover__play" id="jogarPlay">
+                  <svg class="btn-site__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"></path>
+                  </svg>
+                  <span id="jogarPlayText">Iniciar protocolo</span>
+                </button>
+              </div>
+
+              <p class="jogar-stage__hint" id="jogarFsHint" aria-live="polite">Pressione ESC para sair da tela cheia</p>
+            </div>
+
+            <div class="jogar-stage__bar">
+              <p class="jogar-stage__tip">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"></path>
+                </svg>
+                Jogue com teclado e mouse. Clique no jogo para ativar o teclado.
+              </p>
+              <button type="button" class="btn-site btn-site--outline btn-site--sm jogar-stage__fs" id="jogarFs">
+                <svg class="btn-site__icon jogar-stage__fs-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <polyline points="9 21 3 21 3 15"></polyline>
+                  <line x1="21" y1="3" x2="14" y2="10"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+                <svg class="btn-site__icon jogar-stage__fs-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="4 14 10 14 10 20"></polyline>
+                  <polyline points="20 10 14 10 14 4"></polyline>
+                  <line x1="14" y1="10" x2="21" y2="3"></line>
+                  <line x1="3" y1="21" x2="10" y2="14"></line>
+                </svg>
+                <span id="jogarFsText">Tela cheia</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <p class="jogar__mobile-note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          Este jogo foi feito para teclado e mouse. No celular alguns controles podem não funcionar;
+          para a melhor experiência, jogue num computador.
+        </p>
+      </main>
+    </div>
+
+    <script src="js/theme.js?v=36"></script>
+    <script src="js/jogar.js?v=6"></script>
+    <script src="js/menu.js?v=37"></script>
+    <script src="js/page-loader.js?v=36"></script>
+  </body>
+</html>
