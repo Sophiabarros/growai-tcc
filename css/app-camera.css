@@ -842,3 +842,6 @@
   background: rgba(252, 252, 253, 0.05);
   color: var(--app-muted-alt);
 }
+
+/* Visor sem foto, mas com a câmera online: aviso positivo (não "não conectada"). */
+.cam-viewer__offline--ok .cam-viewer__offline-title { color: var(--app-accent); }

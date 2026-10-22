@@ -293,6 +293,51 @@
     return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
   }
 
+  // Estado de conexão do visor aberto: começa pelo cadastro (/devices) e é
+  // corrigido pelo ao vivo (ao_vivo_status), que sabe se a câmera está no ar
+  // AGORA — o cadastro pode estar velho se a página abriu antes de ela ligar.
+  var visor = { photo: null, temPlaca: false, conectada: false };
+
+  function semFotoHtml(temPlaca, conectada) {
+    var titulo = !temPlaca ? "Sem câmera nesta estação" : conectada ? "Câmera conectada" : "Câmera não conectada";
+    var dica = !temPlaca
+      ? "Nenhuma ESP32-CAM foi cadastrada nesta estação ainda."
+      : conectada
+        ? "Ela ainda não mandou a primeira foto: as fotos saem às :00 e às :30. A imagem ao vivo aparece aqui em instantes."
+        : "A placa está cadastrada, mas não está falando com o servidor. Confira a alimentação e o Wi-Fi 2,4 GHz dela.";
+    return (
+      '<div class="cam-viewer__offline' + (conectada ? " cam-viewer__offline--ok" : "") + '">' +
+      '<img class="cam-viewer__offline-icon" alt="" src="' + (conectada ? CHECK_ICON : OFFLINE_ICON) + '" />' +
+      '<p class="cam-viewer__offline-title">' + titulo + "</p>" +
+      '<p class="cam-viewer__offline-hint">' + dica + "</p></div>"
+    );
+  }
+
+  function metaVisor() {
+    var p = visor.photo;
+    var estado = !visor.temPlaca ? "" : visor.conectada ? " · câmera conectada" : " · câmera não conectada";
+    if (!p || !p.image_url) return (visor.temPlaca ? "Nenhuma imagem recebida ainda" : "Sem câmera nesta estação") + estado;
+    return (visor.temPlaca ? "Análise da IA · foto de " : "Foto de ") + timeAgo(p.captured_at) + estado;
+  }
+
+  /* O ao vivo disse se a câmera está no ar: o visor inteiro passa a seguir isso
+     (legenda, aviso de "última imagem" e a tela de sem foto). */
+  function aplicarConexao(online) {
+    if (visor.conectada === online) return;
+    visor.conectada = online;
+    viewerMeta.textContent = metaVisor();
+    var semFoto = viewerStage.querySelector(".cam-viewer__offline");
+    if (semFoto) semFoto.outerHTML = semFotoHtml(visor.temPlaca, online);
+    var velho = viewerStage.querySelector(".cam-viewer__stale");
+    if (online && velho) velho.remove();
+    if (!online && !velho && visor.photo && visor.photo.image_url && !viewerStage.querySelector(".cam-viewer__live-img")) {
+      var p = document.createElement("p");
+      p.className = "cam-viewer__stale";
+      p.textContent = "Câmera não conectada — esta é a última imagem recebida (" + timeAgo(visor.photo.captured_at) + ").";
+      viewerStage.appendChild(p);
+    }
+  }
+
   function abrirVisor(idx) {
     var station = atual.stations[idx];
     if (!station) return;
@@ -308,19 +353,15 @@
 
     /* Sem foto nenhuma: não há o que mostrar, então o palco inteiro vira a
        mensagem. É o caso de câmera recém-instalada ou que nunca enviou. */
+    visor = { photo: photo, temPlaca: temPlaca, conectada: conectada };
     if (!photo || !photo.image_url) {
-      viewerStage.innerHTML =
-        '<div class="cam-viewer__offline">' +
-        '<img class="cam-viewer__offline-icon" alt="" src="' + OFFLINE_ICON + '" />' +
-        '<p class="cam-viewer__offline-title">Câmera não conectada</p>' +
-        '<p class="cam-viewer__offline-hint">' +
-        (temPlaca
-          ? "A placa está cadastrada, mas ainda não enviou nenhuma foto. Confira a alimentação e o Wi-Fi 2,4 GHz dela."
-          : "Nenhuma ESP32-CAM foi cadastrada nesta estação ainda.") +
-        "</p></div>";
+      /* Sem foto ainda NÃO quer dizer desconectada: a câmera pode estar online
+         esperando a próxima janela (:00/:30). O texto segue o estado real, e
+         aplicarConexao() o atualiza quando o ao vivo confirma. */
+      viewerStage.innerHTML = semFotoHtml(temPlaca, conectada);
       viewerHealth.textContent = "";
       viewerHealth.classList.remove("cam-viewer__health--warn");
-      viewerMeta.textContent = temPlaca ? "Nenhuma imagem recebida." : "Sem câmera nesta estação.";
+      viewerMeta.textContent = metaVisor();
       viewerAnalysis.textContent = "";
     } else {
       /* Tem foto. Mesmo com a placa offline a foto é mostrada — ela é o último
@@ -343,9 +384,7 @@
         (HEALTH_LABEL[st] || st);
       viewerHealth.classList.toggle("cam-viewer__health--warn", st === "atencao");
 
-      viewerMeta.textContent =
-        (temPlaca ? "Análise da IA · foto de " : "Foto de ") + timeAgo(photo.captured_at) +
-        (conectada ? " · câmera conectada" : " · câmera não conectada");
+      viewerMeta.textContent = metaVisor();
       viewerAnalysis.textContent = photo.analysis_text || "";
     }
     mostrarPragas(photo);
@@ -489,6 +528,7 @@
     avisoAoVivo("Conectando à câmera ao vivo…");
     pararCam = GrowAI.assistirCamera(station.id, {
       onStatus: function (m) {
+        aplicarConexao(!!m.cam_online);
         /* Desconectada: se o palco já diz "não conectada (há X)", ele basta;
            senão (o cadastro dizia online e o ao vivo não achou), avisa. */
         if (!m.cam_online) {

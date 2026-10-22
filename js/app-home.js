@@ -141,7 +141,9 @@
   // ---- desktop: camera thumbnail (reuses the featured station's latest photo) ----
   // No photo yet == camera never sent an image, so it shows no picture at
   // all (not even a placeholder) — just the "Câmera desconectada" text.
-  function renderCameraThumb(station, photo) {
+  /* cam: a placa 'cam' da estação (de /devices), ou null. Sem foto NÃO é
+     "desconectada": a câmera pode estar online esperando a próxima janela. */
+  function renderCameraThumb(station, photo, cam) {
     var img = document.getElementById("appCameraThumb");
     var live = document.getElementById("appCameraLive");
     var offline = document.getElementById("appCameraOffline");
@@ -156,8 +158,18 @@
       img.hidden = true;
       img.removeAttribute("src");
       if (live) live.hidden = true;
-      if (offline) offline.hidden = false;
+      if (offline) {
+        offline.hidden = false;
+        offline.textContent = !cam
+          ? "Nenhuma câmera cadastrada"
+          : cam.online
+            ? "Câmera conectada · primeira foto às :00 ou :30"
+            : "Câmera desconectada";
+      }
     }
+    // "LIVE" só quando a câmera está de fato no ar (antes aparecia sobre
+    // qualquer foto, mesmo com a câmera desligada).
+    if (live && photo && photo.image_url) live.hidden = !(cam && cam.online);
     if (caption && station) caption.textContent = "Câmera · " + stationLocation(station);
   }
 
@@ -547,7 +559,10 @@
     renderSensors(details[0][0], details[0][1]);
     renderPlantsList(limited);
     renderFeatured(limited[0], details[0][0], details[0][1]);
-    renderCameraThumb(limited[0], details[0][1]);
+    var camDestaque = await GrowAI.getDevices(limited[0].id)
+      .then(function (l) { return (l || []).filter(function (d) { return d.tipo === "cam"; })[0] || null; })
+      .catch(function () { return null; });
+    renderCameraThumb(limited[0], details[0][1], camDestaque);
 
     var alerts = buildAlerts(limited);
     renderAlerts(alerts);
