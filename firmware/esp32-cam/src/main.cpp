@@ -40,7 +40,7 @@
 #include "wifi_forcar.h"   // rede/chave gravadas pelo cabo (ver shared/wifi_forcar.example.h)
 #endif
 
-#define FW "cam-2.2.0"
+#define FW "cam-2.2.1"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -78,6 +78,7 @@ const unsigned long FLASH_MAX_MS            = 2000;
 // Ao vivo: intervalo entre quadros e quanto tempo segue sem ouvir o backend.
 const unsigned long QUADRO_MS       = 500;    // ~2 quadros por segundo
 const unsigned long AO_VIVO_PRAZO_MS = 25000; // o backend renova a cada 10 s
+const size_t AO_VIVO_MAX_BYTES = 200000;      // abaixo do limite do servidor (realtime.js)
 
 /* Falhas seguidas de Wi-Fi no boot. RTC_NOINIT sobrevive ao ESP.restart()
    (mas nao a falta de energia). Depois de FALHAS_ATE_PORTAL reinicios sem
@@ -490,6 +491,20 @@ void cuidaAoVivo() {
 
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) return;
+  /* Quadro grande demais derruba o WebSocket (o servidor fecha acima do
+     limite dele) e o ao vivo nunca começa. Melhor pular o quadro e dizer
+     por quê. Os 3 primeiros de cada sessão vão para o Serial com o tamanho. */
+  static int logados = 0;
+  if (logados < 3) {
+    Serial.printf("[ao vivo] quadro %ux%u, %u bytes\n", fb->width, fb->height, fb->len);
+    logados++;
+  }
+  if (fb->len > AO_VIVO_MAX_BYTES) {
+    Serial.printf("[ao vivo] quadro de %u bytes passou do limite (%u), pulado\n", fb->len, (unsigned)AO_VIVO_MAX_BYTES);
+    esp_camera_fb_return(fb);
+    modoAoVivo();   // tenta de novo baixar a resolucao/qualidade
+    return;
+  }
   ws.sendBIN(fb->buf, fb->len);
   esp_camera_fb_return(fb);
 }

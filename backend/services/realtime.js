@@ -53,7 +53,11 @@ function recusar(socket, status, texto) {
 
 function anexar(server) {
   // 256 kB: cabe um quadro JPEG da câmera ao vivo (VGA dá 15-40 kB).
-  wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
+  /* 1 MB: o quadro do ao vivo é ~15-40 kB em VGA, mas um sensor que não
+     aceita a resolução manda o quadro cheio. Com 256 kB a conexão caía no
+     primeiro quadro e o ao vivo nunca começava; a CAM (cam-2.2.1) já pula
+     quadros acima de 200 kB. */
+  wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024 });
 
   server.on("upgrade", async (req, socket, head) => {
     let url;
@@ -101,7 +105,13 @@ function anexar(server) {
       }
     });
     ws.on("error", (err) => console.error("[ws] erro na conexão:", err.message));
-    ws.on("close", () => aoFechar(ws));
+    ws.on("close", (codigo, motivo) => {
+      // Câmera caindo é o que mata o ao vivo: o log diz por quê (1009 = quadro grande demais).
+      if (ws.cliente && ws.cliente.placa === "cam") {
+        console.warn(`[ws] câmera da estação ${ws.cliente.stationId} saiu: código ${codigo} ${String(motivo || "")}`);
+      }
+      aoFechar(ws);
+    });
 
     const c = ws.cliente;
     ws.send(JSON.stringify({ tipo: "ola", cliente: c.tipo, station_id: c.stationId || undefined }));
