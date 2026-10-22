@@ -21,6 +21,7 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <WiFi.h>
 
 /* Nome da rede que a placa cria quando precisa ser configurada. Some assim que
    ela conecta. A senha existe para o vizinho nao entrar e reconfigurar a sua
@@ -109,6 +110,30 @@ inline void provisaoEsquecerRede(Credenciais &c) {
   c.ssid = "";
   c.senha = "";
   provisaoSalvar(c);
+}
+
+/* Rede gravada pelo cabo (wifi_forcar.h). Procura as redes por perto para
+   acertar maiusculas/minusculas do nome ("IPhone de X" acha "iPhone de X"),
+   grava na NVS e mantem a API e a chave. So roda quando o arquivo existe. */
+inline void provisaoForcarRede(Credenciais &c, const char *ssid, const char *senha) {
+  String alvo = ssid;
+  WiFi.mode(WIFI_STA);
+  int n = WiFi.scanNetworks();
+  bool achou = false;
+  Serial.printf("[cred] redes 2,4 GHz que a placa enxerga (%d):\n", n);
+  for (int i = 0; i < n; i++) {
+    Serial.printf("[cred]   \"%s\"  sinal %d dBm\n", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+    if (!achou && WiFi.SSID(i).equalsIgnoreCase(alvo)) { alvo = WiFi.SSID(i); achou = true; }
+  }
+  WiFi.scanDelete();
+  Serial.printf("[cred] rede forcada pelo cabo: %s (%s)\n", alvo.c_str(),
+                achou ? "ENCONTRADA" : "NAO aparece na busca");
+  if (c.ssid != alvo || c.senha != senha) {
+    c.ssid = alvo;
+    c.senha = senha;
+    provisaoSalvar(c);
+    Serial.println("[cred] rede nova salva na NVS");
+  }
 }
 
 // Apaga tudo: a proxima inicializacao cai direto no portal.

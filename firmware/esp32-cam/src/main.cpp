@@ -36,6 +36,9 @@
 #include "protocolo.h"
 #include "provisao.h"
 #include "secrets.h"
+#if __has_include("wifi_forcar.h")
+#include "wifi_forcar.h"   // rede/chave gravadas pelo cabo (ver shared/wifi_forcar.example.h)
+#endif
 
 #define FW "cam-2.2.0"
 
@@ -523,6 +526,16 @@ void setup() {
 
   // ---- credenciais ----
   provisaoCarregar(cred, WIFI_SSID, WIFI_PASS, API_BASE, DEVICE_KEY);
+#if __has_include("wifi_forcar.h")
+  provisaoForcarRede(cred, WIFI_FORCAR_SSID, WIFI_FORCAR_SENHA);
+#ifdef WIFI_FORCAR_CHAVE
+  if (cred.deviceKey != WIFI_FORCAR_CHAVE) {
+    cred.deviceKey = WIFI_FORCAR_CHAVE;
+    provisaoSalvar(cred);
+    Serial.println("[cred] chave nova salva na NVS");
+  }
+#endif
+#endif
   provisaoMostrar(cred);
 
   if (pediuPortal) {

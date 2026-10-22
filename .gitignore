@@ -4,6 +4,8 @@
 
 # credenciais de Wi-Fi e DEVICE_KEY
 firmware/**/secrets.h
+# rede Wi-Fi forcada pelo cabo (gravacao unica, ver firmware/shared/wifi_forcar.example.h)
+firmware/**/wifi_forcar.h
 
 # build do PlatformIO
 firmware/**/.pio/

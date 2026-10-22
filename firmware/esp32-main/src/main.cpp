@@ -23,6 +23,9 @@
 #include "protocolo.h"
 #include "provisao.h"
 #include "secrets.h"
+#if __has_include("wifi_forcar.h")
+#include "wifi_forcar.h"   // rede gravada pelo cabo (ver shared/wifi_forcar.example.h)
+#endif
 
 #define FW "main-1.7.0"
 
@@ -708,6 +711,22 @@ void portalSalvaSeConectou() {
   ESP.restart();
 }
 
+/* Por que o Wi-Fi caiu ou nao entrou: o codigo vem do proprio driver.
+   Sem isto o Serial so dizia "reconectando..." e nao dava para saber se era
+   senha errada, rede fora do alcance ou o hotspot recusando. */
+const char *motivoWifi(uint8_t r) {
+  switch (r) {
+    case 2:   return "autenticacao expirou";
+    case 15:  return "senha errada (handshake 4-way falhou)";
+    case 201: return "rede nao encontrada";
+    case 202: return "autenticacao recusada (senha ou tipo de seguranca)";
+    case 203: return "associacao recusada (rede cheia?)";
+    case 204: return "handshake expirou (senha errada?)";
+    case 8:   return "desconectado pelo ponto de acesso";
+    default:  return "outro";
+  }
+}
+
 void cuidaWifi(unsigned long agora) {
   // Com o portal aberto quem cuida do radio e o WiFiManager.
   if (portalAtivo) return;
@@ -968,6 +987,17 @@ void setup() {
      configurada pelo portal, e o cicloTelemetria morria no
      !provisaoCompleta(cred) -- nada chegava no app, para sempre. */
   provisaoCarregar(cred, WIFI_SSID, WIFI_PASS, API_BASE, DEVICE_KEY);
+#if __has_include("wifi_forcar.h")
+  provisaoForcarRede(cred, WIFI_FORCAR_SSID, WIFI_FORCAR_SENHA);
+#ifdef WIFI_FORCAR_CHAVE
+  // Chave nova da placa gerada no app (a antiga parou de valer: 401).
+  if (cred.deviceKey != WIFI_FORCAR_CHAVE) {
+    cred.deviceKey = WIFI_FORCAR_CHAVE;
+    provisaoSalvar(cred);
+    Serial.println("[cred] chave nova salva na NVS");
+  }
+#endif
+#endif
   provisaoMostrar(cred);
 
   pinMode(PIN_BOOT, INPUT_PULLUP);
@@ -975,6 +1005,14 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setAutoReconnect(true);
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) {
+    uint8_t r = info.wifi_sta_disconnected.reason;
+    Serial.printf("[wifi] sem conexao: motivo %u (%s)\n", r, motivoWifi(r));
+  }, ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t) {
+    Serial.printf("[wifi] conectado em \"%s\", ip %s, rssi %d\n",
+                  WiFi.SSID().c_str(), WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
   configTzTime(TZ_SP, NTP1, NTP2);
 
   if (provisaoCompleta(cred)) {
