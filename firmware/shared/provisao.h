@@ -100,6 +100,17 @@ inline void provisaoSalvar(const Credenciais &c) {
   nvs.end();
 }
 
+/* "Trocar a rede Wi-Fi" pelo app: esquece SO a rede e a senha. O endereco da
+   API e a chave continuam gravados, entao no portal basta escolher a rede
+   nova. Rede vazia = provisaoCompleta() falso: se o portal fechar sem
+   ninguem configurar, a placa reinicia e abre o portal de novo, em vez de
+   voltar para a rede antiga. */
+inline void provisaoEsquecerRede(Credenciais &c) {
+  c.ssid = "";
+  c.senha = "";
+  provisaoSalvar(c);
+}
+
 // Apaga tudo: a proxima inicializacao cai direto no portal.
 inline void provisaoLimpar() {
   Preferences nvs;

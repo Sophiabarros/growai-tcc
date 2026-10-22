@@ -37,7 +37,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "cam-2.1.0"
+#define FW "cam-2.2.0"
 
 // -------------------------------------------- pinagem AI-Thinker (padrao)
 #define PWDN_GPIO_NUM  32
@@ -97,6 +97,9 @@ bool aoVivo = false;
 unsigned long aoVivoAte = 0;
 unsigned long tUltimoQuadro = 0;
 long ultimoCicloFoto = -1;     // qual janela de foto ja foi atendida
+/* cam-2.2.0: "Trocar rede Wi-Fi" no app chega pelo WebSocket ({tipo:"portal"}).
+   O evento so marca; o loop() esquece a rede e abre o portal. */
+bool pedidoPortal = false;
 
 bool ehHttps() { return cred.apiBase.startsWith("https"); }
 
@@ -425,6 +428,11 @@ void eventoWs(WStype_t tipo, uint8_t *dados, size_t tam) {
     case WStype_TEXT: {
       JsonDocument doc;
       if (deserializeJson(doc, dados, tam)) return;
+      if (doc["tipo"] == "portal") {
+        Serial.println("[portal] o app pediu para trocar a rede Wi-Fi");
+        pedidoPortal = true;
+        break;
+      }
       if (doc["tipo"] == "ao_vivo") {
         bool ligar = doc["ligar"] | false;
         if (ligar != aoVivo) Serial.printf("[ao vivo] %s\n", ligar ? "alguem esta assistindo" : "ninguem assistindo");
@@ -564,6 +572,16 @@ void setup() {
 // ------------------------------------------------------------- loop
 void loop() {
   cuidaJanelaReset();
+
+  // Pedido do app: esquece a rede (a API e a chave ficam) e abre o portal.
+  if (pedidoPortal) {
+    pedidoPortal = false;
+    aoVivo = false;
+    ws.disconnect();
+    provisaoEsquecerRede(cred);
+    WiFi.disconnect();
+    abrePortal("pedido pelo app: trocar a rede Wi-Fi");   // bloqueia e reinicia no fim
+  }
 
   // Sem Wi-Fi por muito tempo: reinicia, e o boot decide se abre o portal.
   static unsigned long semRedeDesde = 0;

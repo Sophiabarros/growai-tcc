@@ -24,7 +24,7 @@
 #include "provisao.h"
 #include "secrets.h"
 
-#define FW "main-1.6.0"
+#define FW "main-1.7.0"
 
 /* ------------------------------------------------------- dois nucleos
    O controle da horta (loop, nucleo 1) e a internet (tarefaRede, nucleo 0)
@@ -383,6 +383,11 @@ void executaComando(JsonObjectConst c, unsigned long agora) {
    manual de ligar continua mandando. */
 bool luzPausada = false;
 unsigned long luzPausaFim = 0;
+
+/* main-1.7.0: "Trocar rede Wi-Fi" no app. O servidor manda abrir_portal na
+   resposta da telemetria (tarefaRede, com a trava); quem esquece a rede e
+   abre o portal e o loop(), fora do POST. O controle local segue rodando. */
+bool pedidoPortal = false;
 
 void expiraManuais(unsigned long agora) {
   for (int i = 0; i < N_RELES; i++)
@@ -783,6 +788,12 @@ void trataResposta(const String &corpo) {
       Serial.printf("[luz] IA: %s\n", luzPausada ? "luz natural basta, LED apagado" : "pouca luz natural, LED pela rotina");
   }
 
+  // --- trocar a rede Wi-Fi (pedido pelo app) ---
+  if (doc["abrir_portal"] | false) {
+    pedidoPortal = true;
+    Serial.println("[portal] o app pediu para trocar a rede Wi-Fi");
+  }
+
   // --- ritmo ---
   int p = doc["proxima_em_s"] | 15;
   proximaEmS = constrain(p, 5, 300);
@@ -1018,6 +1029,20 @@ void loop() {
       delay(200);
       ESP.restart();
     }
+  }
+
+  /* Pedido do app para trocar de rede: esquece a rede (a API e a chave
+     ficam) e abre o portal GrowAI-setup. Sem bloquear: a irrigacao, a luz e
+     a ventilacao continuam decidindo sozinhas enquanto isso. */
+  bool abrirAgora = false;
+  {
+    ComTrava t;
+    if (pedidoPortal && !portalAtivo) { pedidoPortal = false; abrirAgora = true; }
+  }
+  if (abrirAgora) {
+    provisaoEsquecerRede(cred);
+    WiFi.disconnect();
+    abrePortal("pedido pelo app: trocar a rede Wi-Fi");
   }
 
   xSemaphoreTake(trava, portMAX_DELAY);   // solta antes do cuidaWifi, la embaixo

@@ -97,8 +97,15 @@ repetir, sem computador e sem cabo.
 
 | Placa | Abre quando |
 |---|---|
-| ESP32 principal | nunca foi configurada, **ou** você **aperta o botão BOOT nos 10 primeiros segundos** depois de ligar |
-| ESP32-CAM | nunca foi configurada, **ou** você **aperta o RST duas vezes seguidas** (ou tira e põe a energia duas vezes), **ou** falha 3 ciclos seguidos ao conectar |
+| ESP32 principal | nunca foi configurada, **ou** você **aperta o botão BOOT nos 10 primeiros segundos** depois de ligar, **ou** (main-1.7.0+) toca em **Trocar rede Wi-Fi** no app |
+| ESP32-CAM | nunca foi configurada, **ou** você **aperta o RST duas vezes seguidas** (ou tira e põe a energia duas vezes), **ou** falha 3 ciclos seguidos ao conectar, **ou** (cam-2.2.0+) toca em **Trocar rede Wi-Fi** no app |
+
+**Trocar rede Wi-Fi pelo app** (Configurações → Conexão ESP32, com a placa
+online): a placa esquece **só** a rede e a senha — o endereço da API e a chave
+continuam gravados — e abre a `GrowAI-setup`. Se ninguém configurar em 3 min,
+ela reinicia e abre o portal de novo (não volta para a rede antiga). A placa
+principal recebe o pedido na próxima telemetria (até 15 s); a câmera, na hora,
+pelo WebSocket.
 
 A CAM não tem botão livre (o GPIO 0 dela é o clock da câmera), por isso o
 gatilho é o **reset duplo**: aperte o RST, espere 1–2 s e aperte de novo. O LED
