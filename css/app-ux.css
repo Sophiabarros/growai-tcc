@@ -305,3 +305,85 @@
     animation: none !important;
   }
 }
+
+/* ================================================================
+   BOTÃO DE FECHAR DOS POP-UPS — "×" no centro exato do círculo
+   O caractere × da Lexend fica fora do centro da caixa da letra (mais
+   baixo e à esquerda), então o círculo nunca parecia centrado. O × agora é
+   desenhado com duas barras; o caractere continua no HTML, escondido
+   (o aria-label "Fechar" é o que o leitor de tela lê).
+   ================================================================ */
+.cam-viewer__close,
+.esp-modal__close,
+.dev__fechar,
+.notif__fechar,
+.tl__fechar,
+.vera__fechar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: var(--app-text);
+}
+.cam-viewer__close { position: absolute; color: #fcfcfd; }
+.cam-viewer__close::before,
+.cam-viewer__close::after,
+.esp-modal__close::before,
+.esp-modal__close::after,
+.dev__fechar::before,
+.dev__fechar::after,
+.notif__fechar::before,
+.notif__fechar::after,
+.tl__fechar::before,
+.tl__fechar::after,
+.vera__fechar::before,
+.vera__fechar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  translate: -50% -50%;
+  rotate: 45deg;
+  transition: rotate 0.2s ease;
+}
+.cam-viewer__close::after,
+.esp-modal__close::after,
+.dev__fechar::after,
+.notif__fechar::after,
+.tl__fechar::after,
+.vera__fechar::after { rotate: -45deg; }
+/* Um giro leve no hover, para o botão responder ao mouse. */
+.cam-viewer__close:hover::before, .esp-modal__close:hover::before, .dev__fechar:hover::before,
+.notif__fechar:hover::before, .tl__fechar:hover::before, .vera__fechar:hover::before { rotate: 135deg; }
+.cam-viewer__close:hover::after, .esp-modal__close:hover::after, .dev__fechar:hover::after,
+.notif__fechar:hover::after, .tl__fechar:hover::after, .vera__fechar:hover::after { rotate: 45deg; }
+
+/* ================================================================
+   "ATUALIZAR" (Câmera) — as setas giram enquanto recarrega
+   ================================================================ */
+@keyframes appGiraSetas {
+  to { rotate: 360deg; }
+}
+.app-camera__refresh img,
+.m-app-camera__refresh img {
+  transition: rotate 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.app-camera__refresh:hover img,
+.m-app-camera__refresh:hover img { rotate: 90deg; }
+.app-camera__refresh.is-girando img,
+.m-app-camera__refresh.is-girando img {
+  animation: appGiraSetas 0.8s linear infinite;
+}
+.app-camera__refresh.is-girando,
+.m-app-camera__refresh.is-girando { cursor: progress; }
+@media (prefers-reduced-motion: reduce) {
+  .app-camera__refresh.is-girando img,
+  .m-app-camera__refresh.is-girando img { animation-duration: 2.4s; }
+}

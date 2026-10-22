@@ -83,7 +83,9 @@
   grid-template-columns: repeat(2, 56.8rem);
   column-gap: 10.4rem;
   row-gap: 4rem;
-  align-items: start;
+  /* stretch: os dois cards de uma linha (inclusive o "+") ficam da mesma
+     altura, a do maior. Os cards já põem o botão na base sozinhos. */
+  align-items: stretch;
 }
 /* 35rem é o mínimo (Figma); o card cresce se a análise da IA for longa, e o
    botão fica sempre na base. Com altura fixa, o conteúdo passava 0.3rem do
@@ -105,10 +107,12 @@
   height: 18.4rem;
   object-fit: cover;
 }
+/* Canto superior direito da foto, com a mesma distância do topo e da
+   lateral (antes 0.96rem do topo e 2.68rem da direita: parecia solto). */
 .cam-card__time {
   position: absolute;
-  top: 0.96rem;
-  right: 2.68rem;
+  top: 1.4rem;
+  right: 1.4rem;
   height: 2.3rem;
   padding: 0 1rem;
   display: flex;
@@ -201,7 +205,8 @@
   cursor: pointer;
   padding: 0;
   width: 56.8rem;
-  height: 32rem;
+  min-height: 35rem; /* era height: 32rem fixo; a grade estica até o card ao lado */
+  height: auto;
   background: #101614;
   border: 2px solid var(--app-card-bg);
   border-radius: 1.5rem;

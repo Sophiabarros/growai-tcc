@@ -243,12 +243,27 @@
     });
   });
 
+  // As setas giram enquanto recarrega (css/app-ux.css, .is-girando). Pelo
+  // menos uma volta inteira, para o clique ter resposta visível mesmo quando
+  // a rede responde rápido.
   function wireRefresh(btnId) {
     var btn = document.getElementById(btnId);
     btn.addEventListener("click", async function () {
+      if (btn.classList.contains("is-girando")) return;
       btn.disabled = true;
-      await load();
-      btn.disabled = false;
+      btn.classList.add("is-girando");
+      btn.setAttribute("aria-busy", "true");
+      var inicio = Date.now();
+      try {
+        await load();
+      } finally {
+        var falta = Math.max(0, 800 - (Date.now() - inicio));
+        setTimeout(function () {
+          btn.classList.remove("is-girando");
+          btn.removeAttribute("aria-busy");
+          btn.disabled = false;
+        }, falta);
+      }
     });
   }
   wireRefresh("cameraRefreshBtn");
