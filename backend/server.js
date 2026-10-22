@@ -80,6 +80,8 @@ app.use("/api/settings", requireAuth, settingsRoutes);
 app.use("/api/vera", requireAuth, require("./routes/vera"));
 // O sino: notificações que a pessoa recebeu.
 app.use("/api/notificacoes", requireAuth, require("./routes/notificacoes"));
+// Painel de desenvolvedor: uso da cota da IA (pede também a senha de dev).
+app.use("/api/dev", requireAuth, require("./routes/dev"));
 
 app.use((req, res) => {
   res.status(404).json({ error: "Rota não encontrada" });

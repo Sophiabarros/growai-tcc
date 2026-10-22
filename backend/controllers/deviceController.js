@@ -6,6 +6,7 @@ const aoVivo = require("../services/aoVivo");
 const relatorios = require("../services/relatorios");
 const notificacoes = require("../services/notificacoes");
 const luzIa = require("../services/luzIa");
+const portalWifi = require("../services/portalWifi");
 const realtime = require("../services/realtime");
 const { temperaturaSaoPauloJa, completarTemperatura } = require("../services/temperaturaExterna");
 
@@ -184,6 +185,8 @@ async function telemetria(req, res, next) {
     const resposta = { cfg_versao: station.cfg_versao, proxima_em_s: ativo ? PROXIMA_EM_S_ATIVO : PROXIMA_EM_S };
     // Luz decidida pela IA: quanto tempo o LED fica apagado (0 = rotina).
     resposta.luz_pausa_s = luzIa.pausaSegundos(station);
+    // "Trocar rede Wi-Fi" no app: a placa esquece a rede e abre o portal.
+    if (portalWifi.consumir(station.id)) resposta.abrir_portal = true;
 
     // config só quando a placa está numa versão diferente da nossa
     if (Number(t.cfg_versao) !== Number(station.cfg_versao)) {

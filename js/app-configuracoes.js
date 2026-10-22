@@ -275,8 +275,18 @@
   var TIPO_PLACA = { main: "Placa principal", cam: "Câmera" };
   var FAZ_PLACA = {
     main: "sensores, bomba, luz e ventilação",
-    cam: "uma foto a cada 30 min",
+    cam: "foto a cada 30 min e ao vivo",
   };
+  /* "Trocar rede Wi-Fi" só funciona a partir destas versões do firmware: as
+     anteriores ignorariam o pedido sem dizer nada. */
+  var FW_MINIMO_WIFI = { main: [1, 7], cam: [2, 2] };
+  function fwSuportaWifi(d) {
+    var m = /^(main|cam)-(\d+)\.(\d+)/.exec(String(d.fw || ""));
+    var min = FW_MINIMO_WIFI[d.tipo];
+    if (!m || !min) return false;
+    var maior = Number(m[2]), menor = Number(m[3]);
+    return maior > min[0] || (maior === min[0] && menor >= min[1]);
+  }
 
   function espQuando(iso) {
     if (!iso) return "nunca falou com o servidor";
@@ -287,8 +297,18 @@
     return "há " + Math.round(min / 1440) + " dias";
   }
 
-  function espPlacaHtml(d) {
+  function espPlacaHtml(d, estacaoId) {
     var on = !!d.online;
+    var suporta = fwSuportaWifi(d);
+    var dica = !on
+      ? "A placa precisa estar online para receber o pedido."
+      : !suporta
+        ? "Regrave a placa com o firmware novo (" + (d.tipo === "cam" ? "cam-2.2.0" : "main-1.7.0") + ") para usar este botão."
+        : "A placa esquece a rede atual e abre a rede GrowAI-setup para você escolher outra.";
+    var botaoWifi =
+      '<button type="button" class="esp-btn esp-btn--secundario esp-btn--wifi" data-action="trocar-wifi"' +
+      ' data-estacao="' + estacaoId + '" data-device="' + d.id + '" data-tipo="' + d.tipo + '"' +
+      (on && suporta ? "" : " disabled") + ' title="' + escapeHtml(dica) + '">Trocar rede Wi-Fi</button>';
     return (
       '<div class="esp-placa">' +
       '<span class="esp-placa__dot ' + (on ? "esp-placa__dot--on" : "esp-placa__dot--off") + '"></span>' +
@@ -300,7 +320,7 @@
       "</span></span>" +
       '<span class="esp-placa__estado' + (on ? "" : " esp-placa__estado--off") + '">' +
       (on ? "Online" : "Offline") +
-      "</span></div>"
+      "</span>" + botaoWifi + "</div>"
     );
   }
 
@@ -325,8 +345,7 @@
       "<li><strong>Endereço da API</strong> — " + (api ? "<code>" + escapeHtml(api) + "</code>" : "o endereço do servidor") + "</li>" +
       "<li><strong>Chave</strong> — a que você copiou no passo 1.</li>" +
       "</ul></li>" +
-      "<li>Salve. Ela reinicia já conectada e aparece aqui como <strong>Online</strong> " +
-      "(a câmera pode levar até 30 min, porque ela dorme entre uma foto e outra).</li>" +
+      "<li>Salve. Ela reinicia já conectada e aparece aqui como <strong>Online</strong> em até 1 minuto.</li>" +
       "</ol>" +
       '<p class="esp-ajuda__nota">' +
       "<strong>Cada placa tem a sua chave.</strong> A da placa principal não funciona na câmera e vice-versa — " +
@@ -338,8 +357,10 @@
       "Gerar uma nova faz a anterior parar de valer na hora." +
       "</p>" +
       '<p class="esp-ajuda__nota">' +
-      "<strong>Trocar de rede depois:</strong> na placa principal, segure o botão <strong>BOOT</strong> enquanto liga. " +
-      "A câmera abre a página de configuração sozinha depois de 3 tentativas sem conseguir conectar." +
+      "<strong>Trocar de rede depois:</strong> com a placa online, use o botão <strong>Trocar rede Wi-Fi</strong> dela aqui em cima: " +
+      "ela esquece a rede atual e abre a <code>GrowAI-setup</code> de novo (o endereço e a chave continuam gravados; é só escolher a rede). " +
+      "Com a placa offline: na principal, aperte o <strong>BOOT</strong> nos primeiros 10 s depois de ligar; " +
+      "na câmera, aperte o <strong>RST</strong> duas vezes seguidas." +
       "</p>" +
       "</div>"
     );
@@ -403,7 +424,7 @@
         } else if (!lista.length) {
           corpo = '<p class="esp-vazio">Nenhuma placa cadastrada ainda.</p>';
         } else {
-          corpo = lista.map(espPlacaHtml).join("");
+          corpo = lista.map(function (d) { return espPlacaHtml(d, e.id); }).join("");
         }
         return (
           '<div class="esp-estacao" data-estacao="' + e.id + '">' +
@@ -501,6 +522,42 @@
         sel.removeAllRanges();
         sel.addRange(r);
         btnCopiar.textContent = "Selecionada — Ctrl+C";
+      }
+      return;
+    }
+
+    var btnWifi = event.target.closest('[data-action="trocar-wifi"]');
+    if (btnWifi) {
+      var nomePlaca = btnWifi.dataset.tipo === "cam" ? "câmera" : "placa principal";
+      var ok = window.showConfirm
+        ? await showConfirm(
+            "A " + nomePlaca + " vai esquecer a rede Wi-Fi atual e sair da internet. Ela volta a criar a rede GrowAI-setup " +
+              "para você escolher outra pelo celular. A irrigação e a luz continuam funcionando sozinhas enquanto isso.",
+            { confirmLabel: "Trocar rede" }
+          )
+        : true;
+      if (!ok) return;
+      btnWifi.disabled = true;
+      btnWifi.textContent = "Enviando…";
+      try {
+        var r = await GrowAI.trocarWifi(btnWifi.dataset.estacao, btnWifi.dataset.device);
+        var caixaW = btnWifi.closest(".esp-estacao").querySelector(".esp-chave-slot");
+        caixaW.innerHTML =
+          '<div class="esp-chave esp-wifi-ok">' +
+          '<p class="esp-chave__titulo">Pedido enviado para a ' + nomePlaca + "</p>" +
+          '<p class="esp-chave__aviso">Em até ' + (r && r.em_s ? r.em_s : 15) + " s ela sai da rede. Então, no celular:</p>" +
+          "<ol class=\"esp-wifi-passos\">" +
+          "<li>Conecte na rede <code>GrowAI-setup</code> (senha <code>growai123</code>).</li>" +
+          "<li>A página da placa abre sozinha; se não abrir, acesse <code>192.168.4.1</code>.</li>" +
+          "<li>Escolha a rede nova (2,4 GHz), digite a senha e salve. O endereço e a chave já estão preenchidos.</li>" +
+          "</ol>" +
+          '<p class="esp-chave__aviso">Se ninguém configurar em 3 min, ela reinicia e abre a GrowAI-setup de novo.</p>' +
+          "</div>";
+        btnWifi.textContent = "Pedido enviado";
+      } catch (err) {
+        btnWifi.disabled = false;
+        btnWifi.textContent = "Trocar rede Wi-Fi";
+        if (window.showToast) showToast(err.message, "error");
       }
       return;
     }

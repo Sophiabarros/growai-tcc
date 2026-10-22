@@ -60,85 +60,55 @@
   font: 400 2rem/normal var(--font-body);
 }
 
-.rel-chart1 {
+/* Os dois gráficos têm a MESMA caixa e a mesma área de plotagem (ver
+   CHART_BOXES em js/app-relatorios.js): grade, eixos, linha e barras são
+   desenhados num SVG só. Área de plotagem: 5.2rem a 49rem na horizontal,
+   1.6rem a 25.2rem na vertical. */
+.rel-chart1,
+.rel-chart2 {
   position: absolute;
   left: 2.4rem;
   top: 7.2rem;
   width: 50.4rem;
   height: 29.2rem;
-  overflow: hidden;
 }
-.rel-chart1__grid { position: absolute; left: 5.04rem; top: 2.336rem; width: 42.84rem; height: 23.36rem; }
-.rel-chart1__axes { position: absolute; left: 4.662rem; top: 2.336rem; width: 43.218rem; height: 23.71rem; }
-.rel-chart1__data { position: absolute; inset: 0; }
-.rel-chart1__y-labels {
+.rel-chart1__data,
+.rel-chart2__data { position: absolute; inset: 0; }
+/* 100 na linha do topo (1.6rem) e 0 no eixo (25.2rem): cada número fica
+   centrado na sua linha da grade (±0.75rem = meia altura do texto). */
+.rel-chart1__y-labels,
+.rel-chart2__y-labels {
   position: absolute;
   left: 0;
-  top: 2.336rem;
-  bottom: 3.504rem;
+  top: 0.85rem;
+  height: 25.1rem;
   width: 4.4rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   text-align: right;
   color: var(--app-info);
-  font: 400 1.2rem/normal var(--font-inter);
+  font: 400 1.2rem/1.5rem var(--font-inter);
 }
-.rel-chart1__x-labels {
-  position: absolute;
-  left: 3.3rem;
-  right: 0.4rem;
-  top: 26.56rem;
-  display: flex;
-  justify-content: space-between;
-  text-align: center;
-  color: var(--app-info);
-  font: 400 1.2rem/normal var(--font-inter);
-}
-
-.rel-chart2 {
-  position: absolute;
-  left: 3.4rem;
-  top: 7.2rem;
-  width: 48.7rem;
-  height: 29.2rem;
-  overflow: hidden;
-}
-.rel-chart2__group { position: absolute; left: 6.847rem; top: 2.654rem; width: 38.809rem; height: 17.702rem; }
-.rel-chart2__vector { position: absolute; left: 6.847rem; top: 2.654rem; width: 38.809rem; height: 17.702rem; }
-.rel-chart2__axis { position: absolute; left: 6.239rem; top: 2.654rem; width: 0.598rem; height: 17.702rem; }
-.rel-chart2__data { position: absolute; inset: 0; }
-/* Os números ficam centrados nas linhas do desenho: 100 no topo do eixo
-   (2,65rem) e 0 na linha de base (20,35rem). */
-.rel-chart2__y-labels {
-  position: absolute;
-  left: 0;
-  top: 1.85rem;
-  bottom: 8.05rem;
-  width: 4.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  text-align: right;
-  color: var(--app-info);
-  font: 400 1.3rem/normal var(--font-inter);
-}
-/* space-around põe cada dia no centro da sua barra. */
+/* left/right/top vêm do JS; cada rótulo fica centrado no seu ponto/barra. */
+.rel-chart1__x-labels,
 .rel-chart2__x-labels {
   position: absolute;
-  left: 6.85rem;
-  right: 3.04rem;
-  top: 21.3rem;
-  display: flex;
-  justify-content: space-around;
-  text-align: center;
+  height: 1.6rem;
   color: var(--app-info);
-  font: 400 1.3rem/normal var(--font-inter);
+  font: 400 1.2rem/1.6rem var(--font-inter);
 }
+.rel-chart1__x-labels span,
+.rel-chart2__x-labels span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.rel-chart1__x-labels span.is-highlight,
 .rel-chart2__x-labels span.is-highlight {
-  color: #7ab2b0;
-  font-weight: 500;
-  font-size: 1.2rem;
+  color: var(--app-accent);
+  font-weight: 600;
 }
 
 /* ============ SUGGESTIONS ============ */
@@ -349,82 +319,50 @@
     font: 400 1.2rem/normal var(--font-body);
   }
 
-  .m-rel-chart1 {
-    position: absolute;
-    left: 4.9rem;
-    top: 3.5rem;
-    width: 26.5rem;
-    height: 16.6rem;
-    overflow: hidden;
-  }
-  .m-rel-chart1__grid { position: absolute; left: 2.65rem; top: 1.33rem; width: 22.53rem; height: 13.28rem; }
-  .m-rel-chart1__axes { position: absolute; left: 2.45rem; top: 1.33rem; width: 22.72rem; height: 13.48rem; }
-  .m-rel-chart1__data { position: absolute; inset: 0; }
-  .m-rel-chart1__y-labels {
-    position: absolute;
-    left: 0;
-    top: 0.8rem;
-    bottom: 1.8rem;
-    width: 2.1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    text-align: right;
-    color: var(--app-info);
-    font: 400 1.2rem/normal var(--font-inter);
-  }
-  .m-rel-chart1__x-labels {
-    position: absolute;
-    left: 1.9rem;
-    right: 0.3rem;
-    top: 15.1rem;
-    display: flex;
-    justify-content: space-between;
-    text-align: center;
-    color: var(--app-info);
-    font: 400 1.2rem/normal var(--font-inter);
-  }
-
+  /* Mesma ideia do desktop: as duas caixas iguais. Área de plotagem:
+     3.2rem a 32.6rem na horizontal, 0.9rem a 13.6rem na vertical. */
+  .m-rel-chart1,
   .m-rel-chart2 {
     position: absolute;
-    left: 5.7rem;
-    top: 2.6rem;
-    width: 25.8rem;
-    height: 18.6rem;
-    overflow: hidden;
+    left: 1.4rem;
+    top: 3.6rem;
+    width: 33.5rem;
+    height: 16.6rem;
   }
-  .m-rel-chart2__group { position: absolute; left: 3.63rem; top: 1.69rem; width: 20.56rem; height: 13.58rem; }
-  .m-rel-chart2__vector { position: absolute; left: 3.63rem; top: 1.69rem; width: 20.56rem; height: 13.58rem; }
-  .m-rel-chart2__axis { position: absolute; left: 3.3rem; top: 1.69rem; width: 0.33rem; height: 13.68rem; }
+  .m-rel-chart1__data,
   .m-rel-chart2__data { position: absolute; inset: 0; }
+  .m-rel-chart1__y-labels,
   .m-rel-chart2__y-labels {
     position: absolute;
     left: 0;
-    top: 0.89rem;
-    bottom: 2.53rem;
-    width: 2.1rem;
+    top: 0.25rem;
+    height: 14rem;
+    width: 2.6rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     text-align: right;
     color: var(--app-info);
-    font: 400 1.3rem/normal var(--font-inter);
+    font: 400 1.05rem/1.3rem var(--font-inter);
   }
+  .m-rel-chart1__x-labels,
   .m-rel-chart2__x-labels {
     position: absolute;
-    left: 3.63rem;
-    right: 1.61rem;
-    top: 15.6rem;
-    display: flex;
-    justify-content: space-around;
-    text-align: center;
+    height: 1.4rem;
     color: var(--app-info);
-    font: 400 1.3rem/normal var(--font-inter);
+    font: 400 1.05rem/1.4rem var(--font-inter);
   }
+  .m-rel-chart1__x-labels span,
+  .m-rel-chart2__x-labels span {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .m-rel-chart1__x-labels span.is-highlight,
   .m-rel-chart2__x-labels span.is-highlight {
-    color: #7ab2b0;
-    font-weight: 500;
-    font-size: 1.2rem;
+    color: var(--app-accent);
+    font-weight: 600;
   }
 
   .m-rel-suggestions-title {
@@ -588,22 +526,27 @@
   font-size: 0.65em;
   margin-left: 0.4em;
 }
-/* Gráfico sem nenhum ponto: aviso no meio, em vez de um gráfico "zerado". */
+/* Gráfico sem nenhum ponto: a grade continua e o aviso fica no centro da
+   ÁREA DE PLOTAGEM (left/right/top/bottom vêm do JS), numa pílula com o
+   fundo do cartão, para não brigar com as linhas da grade. */
 .rel-chart-vazio {
   position: absolute;
-  inset: 0;
-  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 4rem;
+  pointer-events: none;
+}
+.rel-chart-vazio__texto {
+  margin: 0;
+  max-width: 94%;
+  padding: 0.8rem 1.6rem;
+  border-radius: 99rem;
+  background: var(--app-card-bg);
+  box-shadow: 0 0 0 1px rgba(136, 211, 207, 0.12);
   text-align: center;
+  text-wrap: balance;
   color: var(--app-muted-alt);
   font: 400 1.4rem/1.4 var(--font-body);
-}
-.rel-chart1__x-labels span.is-highlight {
-  color: #7ab2b0;
-  font-weight: 500;
 }
 
 @media (max-width: 899px) {
@@ -645,13 +588,10 @@
   .m-rel-chart-card__label .rel-chart-card__unit {
     font-size: 0.75em;
   }
-  .rel-chart-vazio {
-    padding: 0 1.6rem;
-    font-size: 1.1rem;
-  }
-  .m-rel-chart1__x-labels span.is-highlight {
-    color: #7ab2b0;
-    font-weight: 500;
+  .rel-chart-vazio__texto {
+    max-width: 90%;
+    padding: 0.5rem 1rem;
+    font-size: 1.05rem;
   }
 }
 
@@ -664,4 +604,345 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
+
+/* =================================================================
+   ÁGUA DA REGA + DIÁRIO DA IA (js/app-relatorios.js)
+   O `top` vem do JS: logo abaixo do último card de sugestão. Dentro,
+   tudo em fluxo. Mesmo HTML no desktop e no celular (--m encolhe).
+   ================================================================= */
+.rel-extra {
+  position: absolute;
+  left: 13.3rem;
+  top: 120rem;
+  width: 117.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3.2rem;
+}
+.rel-extra:empty { display: none; }
+.rx-card {
+  background: var(--app-card-bg);
+  border-radius: 2rem;
+  padding: 2.8rem 3.2rem 3rem;
+  box-shadow: 0 0 0 1px rgba(136, 211, 207, 0.06), 0 0.6rem 1.8rem rgba(0, 0, 0, 0.16);
+}
+.rx-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2.4rem;
+}
+.rx-titulo {
+  margin: 0;
+  color: var(--app-text);
+  font: 600 3.2rem/1.15 var(--font-body);
+}
+.rx-sub {
+  margin: 0.6rem 0 0;
+  color: var(--app-info);
+  font: 400 1.5rem/1.4 var(--font-body);
+}
+.rx-vazio {
+  margin: 0;
+  padding: 2.4rem;
+  border-radius: 1.2rem;
+  background: rgba(136, 211, 207, 0.05);
+  color: var(--app-muted-alt);
+  font: 400 1.5rem/1.5 var(--font-body);
+  text-align: center;
+  text-wrap: balance;
+}
+/* Seletor segmentado (7/30 dias, filtros do diário): o mesmo desenho do
+   Semana/Hoje do topo. */
+.rx-seg {
+  flex: none;
+  display: inline-flex;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  border-radius: 99rem;
+  background: rgba(136, 211, 207, 0.08);
+}
+.rx-seg__btn {
+  border: 0;
+  border-radius: 99rem;
+  padding: 0.7rem 1.6rem;
+  background: transparent;
+  color: var(--app-info);
+  font: 500 1.4rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, scale 0.12s ease;
+}
+.rx-seg__btn:hover { color: var(--app-text); }
+.rx-seg__btn:active { scale: 0.96; }
+.rx-seg__btn.is-active {
+  background: linear-gradient(135deg, var(--color-green-normal), #68ada3);
+  color: var(--app-card-bg);
+}
+.rx-seg__btn:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+
+/* ---- água ---- */
+.rx-kpis {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 1.6rem;
+}
+.rx-kpi {
+  padding: 1.8rem 2rem;
+  border-radius: 1.4rem;
+  background: rgba(136, 211, 207, 0.06);
+}
+.rx-kpi--destaque {
+  background: linear-gradient(135deg, rgba(93, 165, 120, 0.22), rgba(104, 173, 163, 0.12));
+  box-shadow: inset 0 0 0 1px rgba(192, 231, 157, 0.18);
+}
+.rx-kpi__rotulo {
+  margin: 0;
+  color: var(--app-info);
+  font: 500 1.4rem/1.2 var(--font-body);
+}
+.rx-kpi__valor {
+  margin: 0.8rem 0 0;
+  color: var(--app-text);
+  font: 600 3.4rem/1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.rx-kpi--destaque .rx-kpi__valor { color: var(--app-accent); font-size: 4.2rem; }
+.rx-kpi__nota {
+  margin: 0.8rem 0 0;
+  color: var(--app-muted-alt);
+  font: 400 1.3rem/1.3 var(--font-body);
+}
+.rx-grafico { margin-top: 2.4rem; }
+.agua-g { display: block; width: 100%; height: 9rem; overflow: visible; }
+.agua-g__barra { fill: #88d3cf; }
+.agua-g__sem { fill: rgba(136, 211, 207, 0.25); }
+.agua-g__base { stroke: rgba(136, 211, 207, 0.35); stroke-width: 0.6; }
+.agua-g__timer { stroke: #c0e79d; stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; }
+.rx-grafico__eixo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.8rem;
+  color: var(--app-muted-alt);
+  font: 400 1.25rem/1 var(--font-body);
+}
+.rx-grafico__leg { display: inline-flex; align-items: center; gap: 0.6rem; }
+.rx-leg { display: inline-block; width: 1.2rem; height: 1.2rem; border-radius: 0.3rem; margin-left: 0.8rem; }
+.rx-leg--barra { background: #88d3cf; }
+.rx-leg--timer { height: 0; border-top: 2px dashed #c0e79d; border-radius: 0; }
+.rx-nota {
+  margin: 2rem 0 0;
+  color: var(--app-muted-alt);
+  font: 400 1.25rem/1.5 var(--font-body);
+  text-wrap: pretty;
+}
+
+/* ---- diário ---- */
+.dx-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1.8rem;
+}
+.dx-resumo__titulo {
+  margin-right: 0.6rem;
+  color: var(--app-muted-alt);
+  font: 500 1.3rem/1 var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.dx-chip {
+  padding: 0.7rem 1.2rem;
+  border-radius: 99rem;
+  background: rgba(136, 211, 207, 0.08);
+  color: var(--app-info);
+  font: 400 1.35rem/1 var(--font-body);
+}
+.dx-chip b { color: var(--app-text); font-weight: 600; margin-right: 0.3rem; }
+.dx-chip--alerta { background: rgba(229, 72, 77, 0.14); color: var(--color-danger); }
+.dx-chip--alerta b { color: var(--color-danger); }
+.rx-seg--filtro { margin-bottom: 2.2rem; }
+
+.dx-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+/* A linha vertical que liga os eventos. */
+.dx-lista::before {
+  content: "";
+  position: absolute;
+  left: 0.7rem;
+  top: 1rem;
+  bottom: 1rem;
+  width: 2px;
+  background: rgba(136, 211, 207, 0.15);
+}
+.dx-item {
+  position: relative;
+  display: flex;
+  gap: 1.8rem;
+  padding: 0 0 2.4rem;
+}
+.dx-item:last-child { padding-bottom: 0; }
+.dx-ponto {
+  position: relative;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin-top: 0.3rem;
+  border-radius: 50%;
+  background: var(--app-card-bg);
+  box-shadow: inset 0 0 0 0.4rem var(--dx-cor, #88d3cf);
+}
+.dx-item--analise { --dx-cor: #88d3cf; }
+.dx-item--atencao { --dx-cor: #e0b43c; }
+.dx-item--praga { --dx-cor: var(--color-danger); }
+.dx-item--ajuste { --dx-cor: var(--color-green-normal); }
+.dx-item--sugestao { --dx-cor: #c0e79d; }
+.dx-item--desfeito { --dx-cor: rgba(136, 211, 207, 0.4); }
+.dx-item--luz { --dx-cor: #f2cf6b; }
+.dx-item--luz-acesa { --dx-cor: #b48bd6; }
+.dx-corpo { flex: 1; min-width: 0; }
+.dx-linha {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.6rem;
+}
+.dx-titulo {
+  margin: 0;
+  color: var(--app-text);
+  font: 500 1.6rem/1.35 var(--font-body);
+}
+.dx-quando {
+  flex: none;
+  color: var(--app-muted-alt);
+  font: 400 1.3rem/1 var(--font-body);
+  white-space: nowrap;
+}
+.dx-detalhe {
+  margin: 0.6rem 0 0;
+  color: var(--app-info);
+  font: 400 1.4rem/1.5 var(--font-body);
+  text-wrap: pretty;
+}
+.dx-tags { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 0; }
+.dx-tags span {
+  padding: 0.4rem 1rem;
+  border-radius: 99rem;
+  background: rgba(136, 211, 207, 0.08);
+  color: var(--app-muted-alt);
+  font: 400 1.2rem/1.3 var(--font-body);
+}
+.dx-corpo .rel-changes { margin-top: 1.2rem; }
+.dx-btn {
+  margin-top: 1.2rem;
+  height: 3.4rem;
+  padding: 0 1.6rem;
+  border: 1px solid var(--color-green-normal);
+  border-radius: 0.9rem;
+  background: transparent;
+  color: var(--color-green-normal);
+  font: 500 1.35rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.18s ease, translate 0.15s ease, scale 0.12s ease;
+}
+.dx-btn:hover:not(:disabled) { background: rgba(93, 165, 120, 0.12); translate: 0 -0.1rem; }
+.dx-btn:active:not(:disabled) { scale: 0.97; translate: 0 0; }
+.dx-btn:disabled { opacity: 0.6; cursor: wait; }
+.dx-btn:focus-visible,
+.dx-mais:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+.dx-mais {
+  display: block;
+  width: 100%;
+  margin-top: 2.4rem;
+  height: 4.4rem;
+  border: 1px dashed rgba(136, 211, 207, 0.35);
+  border-radius: 1.2rem;
+  background: transparent;
+  color: var(--app-info);
+  font: 500 1.4rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.dx-mais:hover { background: rgba(136, 211, 207, 0.06); border-color: rgba(136, 211, 207, 0.6); }
+
+/* ---- celular: mesma coisa, compacta, na coluna de 36.3rem ---- */
+@media (max-width: 899px) {
+  .rel-extra--m {
+    left: 2.5rem;
+    top: 110rem;
+    width: 36.3rem;
+    gap: 2rem;
+  }
+  .rel-extra--m .rx-card { border-radius: 1.5rem; padding: 1.6rem 1.4rem 1.8rem; }
+  .rel-extra--m .rx-cab { flex-direction: column; gap: 1.2rem; margin-bottom: 1.6rem; }
+  .rel-extra--m .rx-titulo { font-size: 2rem; }
+  .rel-extra--m .rx-sub { font-size: 1.15rem; }
+  .rel-extra--m .rx-vazio { padding: 1.6rem; font-size: 1.2rem; }
+  .rel-extra--m .rx-seg__btn { padding: 0.6rem 1.2rem; font-size: 1.15rem; }
+  .rel-extra--m .rx-kpis { grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+  .rel-extra--m .rx-kpi { padding: 1.2rem; border-radius: 1rem; }
+  .rel-extra--m .rx-kpi--destaque { grid-column: 1 / -1; }
+  .rel-extra--m .rx-kpi__rotulo { font-size: 1.1rem; }
+  .rel-extra--m .rx-kpi__valor { font-size: 2.2rem; margin-top: 0.5rem; }
+  .rel-extra--m .rx-kpi--destaque .rx-kpi__valor { font-size: 2.8rem; }
+  .rel-extra--m .rx-kpi__nota { font-size: 1.05rem; margin-top: 0.5rem; }
+  .rel-extra--m .rx-grafico { margin-top: 1.6rem; }
+  .rel-extra--m .agua-g { height: 6rem; }
+  .rel-extra--m .rx-grafico__eixo { font-size: 1rem; }
+  .rel-extra--m .rx-nota { font-size: 1.05rem; margin-top: 1.4rem; }
+  .rel-extra--m .dx-resumo__titulo { width: 100%; font-size: 1.05rem; }
+  .rel-extra--m .dx-chip { padding: 0.5rem 0.9rem; font-size: 1.1rem; }
+  .rel-extra--m .rx-seg--filtro { margin-bottom: 1.6rem; }
+  .rel-extra--m .dx-item { gap: 1.2rem; padding-bottom: 1.8rem; }
+  .rel-extra--m .dx-lista::before { left: 0.55rem; }
+  .rel-extra--m .dx-ponto { width: 1.3rem; height: 1.3rem; box-shadow: inset 0 0 0 0.35rem var(--dx-cor, #88d3cf); }
+  .rel-extra--m .dx-linha { flex-direction: column; gap: 0.3rem; }
+  .rel-extra--m .dx-titulo { font-size: 1.3rem; }
+  .rel-extra--m .dx-quando { font-size: 1.05rem; }
+  .rel-extra--m .dx-detalhe { font-size: 1.15rem; }
+  .rel-extra--m .dx-tags span { font-size: 1.05rem; padding: 0.3rem 0.8rem; }
+  .rel-extra--m .dx-btn { height: 2.9rem; font-size: 1.15rem; padding: 0 1.2rem; }
+  .rel-extra--m .dx-mais { height: 3.6rem; font-size: 1.2rem; margin-top: 1.6rem; }
+}
+
+/* Modo claro: as cores fixas do gráfico e dos pontos ganham o verde do site. */
+html[data-theme="light"] .rx-card { box-shadow: 0 0 0 1px rgba(45, 78, 73, 0.08), 0 0.6rem 1.8rem rgba(35, 61, 57, 0.08); }
+html[data-theme="light"] .rx-kpi,
+html[data-theme="light"] .rx-vazio,
+html[data-theme="light"] .dx-chip,
+html[data-theme="light"] .dx-tags span,
+html[data-theme="light"] .rx-seg { background: rgba(45, 78, 73, 0.06); }
+html[data-theme="light"] .rx-kpi--destaque { background: linear-gradient(135deg, rgba(93, 165, 120, 0.16), rgba(104, 173, 163, 0.08)); box-shadow: inset 0 0 0 1px rgba(93, 165, 120, 0.25); }
+html[data-theme="light"] .agua-g__barra { fill: #6da9a6; }
+html[data-theme="light"] .rx-leg--barra { background: #6da9a6; }
+html[data-theme="light"] .agua-g__timer { stroke: #467c5a; }
+html[data-theme="light"] .rx-leg--timer { border-top-color: #467c5a; }
+html[data-theme="light"] .dx-lista::before { background: rgba(45, 78, 73, 0.12); }
+html[data-theme="light"] .dx-item--analise { --dx-cor: #4c827a; }
+html[data-theme="light"] .dx-item--sugestao { --dx-cor: #90ad76; }
+
+/* "Exportar PDF": relatório no papel timbrado (relatorio.html). */
+.rel-controls__pdf {
+  height: 3.6rem;
+  padding: 0 1.6rem;
+  border: 1px solid var(--color-green-normal);
+  border-radius: 99rem;
+  background: transparent;
+  color: var(--color-green-normal);
+  font: 600 1.4rem/1 var(--font-body);
+  cursor: pointer;
+  transition: background-color 0.18s ease, translate 0.15s ease, scale 0.12s ease;
+}
+.rel-controls__pdf:hover { background: rgba(93, 165, 120, 0.12); translate: 0 -0.1rem; }
+.rel-controls__pdf:active { scale: 0.96; translate: 0 0; }
+.rel-controls__pdf:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+@media (max-width: 899px) {
+  .m-rel-controls .rel-controls__pdf { height: 2.6rem; padding: 0 1rem; font-size: 1.1rem; }
 }

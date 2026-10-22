@@ -1,0 +1,242 @@
+/* RELATÓRIO DE CULTIVO em PDF (relatorio.html + js/relatorio.js).
+   Cada .rp-folha é uma folha A4 com o papel timbrado da TrackLink de fundo
+   (assets/images/relatorio/papel-timbrado.jpg, renderizado do PDF original
+   sem o texto). As margens repetem as do modelo: texto a ~16 mm das
+   laterais e começando logo abaixo do logo. O que aparece na tela é o que
+   sai no PDF. */
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+:root {
+  --rp-texto: #1f2a28;
+  --rp-suave: #4a5a57;
+  --rp-verde: #3f8a5e;
+  --rp-verde-claro: #e6f2ea;
+  --rp-linha: #cfdcd6;
+  --rp-topo: 58mm;     /* abaixo do logo do papel timbrado */
+  --rp-base: 20mm;     /* acima da moldura de baixo */
+  --rp-lado: 16mm;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: #5a6b66;
+  font-family: "Lexend", sans-serif;
+  color: var(--rp-texto);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ---------------- barra (só na tela) ---------------- */
+.rp-barra {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  padding: 14px 24px;
+  background: #152623;
+  color: #fcfcfd;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+.rp-barra__voltar { color: #88d3cf; font-size: 14px; text-decoration: none; }
+.rp-barra__voltar:hover { text-decoration: underline; }
+.rp-barra__estacao {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #5b9c93;
+  border-radius: 8px;
+  background: #0a0f0d;
+  color: #fcfcfd;
+  font: 500 13px/1 "Lexend", sans-serif;
+}
+.rp-barra__status { flex: 1; color: #88d3cf; font-size: 13px; }
+.rp-barra__pdf {
+  height: 40px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5da578, #68ada3);
+  color: #fcfcfd;
+  font: 600 14px/1 "Lexend", sans-serif;
+  cursor: pointer;
+  transition: filter 0.15s ease, translate 0.15s ease;
+}
+.rp-barra__pdf:hover:not(:disabled) { filter: brightness(1.08); translate: 0 -1px; }
+.rp-barra__pdf:disabled { opacity: 0.5; cursor: wait; }
+.rp-dica {
+  max-width: 210mm;
+  margin: 14px auto 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #152623;
+  color: #c0e79d;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------------- folhas ---------------- */
+.rp-folhas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 0 48px;
+}
+.rp-folha {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background: #fff url("../assets/images/relatorio/papel-timbrado.jpg") center / 100% 100% no-repeat;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+}
+.rp-folha__conteudo {
+  position: absolute;
+  left: var(--rp-lado);
+  right: var(--rp-lado);
+  top: var(--rp-topo);
+  bottom: var(--rp-base);
+}
+.rp-rodape {
+  position: absolute;
+  left: var(--rp-lado);
+  right: var(--rp-lado);
+  bottom: 9mm;
+  display: flex;
+  justify-content: space-between;
+  color: var(--rp-suave);
+  font-size: 7.5pt;
+  letter-spacing: 0.02em;
+}
+
+/* Medidor: mesma largura do conteúdo da folha, fora da tela. */
+.rp-medidor {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: calc(210mm - 2 * var(--rp-lado));
+  visibility: hidden;
+}
+
+/* ---------------- tipografia (a do modelo) ---------------- */
+.rp-bloco { margin: 0 0 4.2mm; }
+.rp-capa { margin-bottom: 6mm; }
+.rp-capa__eyebrow {
+  margin: 0;
+  color: var(--rp-verde);
+  font: 600 8.5pt/1 "Lexend", sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.rp-capa__titulo { margin: 2mm 0 0; font: 700 20pt/1.15 "Lexend", sans-serif; color: var(--rp-texto); }
+.rp-capa__sub { margin: 1.6mm 0 0; color: var(--rp-suave); font: 400 10pt/1.4 "Lexend", sans-serif; }
+.rp-capa__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5mm 5mm;
+  margin-top: 3mm;
+  padding-top: 3mm;
+  border-top: 0.3mm solid var(--rp-linha);
+  color: var(--rp-suave);
+  font-size: 8.5pt;
+}
+.rp-capa__meta b { color: var(--rp-texto); font-weight: 600; }
+
+.rp-h2 {
+  margin: 2mm 0 2mm;
+  color: #000;
+  font: 700 11.5pt/1.3 "Lexend", sans-serif;
+  text-transform: uppercase;
+}
+.rp-p {
+  margin: 0 0 3mm;
+  color: var(--rp-texto);
+  font: 400 9.6pt/1.55 "Lexend", sans-serif;
+  text-align: justify;
+  hyphens: auto;
+}
+.rp-nota {
+  margin: 0 0 3mm;
+  color: var(--rp-suave);
+  font: 400 7.8pt/1.5 "Lexend", sans-serif;
+  text-align: justify;
+}
+
+/* KPIs */
+.rp-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2.5mm; margin: 1mm 0 4mm; }
+.rp-kpis--3 { grid-template-columns: 1.3fr 1fr 1fr; }
+.rp-kpi {
+  padding: 2.6mm 3mm;
+  border-radius: 2.5mm;
+  background: rgba(255, 255, 255, 0.82);
+  border: 0.3mm solid var(--rp-linha);
+}
+.rp-kpi--destaque { background: var(--rp-verde-claro); border-color: #a9cdb6; }
+.rp-kpi__rot { margin: 0; color: var(--rp-suave); font: 500 7pt/1.2 "Lexend", sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
+.rp-kpi__val { margin: 1.2mm 0 0; color: var(--rp-texto); font: 600 14pt/1 "Lexend", sans-serif; }
+.rp-kpi--destaque .rp-kpi__val { color: var(--rp-verde); }
+.rp-kpi__obs { margin: 1mm 0 0; color: var(--rp-suave); font: 400 7pt/1.3 "Lexend", sans-serif; }
+
+/* Tabelas */
+.rp-tabela { width: 100%; border-collapse: collapse; margin: 1mm 0 4mm; font-size: 8.6pt; background: rgba(255, 255, 255, 0.75); }
+.rp-tabela th {
+  padding: 1.8mm 2mm;
+  background: var(--rp-verde);
+  color: #fff;
+  font-weight: 600;
+  text-align: left;
+}
+.rp-tabela th:first-child { border-radius: 1.5mm 0 0 0; }
+.rp-tabela th:last-child { border-radius: 0 1.5mm 0 0; }
+.rp-tabela td { padding: 1.6mm 2mm; border-bottom: 0.25mm solid var(--rp-linha); color: var(--rp-texto); }
+.rp-tabela td.num, .rp-tabela th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rp-tabela tr:nth-child(even) td { background: rgba(230, 242, 234, 0.55); }
+.rp-tabela .rp-vazio { color: #9aa8a4; }
+
+/* Gráfico de barras simples (SVG) */
+.rp-grafico { margin: 1mm 0 3mm; padding: 3mm; border-radius: 2.5mm; background: rgba(255, 255, 255, 0.82); border: 0.3mm solid var(--rp-linha); }
+.rp-grafico svg { display: block; width: 100%; height: 30mm; }
+.rp-grafico__leg { display: flex; justify-content: space-between; margin-top: 1.5mm; color: var(--rp-suave); font-size: 7.2pt; }
+.rp-grafico__leg i { display: inline-block; width: 3mm; height: 2mm; margin: 0 1mm 0 3mm; border-radius: 0.5mm; vertical-align: 0; }
+
+/* Decisões da IA */
+.rp-evento {
+  display: grid;
+  grid-template-columns: 3mm 1fr auto;
+  gap: 0 3mm;
+  padding: 2.4mm 0;
+  border-bottom: 0.25mm solid var(--rp-linha);
+}
+.rp-evento__ponto { width: 2.6mm; height: 2.6mm; margin-top: 1mm; border-radius: 50%; background: var(--rp-cor, #4c827a); }
+.rp-evento__titulo { margin: 0; font: 600 9pt/1.35 "Lexend", sans-serif; color: var(--rp-texto); }
+.rp-evento__texto { margin: 0.8mm 0 0; font: 400 8.4pt/1.45 "Lexend", sans-serif; color: var(--rp-suave); }
+.rp-evento__quando { color: var(--rp-suave); font-size: 7.6pt; white-space: nowrap; }
+.rp-evento__mudancas { margin: 1mm 0 0; color: var(--rp-texto); font-size: 8pt; }
+.rp-evento__mudancas s { color: #9aa8a4; }
+
+/* Fotos */
+.rp-fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin: 1mm 0 4mm; }
+.rp-foto { margin: 0; }
+.rp-foto img { display: block; width: 100%; height: 42mm; object-fit: cover; border-radius: 2mm; background: #dfe8e4; }
+.rp-foto figcaption { margin-top: 1.2mm; color: var(--rp-suave); font-size: 7.4pt; line-height: 1.35; }
+.rp-foto figcaption b { color: var(--rp-texto); font-weight: 600; }
+.rp-selo { display: inline-block; padding: 0.3mm 1.6mm; border-radius: 9mm; font-weight: 600; font-size: 6.8pt; }
+.rp-selo--ok { background: #dcefe2; color: #2f7a4d; }
+.rp-selo--atencao { background: #fbeec9; color: #8a6400; }
+.rp-selo--praga { background: #fbdcdc; color: #b42318; }
+.rp-selo--sem { background: #e8ecea; color: #5d6b67; }
+
+@media print {
+  body { background: none; }
+  .rp-barra, .rp-dica, .rp-medidor { display: none !important; }
+  .rp-folhas { display: block; padding: 0; gap: 0; }
+  .rp-folha { box-shadow: none; break-after: page; page-break-after: always; }
+  .rp-folha:last-child { break-after: auto; page-break-after: auto; }
+}

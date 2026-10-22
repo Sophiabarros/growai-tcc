@@ -468,4 +468,47 @@ async function analisarFotoAgora(req, res, next) {
   }
 }
 
-module.exports = { list, getOne, create, update, remove, getLatestReading, getLatestPhoto, avaliarRotina, analisarFotoAgora };
+/* GET /stations/:id/photos/timeline — linha do tempo da planta.
+   Só os metadados de cada foto (sem a imagem): as fotos são data URLs de
+   60-120 kB, e 300 delas de uma vez dariam ~30 MB. O app pede cada imagem
+   em GET /stations/:id/photos/:photoId conforme a pessoa anda na linha. */
+async function getTimeline(req, res, next) {
+  try {
+    const { rows: donas } = await db.query("SELECT id FROM stations WHERE id = $1 AND user_id = $2", [
+      req.params.id,
+      req.user.id,
+    ]);
+    if (!donas[0]) return res.status(404).json({ error: "Estação não encontrada" });
+    const { rows } = await db.query(
+      `SELECT id, captured_at, health_status, analysis_text, pragas, pragas_descricao, luz_nivel, luz_descricao
+         FROM station_photos
+        WHERE station_id = $1 AND length(image_url) > 1000
+        ORDER BY captured_at ASC, id ASC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /stations/:id/photos/:photoId — uma foto da linha do tempo, com a imagem.
+async function getPhoto(req, res, next) {
+  try {
+    const { rows } = await db.query(
+      `SELECT p.id, p.image_url, p.captured_at, p.health_status, p.analysis_text, p.pragas,
+              p.pragas_descricao, p.luz_nivel, p.luz_descricao
+         FROM station_photos p JOIN stations s ON s.id = p.station_id
+        WHERE p.id = $1 AND p.station_id = $2 AND s.user_id = $3`,
+      [req.params.photoId, req.params.id, req.user.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Foto não encontrada" });
+    // A mesma foto nunca muda de imagem: o navegador pode guardar.
+    res.set("Cache-Control", "private, max-age=86400");
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { list, getOne, create, update, remove, getLatestReading, getLatestPhoto, getTimeline, getPhoto, avaliarRotina, analisarFotoAgora };

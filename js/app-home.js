@@ -196,11 +196,20 @@
     });
     return alerts.slice(0, 4);
   }
+  /* Sem nenhum alerta, a seção inteira (título, "Ver todos" e a lista) sai
+     da tela, em vez de ocupar espaço com "Nenhum alerta no momento". */
+  function mostrarSecaoAlertas(ids, visivel) {
+    ids.forEach(function (id) {
+      var el = typeof id === "string" ? document.getElementById(id) : id;
+      if (el) el.hidden = !visivel;
+    });
+  }
   function renderAlerts(alerts) {
     var container = document.getElementById("appAlerts");
     if (!container) return;
+    mostrarSecaoAlertas(["appAlertsTitle", "appAlertsSeeAll", "appAlerts"], alerts.length > 0);
     if (!alerts.length) {
-      container.innerHTML = '<p class="app-alerts__empty">Nenhum alerta no momento.</p>';
+      container.innerHTML = "";
       return;
     }
     container.innerHTML = alerts
@@ -221,8 +230,9 @@
   function renderMobileAlerts(alerts) {
     var container = document.getElementById("mAppAlerts");
     if (!container) return;
+    mostrarSecaoAlertas([document.querySelector(".m-app-alerts__title"), "mAppAlerts"], alerts.length > 0);
     if (!alerts.length) {
-      container.innerHTML = '<p class="m-app-alerts__empty">Nenhum alerta no momento.</p>';
+      container.innerHTML = "";
       return;
     }
     container.innerHTML = alerts
@@ -451,6 +461,12 @@
     mSensors.style.top = sensorsTopRem + "rem";
     mAlertsTitle.style.top = alertsTitleTopRem + "rem";
     mAlerts.style.top = alertsTopRem + "rem";
+
+    // Sem alertas a seção some: a página termina logo depois dos sensores.
+    if (mAlerts.hidden) {
+      mPage.style.minHeight = sensorsTopRem + mSensors.offsetHeight / 10 + 4.6 + "rem";
+      return;
+    }
 
     // Alerts now render 0-4 real rows instead of a fixed 2, so min-height is
     // set from the actual measured height instead of an assumed 2-row

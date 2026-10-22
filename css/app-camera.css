@@ -85,10 +85,15 @@
   row-gap: 4rem;
   align-items: start;
 }
+/* 35rem é o mínimo (Figma); o card cresce se a análise da IA for longa, e o
+   botão fica sempre na base. Com altura fixa, o conteúdo passava 0.3rem do
+   card e o botão saía cortado embaixo. */
 .cam-card {
   position: relative;
   width: 56.8rem;
-  height: 35rem;
+  min-height: 35rem;
+  display: flex;
+  flex-direction: column;
   background: var(--app-card-bg);
   border-radius: 1.5rem;
   overflow: hidden;
@@ -117,8 +122,13 @@
 }
 
 .cam-card__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 1.9rem 2rem 2rem;
 }
+.cam-card__body > .cam-card__btn { margin-top: auto; }
+.cam-card__body > .cam-card__analysis { margin-bottom: 2rem; } /* respiro mínimo antes do botão */
 .cam-card__title-row {
   display: flex;
   align-items: center;

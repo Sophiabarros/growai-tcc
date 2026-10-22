@@ -234,6 +234,13 @@
     deleteStation: (id) => request(`/stations/${id}`, { method: "DELETE" }),
     getLatestReading: (id) => request(`/stations/${id}/readings/latest`),
     getLatestPhoto: (id) => request(`/stations/${id}/photos/latest`),
+    // Linha do tempo: a lista leve (sem imagem) e cada foto sob demanda.
+    getTimeline: (id) => request(`/stations/${id}/photos/timeline`),
+    getPhoto: (id, photoId) => request(`/stations/${id}/photos/${photoId}`),
+    // Água da rega (estimativa) e diário de decisões da IA.
+    getAgua: (stationId, dias) =>
+      request("/reports/agua?station_id=" + encodeURIComponent(stationId) + (dias ? "&dias=" + encodeURIComponent(dias) : "")),
+    getDiarioIa: () => request("/reports/diario-ia"),
 
     // ---- controle manual das placas ----
     // Usado pelo painel "Controlar placa" (js/control-modal.js).
@@ -251,6 +258,11 @@
     createDevice: (id, tipo, nome) =>
       request(`/stations/${id}/devices`, { method: "POST", body: JSON.stringify({ tipo: tipo, nome: nome }) }),
     deleteDevice: (id, deviceId) => request(`/stations/${id}/devices/${deviceId}`, { method: "DELETE" }),
+    // A placa esquece o Wi-Fi e volta para a rede GrowAI-setup.
+    trocarWifi: (id, deviceId) => request(`/stations/${id}/devices/${deviceId}/trocar-wifi`, { method: "POST" }),
+    // Painel de desenvolvedor (senha conferida no servidor).
+    getIaUso: (senha) => request("/dev/ia-uso", { headers: { "X-Dev-Senha": senha } }),
+    testarIa: (senha) => request("/dev/ia-teste", { method: "POST", headers: { "X-Dev-Senha": senha } }),
 
     // ---- reports & suggestions ----
     getWeeklyReports: () => request("/reports/weekly"),

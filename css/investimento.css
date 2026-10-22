@@ -116,7 +116,8 @@
   color: var(--dm-text);
   font: 400 1.6rem/normal var(--font-body);
   letter-spacing: 0.16px;
-  text-align: justify;
+  text-align: left;
+  text-wrap: pretty;
 }
 .invest-card__price {
   font-weight: 600;
@@ -269,7 +270,10 @@
     display: flex;
     align-items: stretch;
   }
-  .m-invest-card--right {
+  /* Alternância imagem esquerda/direita pela POSIÇÃO do card (2º, 4º, 6º...
+     à direita). Era uma classe --right escrita à mão em cada card, que
+     desalinhava sempre que um card entrava ou saía da lista. */
+  .m-invest-card:nth-child(even) {
     flex-direction: row-reverse;
   }
   .m-invest-card__image {
@@ -279,7 +283,7 @@
     border-radius: 0.6rem 0 0 0.6rem;
     overflow: hidden;
   }
-  .m-invest-card--right .m-invest-card__image {
+  .m-invest-card:nth-child(even) .m-invest-card__image {
     border-radius: 0 0.6rem 0.6rem 0;
   }
   .m-invest-card__image img {
@@ -310,7 +314,7 @@
     justify-content: center;
   }
   /* NOVA regra — cards invertidos têm a imagem à direita */
-  .m-invest-card--right .m-invest-card__link {
+  .m-invest-card:nth-child(even) .m-invest-card__link {
     left: auto;
     right: 0.6rem;
   }
@@ -338,7 +342,8 @@
     color: var(--dm-text);
     font: 400 1rem/normal var(--font-body);
     letter-spacing: 0.1px;
-    text-align: justify;
+    text-align: left;
+    text-wrap: pretty;
   }
   .m-invest-card__price {
     font-weight: 600;

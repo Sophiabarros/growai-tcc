@@ -995,3 +995,13 @@
   }
 
 }
+
+/* Sem nenhum alerta, js/app-home.js põe `hidden` na seção inteira. As regras
+   de display acima (inline-flex/flex) venceriam o atributo sem isto. */
+.app-alerts__title[hidden],
+.app-alerts__see-all[hidden],
+.app-alerts[hidden],
+.m-app-alerts__title[hidden],
+.m-app-alerts[hidden] {
+  display: none !important;
+}

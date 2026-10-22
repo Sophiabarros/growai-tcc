@@ -23,10 +23,15 @@
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
     <link rel="stylesheet" href="css/app-shell.css?v=42" />
-    <link rel="stylesheet" href="css/app-configuracoes.css?v=47" />
+    <link rel="stylesheet" href="css/app-configuracoes.css?v=50" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
     <link rel="stylesheet" href="css/vera.css?v=4" />
     <link rel="stylesheet" href="css/notificacoes.css?v=3" />
+    <link rel="stylesheet" href="css/dev-panel.css?v=1" />
+    <link rel="stylesheet" href="css/app-ux.css?v=1" />
+    <link rel="stylesheet" href="css/app-theme.css?v=3" />
+    <!-- tema antes da 1a pintura (sem piscar escuro -> claro) -->
+    <script src="js/app-theme.js?v=2"></script>
   </head>
   <body>
     <div class="app-configuracoes-wrapper">
@@ -64,6 +69,8 @@
         </div>
         <p class="cfg-subtitle">Personalize sua experiência e mantenha seu sistema sempre funcionando da melhor forma.</p>
 
+        <!-- Grid de 2 colunas + faixa de marca embaixo, ocupando as duas -->
+        <div class="cfg-grid">
         <div class="cfg-col cfg-col--left">
           <div class="cfg-box">
             <div class="cfg-box__header">
@@ -98,6 +105,21 @@
               <div>
                 <p class="cfg-row__title">Armazenamento de Dados</p>
                 <p class="cfg-row__subtitle">Sincronizado com o banco de dados na nuvem</p>
+              </div>
+              <span class="cfg-row__trailing cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></span>
+            </div>
+          </div>
+
+          <div class="cfg-box">
+            <div class="cfg-box__header">
+              <img alt="" src="assets/icons/app/icon-cfg-dev.svg" />
+              <p class="cfg-box__label">Desenvolvedor</p>
+            </div>
+            <div class="cfg-row cfg-row--dev" data-action="open-dev" role="button" tabindex="0">
+              <img class="cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-dev.svg" />
+              <div>
+                <p class="cfg-row__title">Uso da IA</p>
+                <p class="cfg-row__subtitle">Cota do dia, o que ainda dá para fazer e erros · pede senha</p>
               </div>
               <span class="cfg-row__trailing cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta-d.svg" /></span>
             </div>
@@ -140,12 +162,15 @@
               </div>
             </div>
           </div>
+        </div>
 
           <div class="cfg-tip">
-            <img class="cfg-tip__icon" alt="" src="assets/icons/app/icon-app-planta-station.svg" />
-            <p class="cfg-tip__text">Tecnologia que cuida do amanhã.</p>
-            <p class="cfg-tip__subtitle">Mais controle, mais vida para suas plantas.</p>
-            <span class="cfg-tip__underline"></span>
+            <span class="cfg-tip__chip"><img class="cfg-tip__icon" alt="" src="assets/icons/app/icon-app-planta-station.svg" /></span>
+            <div class="cfg-tip__body">
+              <p class="cfg-tip__text">Tecnologia que cuida do amanhã.</p>
+              <p class="cfg-tip__subtitle">Mais controle, mais vida para suas plantas.</p>
+              <span class="cfg-tip__underline"></span>
+            </div>
             <img class="cfg-tip__leaf-bg" alt="" src="assets/icons/app/icon-app-planta-station.svg" />
           </div>
         </div>
@@ -237,6 +262,18 @@
               </div>
             </div>
           </div>
+
+          <div class="m-cfg-section">
+            <p class="m-cfg-section__label">Desenvolvedor</p>
+            <div class="m-cfg-row m-cfg-row--solo m-cfg-row--tall" data-action="open-dev" role="button" tabindex="0">
+              <img class="m-cfg-row__icon" alt="" src="assets/icons/app/icon-cfg-dev.svg" />
+              <div>
+                <p class="m-cfg-row__title">Uso da IA</p>
+                <p class="m-cfg-row__subtitle">Cota do dia e erros · pede senha</p>
+              </div>
+              <span class="m-cfg-row__trailing m-cfg-row__trailing--arrow"><img alt="" src="assets/icons/app/icon-cfg-seta.svg" /></span>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -323,7 +360,7 @@
       </form>
     </div>
 
-    <script src="js/api.js?v=57"></script>
+    <script src="js/api.js?v=58"></script>
     <script src="js/toast.js?v=39"></script>
     <script src="js/vera.js?v=5"></script>
     <script src="js/notificacoes.js?v=4"></script>
@@ -345,6 +382,7 @@
       </div>
     </div>
 
-    <script src="js/app-configuracoes.js?v=45"></script>
+    <script src="js/dev-panel.js?v=1"></script>
+    <script src="js/app-configuracoes.js?v=46"></script>
   </body>
 </html>

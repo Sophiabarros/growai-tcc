@@ -183,15 +183,23 @@
   font: 300 2rem/normal var(--font-body);
 }
 
-/* Os dois botões dividem a linha: o card tem altura fixa (Figma). */
+/* Botões presos na base do card, como no mobile (.m-est-card__actions), na
+   mesma proporção: lá 1.3rem dos lados e 1.5rem da base num card de 25.3rem;
+   aqui 2rem e 2.3rem num card de 38.5rem. Antes ficavam logo abaixo dos
+   dados, no meio do card, com uma sobra vazia embaixo. */
 .est-card__actions {
+  position: absolute;
+  left: 2rem;
+  right: 2rem;
+  bottom: 2.3rem;
   display: flex;
-  gap: 1rem;
-  margin-top: 3rem;
+  gap: 1.1rem;
+  margin-top: 0;
 }
 .est-card__actions .est-card__btn {
   margin-top: 0;
   flex: 1;
+  height: 4.2rem;
 }
 .est-card__btn--sec,
 .m-est-card__btn--sec {

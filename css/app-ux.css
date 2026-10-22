@@ -1,0 +1,307 @@
+/* APP — camada de interação e acabamento, carregada por ÚLTIMO em todas as
+   telas do app (app-*.html). Só usa os tokens do design system
+   (css/variables.css: --app-*), para nada destoar do resto do site.
+
+   1. Transição entre páginas
+   2. Botões: hover, clique e foco
+   3. Formulários: campo em foco em destaque
+   4. Cartões: profundidade sutil
+   5. Tipografia
+
+   As animações de entrada dos cartões e dos modais continuam em
+   css/animations.css; aqui só se complementa. */
+
+/* ================================================================
+   1. TRANSIÇÃO ENTRE PÁGINAS
+   Navegadores com View Transitions (Chrome/Edge): a página antiga some e a
+   nova entra com um fade + leve subida, enquanto o topo (cabeçalho e barra
+   de abas) fica parado, sem piscar. Nos demais, a página entra com fade.
+   ================================================================ */
+@view-transition {
+  navigation: auto;
+}
+.app-header { view-transition-name: app-header; }
+.m-app-header { view-transition-name: app-header-m; }
+.m-app-tabbar { view-transition-name: app-tabbar; }
+
+@keyframes appPaginaSai {
+  to { opacity: 0; }
+}
+@keyframes appPaginaEntra {
+  from { opacity: 0; translate: 0 1rem; }
+  to { opacity: 1; translate: 0 0; }
+}
+::view-transition-old(root) {
+  animation: appPaginaSai 0.16s ease both;
+}
+::view-transition-new(root) {
+  animation: appPaginaEntra 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+::view-transition-group(app-header),
+::view-transition-group(app-header-m),
+::view-transition-group(app-tabbar) {
+  animation-duration: 0.2s;
+}
+
+/* Sem View Transitions: só fade de entrada (opacidade, nunca transform, que
+   quebraria a barra de abas fixa que vive dentro do wrapper). */
+@keyframes appPaginaFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@supports not (view-transition-name: none) {
+  body > [class*="app-"][class$="-wrapper"] {
+    animation: appPaginaFade 0.3s ease both;
+  }
+}
+
+/* ================================================================
+   2. BOTÕES — hover (sobe 1px, brilho e sombra), clique (afunda) e foco
+   `translate`/`scale` são propriedades próprias: somam com o `transform`
+   que alguns botões já usam para se posicionar, sem fazê-los pular.
+   ================================================================ */
+.app-home__status-btn,
+.app-featured__btn,
+.m-app-station-card__btn,
+.app-estacoes__new-btn,
+.est-card__btn,
+.m-est-card__btn,
+.m-est-add-card,
+.app-camera__refresh,
+.m-app-camera__refresh,
+.cam-card__btn,
+.cam-m-card__btn,
+.cam-add-card,
+.cam-m-add-card,
+.cam-viewer__analisar,
+.cam-viewer__vera,
+.rel-controls__btn,
+.rel-suggestion__btn,
+.m-rel-suggestion__btn,
+.station-modal__submit,
+.station-modal__cancel,
+.profile-modal__submit,
+.profile-modal__cancel,
+.profile-modal__avatar-btn,
+.confirm-modal__confirm,
+.confirm-modal__cancel,
+.ctrl__btn,
+.esp-btn,
+.vera__enviar {
+  transition: translate 0.15s ease, scale 0.12s ease, transform 0.12s ease, filter 0.15s ease,
+    box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+    opacity 0.15s ease;
+}
+.app-home__status-btn:hover:not(:disabled),
+.app-featured__btn:hover:not(:disabled),
+.m-app-station-card__btn:hover:not(:disabled),
+.app-estacoes__new-btn:hover:not(:disabled),
+.est-card__btn:hover:not(:disabled),
+.m-est-card__btn:hover:not(:disabled),
+.app-camera__refresh:hover:not(:disabled),
+.m-app-camera__refresh:hover:not(:disabled),
+.cam-card__btn:hover:not(:disabled),
+.cam-m-card__btn:hover:not(:disabled),
+.cam-viewer__analisar:hover:not(:disabled),
+.cam-viewer__vera:hover:not(:disabled),
+.rel-suggestion__btn:hover:not(:disabled),
+.m-rel-suggestion__btn:hover:not(:disabled),
+.station-modal__submit:hover:not(:disabled),
+.profile-modal__submit:hover:not(:disabled),
+.confirm-modal__confirm:hover:not(:disabled),
+.ctrl__btn:hover:not(:disabled),
+.esp-btn:hover:not(:disabled),
+.vera__enviar:hover:not(:disabled) {
+  opacity: 1;
+  translate: 0 -0.1rem;
+  filter: brightness(1.08);
+  box-shadow: 0 0.6rem 1.6rem rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(192, 231, 157, 0.18);
+}
+/* Botões "secundários" (contorno): ganham um fundo leve em vez de brilho. */
+.est-card__btn--sec:hover:not(:disabled),
+.m-est-card__btn--sec:hover:not(:disabled),
+.station-modal__cancel:hover:not(:disabled),
+.profile-modal__cancel:hover:not(:disabled),
+.confirm-modal__cancel:hover:not(:disabled) {
+  translate: 0 -0.1rem;
+  background-color: rgba(93, 165, 120, 0.12);
+}
+.m-est-add-card:hover,
+.cam-add-card:hover,
+.cam-m-add-card:hover {
+  translate: 0 -0.2rem;
+  box-shadow: 0 0.8rem 1.8rem rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(192, 231, 157, 0.22);
+}
+/* Clique: afunda um pouco, sem a subida do hover. */
+.app-home__status-btn:active:not(:disabled),
+.app-featured__btn:active:not(:disabled),
+.m-app-station-card__btn:active:not(:disabled),
+.app-estacoes__new-btn:active:not(:disabled),
+.est-card__btn:active:not(:disabled),
+.m-est-card__btn:active:not(:disabled),
+.m-est-add-card:active,
+.app-camera__refresh:active:not(:disabled),
+.m-app-camera__refresh:active:not(:disabled),
+.cam-card__btn:active:not(:disabled),
+.cam-m-card__btn:active:not(:disabled),
+.cam-add-card:active,
+.cam-m-add-card:active,
+.cam-viewer__analisar:active:not(:disabled),
+.cam-viewer__vera:active:not(:disabled),
+.rel-controls__btn:active,
+.rel-suggestion__btn:active:not(:disabled),
+.m-rel-suggestion__btn:active:not(:disabled),
+.station-modal__submit:active:not(:disabled),
+.station-modal__cancel:active:not(:disabled),
+.profile-modal__submit:active:not(:disabled),
+.profile-modal__cancel:active:not(:disabled),
+.profile-modal__avatar-btn:active,
+.confirm-modal__confirm:active:not(:disabled),
+.confirm-modal__cancel:active:not(:disabled),
+.ctrl__btn:active:not(:disabled),
+.esp-btn:active:not(:disabled),
+.vera__enviar:active:not(:disabled) {
+  translate: 0 0;
+  scale: 0.97;
+  filter: brightness(0.96);
+  box-shadow: none;
+}
+/* Desabilitado: sem nenhum feedback de movimento. */
+.est-card__btn:disabled,
+.m-est-card__btn:disabled,
+.rel-suggestion__btn:disabled,
+.m-rel-suggestion__btn:disabled,
+.station-modal__submit:disabled,
+.profile-modal__submit:disabled,
+.cam-viewer__analisar:disabled,
+.ctrl__btn:disabled,
+.esp-btn:disabled,
+.vera__enviar:disabled {
+  cursor: not-allowed;
+  translate: none;
+  scale: none;
+  filter: none;
+  box-shadow: none;
+}
+/* Foco pelo teclado: anel na cor de destaque em todo botão do app. */
+.app-home-wrapper button:focus-visible,
+.app-estacoes-wrapper button:focus-visible,
+.app-camera-wrapper button:focus-visible,
+.app-relatorios-wrapper button:focus-visible,
+.app-configuracoes-wrapper button:focus-visible,
+[class^="m-app-"][class$="-wrapper"] button:focus-visible,
+.station-modal button:focus-visible,
+.profile-modal button:focus-visible,
+.confirm-modal button:focus-visible,
+.ctrl button:focus-visible,
+.cam-viewer button:focus-visible,
+.esp-modal button:focus-visible,
+.vera button:focus-visible,
+.app-alert:focus-visible,
+.app-plant-row:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+/* ================================================================
+   3. FORMULÁRIOS — o campo sendo preenchido fica em evidência
+   Antes os campos tinham `outline: none` e nenhum estado de foco: não dava
+   para ver qual estava ativo. Agora: borda na cor de destaque, brilho
+   suave em volta, fundo um tom acima, e o rótulo do campo acende junto.
+   ================================================================ */
+.station-modal__field input,
+.profile-modal__field input,
+.rel-controls__station,
+.vera__campo {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+.station-modal__field input:hover:not(:focus):not(:disabled),
+.profile-modal__field input:hover:not(:focus):not(:disabled) {
+  border-color: var(--app-muted-alt);
+}
+.station-modal__field input:focus,
+.profile-modal__field input:focus,
+.rel-controls__station:focus-visible,
+.vera__campo:focus {
+  outline: none;
+  border-color: var(--app-accent);
+  background-color: #0e1715;
+  box-shadow: 0 0 0 0.35rem rgba(192, 231, 157, 0.14), 0 0 1.6rem rgba(192, 231, 157, 0.08);
+}
+.station-modal__field label,
+.profile-modal__field label {
+  transition: color 0.18s ease;
+}
+.station-modal__field:focus-within label,
+.profile-modal__field:focus-within label {
+  color: var(--app-accent);
+}
+/* Campo inválido depois de mexido (ex.: número fora do limite). */
+.station-modal__field input:user-invalid,
+.profile-modal__field input:user-invalid {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 0.35rem rgba(255, 99, 99, 0.12);
+}
+
+/* ================================================================
+   4. CARTÕES — contorno sutil para separar do fundo e sombra suave
+   ================================================================ */
+.est-card,
+.cam-card,
+.rel-chart-card,
+.rel-suggestion,
+.app-sensor-card,
+.app-featured,
+.app-plants,
+.app-cameras,
+.app-tip {
+  box-shadow: 0 0 0 1px rgba(136, 211, 207, 0.06), 0 0.6rem 1.8rem rgba(0, 0, 0, 0.16);
+}
+.est-card:hover,
+.cam-card:hover,
+.rel-suggestion:hover {
+  box-shadow: 0 0 0 1px rgba(136, 211, 207, 0.14), 0 1rem 2.4rem rgba(0, 0, 0, 0.28);
+}
+.m-est-card,
+.cam-m-card,
+.m-rel-chart-card,
+.m-rel-suggestion {
+  box-shadow: 0 0 0 1px rgba(136, 211, 207, 0.06), 0 0.4rem 1.2rem rgba(0, 0, 0, 0.16);
+}
+
+/* ================================================================
+   5. TIPOGRAFIA — texto mais nítido, números alinhados e quebras de
+   linha equilibradas (sem `justify`, que abre buracos em colunas estreitas)
+   ================================================================ */
+[class*="app-"][class$="-wrapper"] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+.app-sensor-card__value,
+.est-card__stat-value,
+.m-est-card__stat-value,
+.ctrl__leitura-valor,
+.rel-resumo,
+.m-rel-resumo {
+  font-variant-numeric: tabular-nums;
+}
+.app-alert__title,
+.cam-card__analysis-text,
+.cam-m-card__analysis-text,
+.rel-suggestion__desc,
+.m-rel-suggestion__desc,
+.app-insights__desc,
+.cam-viewer__analysis {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+  [class*="app-"][class$="-wrapper"] {
+    animation: none !important;
+  }
+}

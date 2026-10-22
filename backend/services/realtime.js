@@ -145,6 +145,11 @@ function enviarParaEstacao(stationId, payload) {
   return enviar((c) => c.tipo === "placa" && Number(c.stationId) === Number(stationId), payload);
 }
 
+// Só as câmeras de uma estação (o pedido de trocar o Wi-Fi vai só para ela).
+function enviarParaCamera(stationId, payload) {
+  return enviar((c) => c.tipo === "placa" && c.placa === "cam" && Number(c.stationId) === Number(stationId), payload);
+}
+
 // Abas/apps abertos de um usuário.
 function enviarParaUsuario(userId, payload) {
   return enviar((c) => c.tipo === "usuario" && Number(c.userId) === Number(userId), payload);
@@ -292,4 +297,4 @@ function fechar() {
   wss.close();
 }
 
-module.exports = { anexar, enviarParaEstacao, enviarParaUsuario, usuarioConectado, fechar, CAMINHO };
+module.exports = { anexar, enviarParaEstacao, enviarParaCamera, enviarParaUsuario, usuarioConectado, fechar, CAMINHO };

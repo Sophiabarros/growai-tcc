@@ -6,24 +6,42 @@
     return;
   }
 
-  // The grid/axis art (chart-*-grid/axes.svg) is decorative and stays as
-  // static Figma-exported images. Only the line+dots and the bars encode
-  // real values, so those two are regenerated as inline SVG from the API
-  // response instead. Plot areas below mirror the exact rem boxes already
-  // used for the axis label rows in css/app-relatorios.css, so labels and
-  // data line up.
+  /* Os dois gráficos (linha da saúde e barras da umidade) usam a MESMA
+     geometria, e a grade, os eixos, as barras e a linha saem todos do mesmo
+     SVG. Antes a grade e os eixos eram imagens exportadas do Figma, cada uma
+     com um deslocamento próprio: os dois cartões não se alinhavam e os
+     rótulos não caíam embaixo dos pontos. Medidas em rem, iguais às de
+     css/app-relatorios.css (.rel-chart1/2 e .m-rel-chart1/2). */
   var CHART_BOXES = {
-    desktop: {
-      line: { w: 50.4, h: 29.2, left: 3.3, right: 50.0, top: 2.336, bottom: 25.696 },
-      // Medido do desenho (chart-cond-*-d.svg): eixo de 2,65 a 20,35rem.
-      bars: { w: 48.7, h: 29.2, left: 6.85, right: 45.66, top: 2.65, bottom: 20.35 },
-    },
-    mobile: {
-      line: { w: 26.5, h: 16.6, left: 1.9, right: 26.2, top: 0.8, bottom: 14.8 },
-      bars: { w: 25.8, h: 18.6, left: 3.63, right: 24.19, top: 1.69, bottom: 15.27 },
-    },
+    desktop: { w: 50.4, h: 29.2, left: 5.2, right: 49.0, top: 1.6, bottom: 25.2 },
+    mobile: { w: 33.5, h: 16.6, left: 3.2, right: 32.6, top: 0.9, bottom: 13.6 },
   };
   var BAR_MAX = 100; // umidade do solo, 0-100% (eixo impresso no HTML)
+
+  // Grade tracejada em 0/25/50/75/100 e os dois eixos.
+  function gradeSvg(box) {
+    var linhas = [0, 25, 50, 75, 100].map(function (v) {
+      var y = (box.top + (1 - v / 100) * (box.bottom - box.top)).toFixed(2);
+      return '<line class="rg-grade" x1="' + box.left + '" x2="' + box.right + '" y1="' + y + '" y2="' + y +
+        '" stroke="#88D3CF" stroke-opacity="0.16" stroke-width="0.06" stroke-dasharray="0.3 0.3" />';
+    }).join("");
+    var eixos =
+      '<line class="rg-eixo" x1="' + box.left + '" x2="' + box.left + '" y1="' + box.top + '" y2="' + box.bottom +
+      '" stroke="#88D3CF" stroke-opacity="0.7" stroke-width="0.08" />' +
+      '<line class="rg-eixo" x1="' + box.left + '" x2="' + box.right + '" y1="' + box.bottom + '" y2="' + box.bottom +
+      '" stroke="#88D3CF" stroke-opacity="0.7" stroke-width="0.08" />';
+    return linhas + eixos;
+  }
+
+  function svgDe(box, conteudo) {
+    return '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">' +
+      gradeSvg(box) + conteudo + "</svg>";
+  }
+
+  // Onde fica o i-ésimo ponto (linha) ou o centro da i-ésima barra, de 0 a 1
+  // da largura da área de plotagem. Os rótulos do eixo X usam a mesma conta.
+  function fracaoLinha(i, n) { return n === 1 ? 0.5 : i / (n - 1); }
+  function fracaoBarra(i, n) { return (i + 0.5) / n; }
 
   function escapeHtml(value) {
     var div = document.createElement("div");
@@ -42,7 +60,7 @@
     var n = values.length;
     var pts = values.map(function (v, i) {
       if (!temNum(v)) return null;
-      var x = box.left + (n === 1 ? 0.5 : i / (n - 1)) * (box.right - box.left);
+      var x = box.left + fracaoLinha(i, n) * (box.right - box.left);
       var clamped = Math.max(0, Math.min(100, Number(v)));
       var y = box.top + (1 - clamped / 100) * (box.bottom - box.top);
       return [x, y, i];
@@ -59,18 +77,18 @@
       .filter(function (seg) { return seg.length > 1; })
       .map(function (seg) {
         var poly = seg.map(function (p) { return p[0].toFixed(2) + "," + p[1].toFixed(2); }).join(" ");
-        return '<polyline points="' + poly + '" fill="none" stroke="#88D3CF" stroke-width="0.15" stroke-linecap="round" stroke-linejoin="round" />';
+        return '<polyline class="rg-linha" points="' + poly + '" fill="none" stroke="#88D3CF" stroke-width="0.15" stroke-linecap="round" stroke-linejoin="round" />';
       })
       .join("");
     var r = n > 12 ? 0.25 : 0.35;
     var circles = pts
       .filter(Boolean)
       .map(function (p) {
-        return '<circle cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="' + r + '" fill="#FCFCFD" stroke="#88D3CF" stroke-width="0.15"><title>' +
+        return '<circle class="rg-ponto" cx="' + p[0].toFixed(2) + '" cy="' + p[1].toFixed(2) + '" r="' + r + '" fill="#FCFCFD" stroke="#88D3CF" stroke-width="0.15"><title>' +
           escapeHtml(dicas[p[2]] || "") + "</title></circle>";
       })
       .join("");
-    return '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%">' + linhas + circles + "</svg>";
+    return svgDe(box, linhas + circles);
   }
 
   // Barras da umidade. null = sem barra (sem leitura), não barra zerada.
@@ -78,35 +96,56 @@
     var n = values.length;
     var groupWidth = (box.right - box.left) / n;
     var barWidth = groupWidth * (n > 12 ? 0.6 : 0.45);
+    var altura = box.bottom - box.top;
     var bars = values
       .map(function (v, i) {
         if (!temNum(v)) return "";
         var clamped = Math.max(0, Math.min(BAR_MAX, Number(v)));
-        var barHeight = (clamped / BAR_MAX) * (box.bottom - box.top);
-        var x = box.left + i * groupWidth + (groupWidth - barWidth) / 2;
+        // Nunca passa do topo da área (100%), por mais alta que seja a barra.
+        var barHeight = Math.min(altura, (clamped / BAR_MAX) * altura);
+        var x = box.left + fracaoBarra(i, n) * (box.right - box.left) - barWidth / 2;
+        barHeight = Math.max(barHeight, 0.3); // 0% vira um traço SOBRE o eixo, não abaixo dele
         var y = box.bottom - barHeight;
         return (
-          '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barWidth.toFixed(2) +
-          '" height="' + Math.max(barHeight, 0.3).toFixed(2) + '" rx="' + (barWidth * 0.3).toFixed(2) + '" fill="#88D3CF"><title>' +
+          '<rect class="rg-barra" x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + barWidth.toFixed(2) +
+          '" height="' + Math.max(barHeight, 0.3).toFixed(2) + '" rx="' + Math.min(barWidth * 0.3, Math.max(barHeight, 0.3) / 2).toFixed(2) + '" fill="#88D3CF"><title>' +
           escapeHtml(dicas[i] || "") + "</title></rect>"
         );
       })
       .join("");
-    return '<svg viewBox="0 0 ' + box.w + " " + box.h + '" style="position:absolute;inset:0;width:100%;height:100%">' + bars + "</svg>";
+    return svgDe(box, bars);
   }
 
-  // Aviso por cima do gráfico quando não há nenhum ponto.
-  function vazio(texto) {
-    return '<p class="rel-chart-vazio">' + escapeHtml(texto) + "</p>";
+  /* Sem nenhum ponto: a grade continua e o aviso fica no MEIO DA ÁREA DE
+     PLOTAGEM (não do cartão inteiro, que inclui os números do eixo Y). */
+  function vazio(texto, box) {
+    var pos =
+      "left:" + (box.left / box.w) * 100 + "%;right:" + (1 - box.right / box.w) * 100 + "%;" +
+      "top:" + (box.top / box.h) * 100 + "%;bottom:" + (1 - box.bottom / box.h) * 100 + "%";
+    return svgDe(box, "") +
+      '<div class="rel-chart-vazio" style="' + pos + '"><p class="rel-chart-vazio__texto">' + escapeHtml(texto) + "</p></div>";
   }
 
-  function setXLabels(ids, labels, destaque) {
-    ids.forEach(function (id) {
-      var el = document.getElementById(id);
+  /* Rótulos do eixo X, cada um exatamente embaixo do seu ponto (linha) ou
+     da sua barra. indices[i] = posição do rótulo i entre os n pontos. */
+  var EIXOS_X = [
+    { id: "relChart1X", box: "desktop", tipo: "linha" },
+    { id: "relChart2X", box: "desktop", tipo: "barra" },
+    { id: "mRelChart1X", box: "mobile", tipo: "linha" },
+    { id: "mRelChart2X", box: "mobile", tipo: "barra" },
+  ];
+  function setXLabels(labels, destaque, indices, n) {
+    EIXOS_X.forEach(function (eixo) {
+      var el = document.getElementById(eixo.id);
       if (!el) return;
+      var box = CHART_BOXES[eixo.box];
+      el.style.left = (box.left / box.w) * 100 + "%";
+      el.style.right = (1 - box.right / box.w) * 100 + "%";
+      el.style.top = ((box.bottom + 0.6) / box.h) * 100 + "%";
       el.innerHTML = labels
         .map(function (t, i) {
-          return "<span" + (i === destaque ? ' class="is-highlight"' : "") + ">" + escapeHtml(t) + "</span>";
+          var f = eixo.tipo === "linha" ? fracaoLinha(indices[i], n) : fracaoBarra(indices[i], n);
+          return '<span style="left:' + (f * 100).toFixed(2) + '%"' + (i === destaque ? ' class="is-highlight"' : "") + ">" + escapeHtml(t) + "</span>";
         })
         .join("");
     });
@@ -126,10 +165,12 @@
   function renderCharts(saude, umidade, dicasS, dicasU, msgVazioS, msgVazioU, ligarLacunas) {
     var temS = saude.some(temNum);
     var temU = umidade.some(temNum);
-    document.getElementById("relChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, CHART_BOXES.desktop.line, ligarLacunas) : vazio(msgVazioS);
-    document.getElementById("mRelChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, CHART_BOXES.mobile.line, ligarLacunas) : vazio(msgVazioS);
-    document.getElementById("relChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, CHART_BOXES.desktop.bars) : vazio(msgVazioU);
-    document.getElementById("mRelChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, CHART_BOXES.mobile.bars) : vazio(msgVazioU);
+    var d = CHART_BOXES.desktop;
+    var m = CHART_BOXES.mobile;
+    document.getElementById("relChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, d, ligarLacunas) : vazio(msgVazioS, d);
+    document.getElementById("mRelChart1Data").innerHTML = temS ? buildLineSvg(saude, dicasS, m, ligarLacunas) : vazio(msgVazioS, m);
+    document.getElementById("relChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, d) : vazio(msgVazioU, d);
+    document.getElementById("mRelChart2Data").innerHTML = temU ? buildBarSvg(umidade, dicasU, m) : vazio(msgVazioU, m);
   }
 
   // Intervalo da semana atual (segunda a domingo, como no eixo dos gráficos),
@@ -181,7 +222,7 @@
     });
     var hojeIdx = -1;
     dias.forEach(function (d, i) { if (!d.futuro) hojeIdx = i; });
-    setXLabels(["relChart1X", "relChart2X", "mRelChart1X", "mRelChart2X"], ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"], hojeIdx);
+    setXLabels(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"], hojeIdx, [0, 1, 2, 3, 4, 5, 6], 7);
     setText(["relTitle", "mRelTitle"], "Relatório semanal");
     setText(["relSubtitle", "mRelSubtitle"], weekRangeLabel() + (rep ? " · " + rep.station_name : ""));
 
@@ -215,7 +256,7 @@
 
   async function renderDia() {
     setText(["relTitle", "mRelTitle"], "Relatório de hoje");
-    if (estacaoId == null) { renderCharts([], [], [], [], "Sem estações.", "Sem estações."); return; }
+    if (estacaoId == null) { renderCharts([], [], [], [], "Nenhuma estação cadastrada.", "Nenhuma estação cadastrada."); return; }
     var hoje = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
     var rep;
     try {
@@ -240,7 +281,7 @@
     var rotulos = [0, 4, 8, 12, 15, 19, 23];
     var destaque = -1;
     rotulos.forEach(function (h, i) { if (h <= horaAgora) destaque = i; });
-    setXLabels(["relChart1X", "relChart2X", "mRelChart1X", "mRelChart2X"], rotulos.map(function (h) { return h + "h"; }), destaque);
+    setXLabels(rotulos.map(function (h) { return h + "h"; }), destaque, rotulos, 24);
 
     var r = rep.resumo;
     var resumo = r ? resumoTexto({ saude_pct: r.saude_pct, umidade: r.umidade_media, temp: r.temp_media, luz_h: r.luz_h, uv_min: r.uv_min }) : "";
@@ -288,6 +329,7 @@
     estacaoId = ev.target.value;
     montarEstacoes();
     render();
+    carregarAgua();
   });
 
   // ---- suggestions ----
@@ -469,14 +511,31 @@
       m2.style.top = m1.offsetTop + m1.offsetHeight + GAP_CARDS_M + "px";
     }
 
+    // Água + diário no celular: logo abaixo do último card de sugestão.
+    var mExtra = document.getElementById("mRelExtra");
+    if (mExtra) {
+      var fundoM = 0;
+      ["mRelSuggestion1", "mRelSuggestion2", "mRelSuggestionsEmpty"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && !el.hidden) fundoM = Math.max(fundoM, el.offsetTop + el.offsetHeight);
+      });
+      if (fundoM) mExtra.style.top = fundoM + 34 + "px";
+    }
+
     var pagina = document.getElementById("appRelatoriosPage");
     if (!pagina) return;
     if (alturaBaseDesktop === null) alturaBaseDesktop = pagina.offsetHeight;
     var fundo = 0;
-    ["relSuggestion1", "relSuggestion2"].forEach(function (id) {
+    ["relSuggestion1", "relSuggestion2", "relSuggestionsEmpty"].forEach(function (id) {
       var el = document.getElementById(id);
       if (el && !el.hidden) fundo = Math.max(fundo, el.offsetTop + el.offsetHeight);
     });
+    // Água + diário no desktop: o mesmo, e a página cresce até o fim deles.
+    var extra = document.getElementById("relExtra");
+    if (extra && fundo) {
+      extra.style.top = fundo + 80 + "px";
+      fundo = extra.offsetTop + extra.offsetHeight;
+    }
     pagina.style.height = Math.max(alturaBaseDesktop, fundo + 60) + "px";
   }
 
@@ -487,7 +546,7 @@
     encaixaCards();
     positionMobileTabbar({
       mobilePageId: "mAppRelatoriosPage",
-      contentSelectors: [".m-rel-chart-card--2", "#mRelSuggestion1", "#mRelSuggestion2", "#mRelSuggestionsEmpty"],
+      contentSelectors: [".m-rel-chart-card--2", "#mRelSuggestion1", "#mRelSuggestion2", "#mRelSuggestionsEmpty", "#mRelExtra"],
     });
     applyScale();
   }
@@ -505,6 +564,7 @@
         renderSuggestions(suggestionsCache);
         updateMobileTabbar();
         if (window.showToast) showToast("Rotina voltou aos valores anteriores.", "success");
+        carregarDiario();
       } catch (err) {
         undoBtn.disabled = false;
         undoBtn.textContent = "Desfazer ajuste";
@@ -524,10 +584,256 @@
       });
       renderSuggestions(suggestionsCache);
       updateMobileTabbar();
+      carregarDiario();
     } catch (err) {
       btn.disabled = false;
       btn.textContent = "Aplicar sugestão";
       showToast(err.message, "error");
+    }
+  });
+
+
+  /* =================================================================
+     ÁGUA DA REGA + DIÁRIO DA IA
+     As duas seções abaixo das sugestões. O mesmo HTML vai para o desktop
+     (#relExtra) e para o celular (#mRelExtra); o CSS ajusta o tamanho.
+     ================================================================= */
+  var agua = null;          // GET /reports/agua da estação escolhida
+  var aguaDias = 30;
+  var diario = null;        // GET /reports/diario-ia
+  var diarioFiltro = "todos";
+  var diarioVisiveis = 6;
+
+  function litrosTxt(v) {
+    if (!temNum(v)) return "—";
+    var n = Number(v);
+    return (Math.abs(n) >= 100 ? Math.round(n) : num1(n)) + " L";
+  }
+  function dataCurta(iso) {
+    return new Date(iso + (String(iso).length === 10 ? "T12:00:00" : "")).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "");
+  }
+  function quando(iso) {
+    var d = new Date(iso);
+    var min = Math.round((Date.now() - d.getTime()) / 60000);
+    if (min < 1) return "agora";
+    if (min < 60) return "há " + min + " min";
+    if (min < 24 * 60) return "há " + Math.round(min / 60) + " h";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "") +
+      " · " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // Barras do dia (água usada) e a linha tracejada do timer de referência.
+  function aguaSvg(a) {
+    var dias = a.dias || [];
+    var n = dias.length || 1;
+    var W = 300, H = 64, base = 58, topo = 6;
+    var maxL = Math.max(1, a.rega_fixa ? dias.reduce(function (m, d) { return Math.max(m, d.litros || 0, d.litros_fixo || 0); }, 0) : 1);
+    var larg = W / n;
+    var barras = dias.map(function (d, i) {
+      var x = i * larg + larg * 0.18;
+      var w = larg * 0.64;
+      if (!temNum(d.litros)) {
+        return '<rect class="agua-g__sem" x="' + x.toFixed(2) + '" y="' + (base - 1.5) + '" width="' + w.toFixed(2) + '" height="1.5" rx="0.75"><title>' +
+          escapeHtml(dataCurta(d.dia) + ": sem dado da placa") + "</title></rect>";
+      }
+      var h = Math.max(1.5, ((base - topo) * d.litros) / maxL);
+      return '<rect class="agua-g__barra" x="' + x.toFixed(2) + '" y="' + (base - h).toFixed(2) + '" width="' + w.toFixed(2) + '" height="' + h.toFixed(2) + '" rx="1.2"><title>' +
+        escapeHtml(dataCurta(d.dia) + ": " + litrosTxt(d.litros) + " (timer: " + litrosTxt(d.litros_fixo) + ")") + "</title></rect>";
+    }).join("");
+    var fixo = dias.filter(function (d) { return temNum(d.litros_fixo); })[0];
+    var linha = fixo
+      ? '<line class="agua-g__timer" x1="0" x2="' + W + '" y1="' + (base - ((base - topo) * fixo.litros_fixo) / maxL).toFixed(2) +
+        '" y2="' + (base - ((base - topo) * fixo.litros_fixo) / maxL).toFixed(2) + '" />'
+      : "";
+    return '<svg class="agua-g" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Água usada por dia">' +
+      '<line class="agua-g__base" x1="0" x2="' + W + '" y1="' + base + '" y2="' + base + '" />' + barras + linha + "</svg>";
+  }
+
+  function aguaHtml() {
+    var titulo = '<div class="rx-cab"><div><h2 class="rx-titulo">Água da rega</h2>' +
+      '<p class="rx-sub">Rega pela umidade do solo × um timer comum' + (agua ? " · " + escapeHtml(agua.station_name) : "") + "</p></div>" +
+      '<div class="rx-seg" role="tablist" aria-label="Período">' +
+      [7, 30].map(function (d) {
+        return '<button type="button" role="tab" class="rx-seg__btn' + (d === aguaDias ? " is-active" : "") + '" aria-selected="' + (d === aguaDias) +
+          '" data-action="agua-dias" data-dias="' + d + '">' + d + " dias</button>";
+      }).join("") + "</div></div>";
+    if (!agua) return '<section class="rx-card">' + titulo + '<p class="rx-vazio">Carregando…</p></section>';
+    if (agua.erro) return '<section class="rx-card">' + titulo + '<p class="rx-vazio">' + escapeHtml(agua.erro) + "</p></section>";
+
+    var t = agua.total || {};
+    if (!t.dias_com_dado) {
+      return '<section class="rx-card">' + titulo +
+        '<p class="rx-vazio">A placa principal ainda não mandou o tempo de bomba nestes ' + aguaDias + " dias. Assim que ela regar, a conta aparece aqui.</p></section>";
+    }
+    var economizou = Number(t.economia_litros) >= 0;
+    var kpis =
+      '<div class="rx-kpis">' +
+      '<div class="rx-kpi rx-kpi--destaque"><p class="rx-kpi__rotulo">' + (economizou ? "Economia" : "Gastou a mais") + "</p>" +
+      '<p class="rx-kpi__valor">' + litrosTxt(Math.abs(t.economia_litros)) + "</p>" +
+      '<p class="rx-kpi__nota">' + (temNum(t.economia_pct) ? Math.abs(t.economia_pct) + "% " + (economizou ? "a menos" : "a mais") + " que o timer" : "") + "</p></div>" +
+      '<div class="rx-kpi"><p class="rx-kpi__rotulo">Rega por umidade</p><p class="rx-kpi__valor">' + litrosTxt(t.litros) + "</p>" +
+      '<p class="rx-kpi__nota">bomba ligada ' + t.bomba_min + " min</p></div>" +
+      '<div class="rx-kpi"><p class="rx-kpi__rotulo">Timer a cada ' + num1(agua.rega_fixa.intervalo_h) + " h</p><p class=\"rx-kpi__valor\">" + litrosTxt(t.litros_fixo) + "</p>" +
+      '<p class="rx-kpi__nota">' + num1(agua.rega_fixa.regas_por_dia) + " regas/dia de " + num1(agua.rega_fixa.duracao_s / 60) + " min</p></div>" +
+      "</div>";
+    var dias = agua.dias || [];
+    var grafico =
+      '<div class="rx-grafico">' + aguaSvg(agua) +
+      '<div class="rx-grafico__eixo"><span>' + (dias[0] ? dataCurta(dias[0].dia) : "") + '</span><span class="rx-grafico__leg"><i class="rx-leg rx-leg--barra"></i>água usada <i class="rx-leg rx-leg--timer"></i>timer</span><span>' +
+      (dias.length ? dataCurta(dias[dias.length - 1].dia) : "") + "</span></div></div>";
+    var nota =
+      '<p class="rx-nota">Estimativa. Vazão ' + (agua.vazao_informada ? "informada" : "de referência") + " de " + num1(agua.vazao_lpm) + " L/min" +
+      " × tempo real de bomba registrado pela placa. O timer usa o \"Rega a cada\" da estação com a mesma duração de cada rega da placa. " +
+      t.dias_com_dado + " de " + dias.length + " dias com dado da placa; os outros ficam fora da conta.</p>";
+    return '<section class="rx-card">' + titulo + kpis + grafico + nota + "</section>";
+  }
+
+  var TIPOS_DIARIO = [
+    { id: "todos", rotulo: "Tudo" },
+    { id: "analise", rotulo: "Análises" },
+    { id: "ajuste", rotulo: "Rotina" },
+    { id: "luz", rotulo: "Luz" },
+  ];
+  var SAUDE_TXT = { saudavel: "saudável", atencao: "precisa de atenção" };
+  var LUZ_TXT = { pouca: "pouca luz natural", boa: "luz natural boa", muita: "muita luz natural", incerto: "luz incerta" };
+
+  function itemDiarioHtml(e, m) {
+    var lugar = escapeHtml(e.station_name || e.plant || "Estação");
+    var titulo, detalhe = "", extra = "", acao = "", classe = e.tipo;
+    if (e.tipo === "analise") {
+      var praga = e.pragas === "sim";
+      classe = praga ? "praga" : e.health_status === "atencao" ? "atencao" : "analise";
+      titulo = praga ? "Encontrou praga em " + lugar : "Analisou a foto de " + lugar + ": " + (SAUDE_TXT[e.health_status] || "—");
+      detalhe = e.analysis_text || "";
+      var tags = [];
+      if (praga) tags.push("Praga: " + (e.pragas_descricao || "detectada"));
+      else if (e.pragas === "nao") tags.push("sem pragas");
+      if (LUZ_TXT[e.luz_nivel]) tags.push(LUZ_TXT[e.luz_nivel]);
+      if (e.modelo) tags.push(e.modelo);
+      if (tags.length) extra = '<p class="dx-tags">' + tags.map(function (t) { return "<span>" + escapeHtml(t) + "</span>"; }).join("") + "</p>";
+    } else if (e.tipo === "ajuste" || e.tipo === "sugestao") {
+      var deRotina = e.origem === "ia_rotina";
+      if (e.tipo === "ajuste") {
+        titulo = e.desfeita_em
+          ? "Ajuste desfeito em " + lugar
+          : deRotina
+            ? "Corrigiu a rotina que você salvou em " + lugar
+            : "Ajustou a rotina de " + lugar + " pelo que viu na foto";
+        classe = e.desfeita_em ? "desfeito" : "ajuste";
+        acao = e.desfeita_em ? "" : '<button type="button" class="dx-btn" data-action="diario-undo" data-id="' + e.id + '">Desfazer ajuste</button>';
+      } else {
+        titulo = "Sugeriu mudar a rotina de " + lugar + (e.applied ? " · aplicada" : "");
+        classe = "sugestao";
+        acao = e.applied || !e.config ? "" : '<button type="button" class="dx-btn" data-action="diario-apply" data-id="' + e.id + '">Aplicar sugestão</button>';
+      }
+      detalhe = e.message || "";
+      extra = mudancasHtml(e, !m);
+    } else if (e.tipo === "luz") {
+      titulo = e.titulo || "Luz de cultivo";
+      classe = e.apagou ? "luz" : "luz-acesa";
+      detalhe = e.mensagem || "";
+    }
+    return (
+      '<li class="dx-item dx-item--' + classe + '">' +
+      '<span class="dx-ponto" aria-hidden="true"></span>' +
+      '<div class="dx-corpo">' +
+      '<div class="dx-linha"><p class="dx-titulo">' + titulo + '</p><time class="dx-quando" datetime="' + escapeHtml(e.em) + '">' + quando(e.em) + "</time></div>" +
+      (detalhe ? '<p class="dx-detalhe">' + escapeHtml(detalhe) + "</p>" : "") +
+      extra + acao +
+      "</div></li>"
+    );
+  }
+
+  function diarioHtml(m) {
+    var cab = '<div class="rx-cab"><div><h2 class="rx-titulo">Diário da IA</h2>' +
+      '<p class="rx-sub">Tudo o que a IA viu e decidiu na sua horta, com o motivo de cada coisa</p></div></div>';
+    if (!diario) return '<section class="rx-card">' + cab + '<p class="rx-vazio">Carregando…</p></section>';
+    if (diario.erro) return '<section class="rx-card">' + cab + '<p class="rx-vazio">' + escapeHtml(diario.erro) + "</p></section>";
+    var r = diario.resumo || {};
+    var resumo =
+      '<div class="dx-resumo"><span class="dx-resumo__titulo">Últimos 7 dias</span>' +
+      '<span class="dx-chip"><b>' + (r.analises || 0) + "</b> análises de foto</span>" +
+      '<span class="dx-chip' + (r.pragas ? " dx-chip--alerta" : "") + '"><b>' + (r.pragas || 0) + "</b> pragas</span>" +
+      '<span class="dx-chip"><b>' + (r.ajustes || 0) + "</b> ajustes de rotina</span>" +
+      '<span class="dx-chip"><b>' + (r.luz || 0) + "</b> decisões de luz</span></div>";
+    var filtros =
+      '<div class="rx-seg rx-seg--filtro" role="tablist" aria-label="Filtrar o diário">' +
+      TIPOS_DIARIO.map(function (t) {
+        return '<button type="button" role="tab" class="rx-seg__btn' + (t.id === diarioFiltro ? " is-active" : "") + '" aria-selected="' + (t.id === diarioFiltro) +
+          '" data-action="diario-filtro" data-filtro="' + t.id + '">' + t.rotulo + "</button>";
+      }).join("") + "</div>";
+    var lista = (diario.eventos || []).filter(function (e) {
+      if (diarioFiltro === "todos") return true;
+      if (diarioFiltro === "ajuste") return e.tipo === "ajuste" || e.tipo === "sugestao";
+      return e.tipo === diarioFiltro;
+    });
+    var corpo = lista.length
+      ? '<ol class="dx-lista">' + lista.slice(0, diarioVisiveis).map(function (e) { return itemDiarioHtml(e, m); }).join("") + "</ol>" +
+        (lista.length > diarioVisiveis ? '<button type="button" class="dx-mais" data-action="diario-mais">Mostrar mais (' + (lista.length - diarioVisiveis) + ")</button>" : "")
+      : '<p class="rx-vazio">' + (diarioFiltro === "todos" ? "A IA ainda não tomou nenhuma decisão por aqui." : "Nada deste tipo ainda.") + "</p>";
+    return '<section class="rx-card">' + cab + resumo + filtros + corpo + "</section>";
+  }
+
+  function renderExtras() {
+    var d = document.getElementById("relExtra");
+    var m = document.getElementById("mRelExtra");
+    if (d) d.innerHTML = aguaHtml() + diarioHtml(false);
+    if (m) m.innerHTML = aguaHtml() + diarioHtml(true);
+    updateMobileTabbar();
+  }
+
+  function carregarAgua() {
+    if (estacaoId == null) { agua = { erro: "Cadastre uma estação para ver a água da rega." }; renderExtras(); return; }
+    var pedidoPara = String(estacaoId) + "/" + aguaDias;
+    agua = null;
+    renderExtras();
+    GrowAI.getAgua(estacaoId, aguaDias).then(
+      function (a) { if (String(estacaoId) + "/" + aguaDias === pedidoPara) { agua = a; renderExtras(); } },
+      function (e) { agua = { erro: e.message || "Não foi possível calcular a água agora." }; renderExtras(); }
+    );
+  }
+
+  function carregarDiario() {
+    return GrowAI.getDiarioIa().then(
+      function (d) { diario = d; renderExtras(); },
+      function (e) { diario = { erro: e.message || "Não foi possível carregar o diário agora." }; renderExtras(); }
+    );
+  }
+
+  document.addEventListener("click", async function (ev) {
+    var b = ev.target.closest("[data-action]");
+    if (!b) return;
+    var acao = b.dataset.action;
+    if (acao === "agua-dias") {
+      if (Number(b.dataset.dias) === aguaDias) return;
+      aguaDias = Number(b.dataset.dias);
+      carregarAgua();
+    } else if (acao === "exportar-pdf") {
+      // Relatório no papel timbrado, da estação escolhida aqui.
+      window.open("relatorio.html" + (estacaoId != null ? "?station_id=" + encodeURIComponent(estacaoId) : ""), "_blank");
+    } else if (acao === "diario-filtro") {
+      diarioFiltro = b.dataset.filtro;
+      diarioVisiveis = 6;
+      renderExtras();
+    } else if (acao === "diario-mais") {
+      diarioVisiveis += 10;
+      renderExtras();
+    } else if (acao === "diario-undo" || acao === "diario-apply") {
+      b.disabled = true;
+      b.textContent = acao === "diario-undo" ? "Desfazendo..." : "Aplicando...";
+      try {
+        if (acao === "diario-undo") await GrowAI.undoSuggestion(b.dataset.id);
+        else await GrowAI.applySuggestion(b.dataset.id);
+        if (window.showToast) showToast(acao === "diario-undo" ? "Rotina voltou aos valores anteriores." : "Sugestão aplicada.", "success");
+        // Os cards de sugestão lá em cima mostram a mesma coisa: atualiza os dois.
+        suggestionsCache = await GrowAI.getSuggestions().catch(function () { return suggestionsCache; });
+        renderSuggestions(suggestionsCache);
+        await carregarDiario();
+      } catch (err) {
+        b.disabled = false;
+        b.textContent = acao === "diario-undo" ? "Desfazer ajuste" : "Aplicar sugestão";
+        if (window.showToast) showToast(err.message, "error");
+      }
     }
   });
 
@@ -550,6 +856,8 @@
     }
 
     updateMobileTabbar();
+    carregarAgua();
+    carregarDiario();
   }
 
   // ---- canvas scaling ----

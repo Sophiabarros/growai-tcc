@@ -23,10 +23,14 @@
     <link rel="stylesheet" href="css/global.css?v=39" />
     <link rel="stylesheet" href="css/header.css?v=39" />
     <link rel="stylesheet" href="css/app-shell.css?v=42" />
-    <link rel="stylesheet" href="css/app-relatorios.css?v=44" />
+    <link rel="stylesheet" href="css/app-relatorios.css?v=48" />
     <link rel="stylesheet" href="css/animations.css?v=39" />
     <link rel="stylesheet" href="css/vera.css?v=4" />
     <link rel="stylesheet" href="css/notificacoes.css?v=3" />
+    <link rel="stylesheet" href="css/app-ux.css?v=1" />
+    <link rel="stylesheet" href="css/app-theme.css?v=3" />
+    <!-- tema antes da 1a pintura (sem piscar escuro -> claro) -->
+    <script src="js/app-theme.js?v=2"></script>
   </head>
   <body>
     <div class="app-relatorios-wrapper">
@@ -60,6 +64,7 @@
         <p class="rel-resumo" id="relResumo"></p>
         <!-- Semana | Hoje e a estação: js/app-relatorios.js -->
         <div class="rel-controls">
+          <button type="button" class="rel-controls__pdf" data-action="exportar-pdf">Exportar PDF</button>
           <select class="rel-controls__station" id="relStation" aria-label="Estação" hidden></select>
           <div class="rel-controls__modo" role="tablist" aria-label="Período">
             <button type="button" role="tab" class="rel-controls__btn is-active" data-modo="semana" aria-selected="true">Semana</button>
@@ -71,8 +76,6 @@
         <div class="rel-chart-card rel-chart-card--1">
           <p class="rel-chart-card__label">Saúde das plantas <span class="rel-chart-card__unit">% de fotos saudáveis</span></p>
           <div class="rel-chart1">
-            <img class="rel-chart1__grid" alt="" src="assets/icons/app/chart-saude-grid-d.svg" />
-            <img class="rel-chart1__axes" alt="" src="assets/icons/app/chart-saude-axes-d.svg" />
             <div class="rel-chart1__data" id="relChart1Data"></div>
             <div class="rel-chart1__y-labels">
               <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
@@ -87,9 +90,6 @@
         <div class="rel-chart-card rel-chart-card--2">
           <p class="rel-chart-card__label">Umidade do solo <span class="rel-chart-card__unit">% média</span></p>
           <div class="rel-chart2">
-            <img class="rel-chart2__group" alt="" src="assets/icons/app/chart-cond-group-d.svg" />
-            <img class="rel-chart2__vector" alt="" src="assets/icons/app/chart-cond-vector-d.svg" />
-            <img class="rel-chart2__axis" alt="" src="assets/icons/app/chart-cond-axis-d.svg" />
             <div class="rel-chart2__data" id="relChart2Data"></div>
             <div class="rel-chart2__y-labels">
               <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
@@ -106,6 +106,10 @@
         <div class="rel-suggestion rel-suggestion--1" id="relSuggestion1" hidden></div>
         <div class="rel-suggestion rel-suggestion--2" id="relSuggestion2" hidden></div>
         <p class="rel-suggestions-empty" id="relSuggestionsEmpty" hidden>Nenhuma sugestão por enquanto.</p>
+
+        <!-- ===== ÁGUA DA REGA + DIÁRIO DA IA (js/app-relatorios.js; o topo é
+             posto logo abaixo das sugestões, seja qual for a altura delas) ===== -->
+        <div class="rel-extra" id="relExtra"></div>
       </div>
     </div>
 
@@ -135,14 +139,13 @@
             <button type="button" role="tab" class="rel-controls__btn" data-modo="dia" aria-selected="false">Hoje</button>
           </div>
           <select class="rel-controls__station" id="mRelStation" aria-label="Estação" hidden></select>
+          <button type="button" class="rel-controls__pdf" data-action="exportar-pdf">PDF</button>
         </div>
 
         <!-- ===== SAÚDE DAS PLANTAS (line chart) ===== -->
         <div class="m-rel-chart-card m-rel-chart-card--1">
           <p class="m-rel-chart-card__label">Saúde das plantas <span class="rel-chart-card__unit">% de fotos saudáveis</span></p>
           <div class="m-rel-chart1">
-            <img class="m-rel-chart1__grid" alt="" src="assets/icons/app/chart-saude-grid.svg" />
-            <img class="m-rel-chart1__axes" alt="" src="assets/icons/app/chart-saude-axes.svg" />
             <div class="m-rel-chart1__data" id="mRelChart1Data"></div>
             <div class="m-rel-chart1__y-labels">
               <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
@@ -157,9 +160,6 @@
         <div class="m-rel-chart-card m-rel-chart-card--2">
           <p class="m-rel-chart-card__label">Umidade do solo <span class="rel-chart-card__unit">% média</span></p>
           <div class="m-rel-chart2">
-            <img class="m-rel-chart2__group" alt="" src="assets/icons/app/chart-cond-group.svg" />
-            <img class="m-rel-chart2__vector" alt="" src="assets/icons/app/chart-cond-vector.svg" />
-            <img class="m-rel-chart2__axis" alt="" src="assets/icons/app/chart-cond-axis.svg" />
             <div class="m-rel-chart2__data" id="mRelChart2Data"></div>
             <div class="m-rel-chart2__y-labels">
               <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
@@ -176,6 +176,8 @@
         <div class="m-rel-suggestion m-rel-suggestion--1" id="mRelSuggestion1" hidden></div>
         <div class="m-rel-suggestion m-rel-suggestion--2" id="mRelSuggestion2" hidden></div>
         <p class="m-rel-suggestions-empty" id="mRelSuggestionsEmpty" hidden>Nenhuma sugestão por enquanto.</p>
+
+        <div class="rel-extra rel-extra--m" id="mRelExtra"></div>
 
       </div>
 
@@ -230,11 +232,11 @@
       </nav>
     </div>
 
-    <script src="js/api.js?v=57"></script>
+    <script src="js/api.js?v=58"></script>
     <script src="js/toast.js?v=39"></script>
     <script src="js/vera.js?v=5"></script>
     <script src="js/notificacoes.js?v=4"></script>
     <script src="js/responsive-canvas.js?v=40"></script>
-    <script src="js/app-relatorios.js?v=48"></script>
+    <script src="js/app-relatorios.js?v=54"></script>
   </body>
 </html>

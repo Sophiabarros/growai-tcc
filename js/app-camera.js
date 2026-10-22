@@ -104,7 +104,7 @@
         '<div class="cam-card__analysis"><div class="cam-analysis-head"><p class="cam-card__analysis-label">Análise visual</p><span class="cam-tags">' + luzHtml(photo) + pragasHtml(photo) + '</span></div><p class="cam-card__analysis-text">' +
         escapeHtml(photo.analysis_text) +
         "</p></div>" +
-        '<button type="button" class="cam-card__btn">Ver histórico de imagens</button>' +
+        '<button type="button" class="cam-card__btn" data-action="timeline">Ver histórico de imagens</button>' +
         "</div>"
       );
     }
@@ -118,7 +118,7 @@
       '<div class="cam-m-card__analysis"><div class="cam-analysis-head"><p class="cam-m-card__analysis-label">Análise visual</p><span class="cam-tags">' + luzHtml(photo) + pragasHtml(photo) + '</span></div><p class="cam-m-card__analysis-text">' +
       escapeHtml(photo.analysis_text) +
       "</p></div>" +
-      '<button type="button" class="cam-m-card__btn">Ver histórico de imagens</button>' +
+      '<button type="button" class="cam-m-card__btn" data-action="timeline">Ver histórico de imagens</button>' +
       "</div>"
     );
   }
@@ -545,8 +545,25 @@
       fecharVisor();
       return;
     }
+    // "Ver histórico de imagens" abre a linha do tempo (e não o visor, que é
+    // o clique no resto do card).
+    var tl = event.target.closest('[data-action="timeline"]');
+    if (tl) {
+      var dono = tl.closest("[data-idx]");
+      var st = dono && atual.stations[Number(dono.dataset.idx)];
+      if (st && window.Timeline) window.Timeline.abrir(st);
+      return;
+    }
     var card = event.target.closest('[data-action="open-cam"]');
     if (card) abrirVisor(Number(card.dataset.idx));
+  });
+
+  // Botão "Linha do tempo" do visor: fecha o visor e abre a linha da estação.
+  document.getElementById("camViewerTimeline").addEventListener("click", function () {
+    var st = atual.stations[visorIdx];
+    if (!st || !window.Timeline) return;
+    fecharVisor();
+    setTimeout(function () { window.Timeline.abrir(st); }, 190);
   });
 
   // Teclado: Enter/Espaço abre o card (ele é role="button"), Esc fecha o visor.

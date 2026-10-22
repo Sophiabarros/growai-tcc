@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório de cultivo | GrowAI</title>
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/relatorio.css?v=1" />
+  </head>
+  <body>
+    <!-- Barra de ações: só na tela, some na impressão/PDF -->
+    <div class="rp-barra" id="rpBarra">
+      <a class="rp-barra__voltar" href="app-relatorios.html">&larr; Voltar aos relatórios</a>
+      <select class="rp-barra__estacao" id="rpEstacao" aria-label="Estação do relatório" hidden></select>
+      <span class="rp-barra__status" id="rpStatus">Montando o relatório…</span>
+      <button type="button" class="rp-barra__pdf" id="rpPdf" disabled>Salvar como PDF</button>
+    </div>
+    <p class="rp-dica" id="rpDica" hidden>Na janela que abrir, escolha <strong>Salvar como PDF</strong> em “Destino” e deixe <strong>Gráficos de segundo plano</strong> ligado.</p>
+
+    <!-- As folhas A4 (com o papel timbrado de fundo) são montadas por js/relatorio.js -->
+    <main class="rp-folhas" id="rpFolhas"></main>
+    <!-- Área invisível onde cada bloco é medido antes de entrar numa folha -->
+    <div class="rp-medidor" id="rpMedidor" aria-hidden="true"></div>
+
+    <script src="js/api.js?v=58"></script>
+    <script src="js/relatorio.js?v=1"></script>
+  </body>
+</html>

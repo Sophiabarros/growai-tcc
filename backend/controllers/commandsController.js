@@ -2,6 +2,8 @@ const db = require("../config/db");
 const crypto = require("crypto");
 const { hashChave } = require("../middleware/deviceAuth");
 const aoVivo = require("../services/aoVivo");
+const portalWifi = require("../services/portalWifi");
+const realtime = require("../services/realtime");
 
 const RELES = ["bomba", "nutri", "luz", "vent"];
 const ACOES = ["ligar", "desligar"];
@@ -213,4 +215,40 @@ async function removeDevice(req, res, next) {
   }
 }
 
-module.exports = { create, list, listDevices, createDevice, removeDevice, ONLINE_S, ONLINE_CAM_S };
+/* POST /stations/:id/devices/:deviceId/trocar-wifi
+   A placa esquece a rede Wi-Fi e volta a abrir o portal GrowAI-setup, para
+   a pessoa escolher outra rede pelo celular (a API e a chave continuam
+   gravadas). Só com a placa online: offline, o pedido não tem por onde
+   chegar. Exige firmware main-1.7.0 / cam-2.2.0. */
+async function trocarWifi(req, res, next) {
+  try {
+    const { rows } = await db.query(
+      `SELECT d.id, d.tipo, d.fw,
+              (d.last_seen IS NOT NULL AND d.last_seen > now() - ((CASE WHEN d.tipo = 'cam' THEN $4 ELSE $3 END) || ' seconds')::interval) AS online
+         FROM devices d JOIN stations s ON s.id = d.station_id
+        WHERE d.id = $1 AND s.id = $2 AND s.user_id = $5`,
+      [req.params.deviceId, req.params.id, String(ONLINE_S), String(ONLINE_CAM_S), req.user.id]
+    );
+    const d = rows[0];
+    if (!d) return res.status(404).json({ error: "Placa não encontrada" });
+    if (!d.online) {
+      return res.status(409).json({
+        error: d.tipo === "cam"
+          ? "A câmera está offline, então o pedido não chega nela. Reinicie a câmera duas vezes seguidas (reset duplo) para abrir a rede GrowAI-setup."
+          : "A placa principal está offline, então o pedido não chega nela. Aperte o botão BOOT nos primeiros 10 s depois de ligar para abrir a rede GrowAI-setup.",
+      });
+    }
+
+    if (d.tipo === "cam") {
+      const n = realtime.enviarParaCamera(req.params.id, { tipo: "portal" });
+      if (!n) return res.status(409).json({ error: "A câmera não está conectada agora. Tente de novo em 1 minuto." });
+      return res.json({ ok: true, tipo: "cam", em_s: 2 });
+    }
+    portalWifi.pedir(req.params.id);
+    res.status(202).json({ ok: true, tipo: "main", em_s: 15 });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { create, list, listDevices, createDevice, removeDevice, trocarWifi, ONLINE_S, ONLINE_CAM_S };

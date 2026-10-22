@@ -18,6 +18,23 @@
 const { montarPromptFoto, montarPromptRotina, ESQUEMA_RESPOSTA, ESQUEMA_ROTINA, ESQUEMA_FOTO, ESQUEMA_FOTO_LUZ } = require("./iaPrompt");
 const { LIMITES } = require("./configDispositivo");
 const { temperaturaSaoPaulo } = require("./temperaturaExterna");
+const iaUso = require("./iaUso");
+
+// Cada requisição HTTP vai para o registro (painel de desenvolvedor): é assim
+// que se sabe quanto da cota já foi, já que o Gemini não informa o saldo.
+function registrarChamada(modo, provedor, modelo, r) {
+  const json = r && r.json;
+  const tokens = provedor === "gemini"
+    ? json && json.usageMetadata && json.usageMetadata.totalTokenCount
+    : json && json.usage && (Number(json.usage.input_tokens || 0) + Number(json.usage.output_tokens || 0));
+  iaUso.registrar({
+    modo, provedor, modelo,
+    status: r ? r.status : 0,
+    ok: !!(r && r.ok),
+    tokens,
+    erro: r && !r.ok ? (json && json.error && json.error.message) || String(r.texto || "").slice(0, 300) : r ? null : "não respondeu a tempo",
+  });
+}
 
 const TIMEOUT_MS = Number(process.env.IA_TIMEOUT_MS || 25000);
 /* A avaliação de rotina devolve a rotina inteira (7 campos) e leva mais que a
@@ -222,7 +239,7 @@ function falhaPassageira(r) {
   return r.timeout || [429, 500, 502, 503, 504].includes(r.status);
 }
 
-async function chamarGemini({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
+async function chamarGemini({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs, modo = null }) {
   const chave = process.env.GEMINI_API_KEY;
   if (!chave) return { erro: "GEMINI_API_KEY não configurada" };
 
@@ -240,9 +257,10 @@ async function chamarGemini({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs 
     if (erros.length && restante < timeoutMs / 2) break;
     let r;
     try {
-      r = await chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs: Math.min(timeoutMs, restante) });
+      r = await chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs: Math.min(timeoutMs, restante), modo });
     } catch (err) {
       if (err.name !== "AbortError") throw err;
+      registrarChamada(modo, "gemini", modelo, null);
       r = { erro: `Gemini ${modelo} não respondeu a tempo`, timeout: true };
     }
     if (!r.erro) {
@@ -256,7 +274,7 @@ async function chamarGemini({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs 
   return { erro: erros.join(" | "), raw: ultimo && ultimo.raw, modelo: ultimo && ultimo.modelo, passageira: falhaPassageira(ultimo) };
 }
 
-async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
+async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt, esquema, timeoutMs, modo = null }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`;
   // Sem jpegBuffer (modo rotina) vai só o texto.
   const parts = [];
@@ -284,6 +302,7 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt
   };
 
   let r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
+  registrarChamada(modo, "gemini", modelo, r);
 
   /* 503 "high demand" (e 500/502/504) é sobrecarga do Gemini, não erro
      nosso, e não gasta cota. Uma nova tentativa após 2 s pega os soluços
@@ -292,6 +311,7 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt
   if (!r.ok && [500, 502, 503, 504].includes(r.status)) {
     await new Promise((ok) => setTimeout(ok, 2000));
     r = await postJson(url, { "x-goog-api-key": chave }, base, timeoutMs);
+    registrarChamada(modo, "gemini", modelo, r);
   }
 
   /* Se o esquema for recusado (o dialeto aceito pelo Gemini muda entre
@@ -302,6 +322,7 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt
     const semEsquema = { ...base, generationConfig: { ...base.generationConfig } };
     delete semEsquema.generationConfig.responseSchema;
     const r2 = await postJson(url, { "x-goog-api-key": chave }, semEsquema, timeoutMs);
+    registrarChamada(modo, "gemini", modelo, r2);
     if (r2.ok) r = r2;
     else return { erro: `Gemini ${modelo} ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, status: r.status, raw: r.json || r.texto, modelo };
   }
@@ -320,7 +341,7 @@ async function chamarModeloGemini({ modelo, chave, jpegBuffer, luzBuffer, prompt
 }
 
 // ------------------------------------------------------------------- Claude
-async function chamarClaude({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs }) {
+async function chamarClaude({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs, modo = null }) {
   const chave = process.env.ANTHROPIC_API_KEY;
   if (!chave) return { erro: "ANTHROPIC_API_KEY não configurada" };
   const modelo = process.env.CLAUDE_MODEL || "claude-opus-5";
@@ -357,6 +378,7 @@ async function chamarClaude({ jpegBuffer, luzBuffer, prompt, esquema, timeoutMs 
     },
     timeoutMs
   );
+  registrarChamada(modo, "claude", modelo, r);
 
   if (!r.ok) {
     return { erro: `Claude ${r.status}: ${(r.json && r.json.error && r.json.error.message) || r.texto.slice(0, 300)}`, raw: r.json || r.texto };
@@ -408,13 +430,13 @@ async function analisar({ modo = "foto", jpegBuffer, luzBuffer = null, estacao, 
   try {
     // A rotina usa um esquema que obriga a config completa (ver iaPrompt.js).
     const esquema = modo === "rotina" ? ESQUEMA_ROTINA : luz ? ESQUEMA_FOTO_LUZ : ESQUEMA_FOTO;
-    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
+    if (nome === "claude") r = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs, modo });
     else if (nome === "gemini") {
-      r = await chamarGemini({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
+      r = await chamarGemini({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs, modo });
       /* Todos os Gemini cheios ou sem cota: se houver chave da Anthropic, o
          Claude é a última reserva. Sem a chave, nada muda. */
       if (r.erro && r.passageira && process.env.ANTHROPIC_API_KEY) {
-        const rc = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs });
+        const rc = await chamarClaude({ jpegBuffer: imagem, luzBuffer: luz, prompt, esquema, timeoutMs, modo });
         if (!rc.erro) {
           console.warn(`[ia] Claude respondeu depois de: ${r.erro}`);
           r = rc;
@@ -450,10 +472,10 @@ function avaliarRotina({ estacao, leitura, config }) {
 /* Vera: uma pergunta em texto livre, com o contexto da horta já no prompt
    (montado em controllers/veraController.js). Só Gemini, com os modelos de
    reserva. Devolve { ok, texto } ou { ok: false, motivo }. */
-async function perguntarTexto(prompt) {
+async function perguntarTexto(prompt, modo = "vera") {
   if (!habilitada()) return { ok: false, motivo: "IA desligada (IA_HABILITADA=false)" };
   try {
-    const r = await chamarGemini({ prompt, esquema: false, timeoutMs: TIMEOUT_MS });
+    const r = await chamarGemini({ prompt, esquema: false, timeoutMs: TIMEOUT_MS, modo });
     if (r.erro) return { ok: false, motivo: r.erro, modelo: r.modelo };
     const texto = String(r.texto || "").trim();
     if (!texto) return { ok: false, motivo: "resposta vazia" };
@@ -463,4 +485,4 @@ async function perguntarTexto(prompt) {
   }
 }
 
-module.exports = { analisar, avaliarRotina, perguntarTexto, validarResposta, extrairJson, paraGemini, paraClaude, habilitada, provedor };
+module.exports = { analisar, avaliarRotina, perguntarTexto, validarResposta, extrairJson, paraGemini, paraClaude, habilitada, provedor, modelosGemini };
